@@ -390,7 +390,32 @@ Copper slivers are thin, narrow copper features that can break off during manufa
 - Check pour/fill areas for thin necks or appendages.
 - Run DFM checks to identify sliver conditions automatically.
 
-### G.10 DFM Checklist Summary
+### G.10 Component Placement Near Board Edges
+
+Components placed too close to board edges are at risk during depanelization, board handling, and automated assembly. This is distinct from copper-to-edge clearance—components have larger keep-out requirements.
+
+**Why It Matters:**
+- **Depanelization stress:** V-scoring and tab routing create mechanical stress that can crack solder joints or damage components near edges.
+- **Pick-and-place access:** Assembly machines need clearance for nozzles to place components; tall nearby components or edge proximity can block access.
+- **Handling damage:** Board edges are touched during handling, inspection, and testing.
+- **ICT fixtures:** In-circuit test fixtures need edge clearance for vacuum seals.
+
+**Clearance Requirements:**
+| Condition | Minimum Clearance |
+|-----------|-------------------|
+| Standard board edge | 100 mil (2.5mm) |
+| V-score or tab-routed edge | 5mm |
+| Tall components (>5mm height) | Additional clearance based on height |
+| Test points (for ICT) | 100 mil from edge |
+| Connectors | 3mm minimum |
+
+**Best Practices:**
+- Orient components near edges **parallel to the board outline**. Components at an angle experience non-uniform stress during depaneling and may tear from pads.
+- Keep heavy or tall components away from edges—they're more susceptible to handling damage and can interfere with conveyor systems.
+- Place connectors near edges (for accessibility) but maintain minimum clearance for depaneling.
+- Consider the assembly panel, not just the individual board—components near internal panel cuts need the same clearance.
+
+### G.11 DFM Checklist Summary
 
 Before releasing a design for fabrication, verify:
 
@@ -405,6 +430,8 @@ Before releasing a design for fabrication, verify:
 | Silkscreen line width | 4 mil |
 | Silkscreen font height | 40 mil |
 | Copper to board edge | 10 mil |
+| Component to board edge | 100 mil (2.5mm) |
+| Component to V-score/tab edge | 5mm |
 | Fiducial count | 3 minimum |
 | Fiducial diameter | 1mm |
 | Component to V-score | 1mm |

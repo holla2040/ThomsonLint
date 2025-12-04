@@ -2203,6 +2203,33 @@
       "kb_references": [
         "Appendix G: Design for Manufacturing (DFM)"
       ]
+    },
+    {
+      "id": "DFM_COMP_EDGE_001",
+      "name": "Component placement near board edges",
+      "domain": ["DFT"],
+      "description": "Components placed too close to board edges can be damaged during depaneling, interfere with pick-and-place machines, or be stressed by board handling. Adequate clearance must be maintained.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "component_too_close_to_edge": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "component_damage_during_depanel",
+        "pick_and_place_interference",
+        "solder_joint_stress",
+        "handling_damage"
+      ],
+      "recommended_actions": [
+        "Maintain minimum 100 mil (2.5mm) clearance from components to board edge.",
+        "For V-score or tab-routed edges, increase clearance to 5mm.",
+        "Keep tall components (>5mm) further from edges to avoid assembly machine interference.",
+        "Orient components near edges parallel to the board outline.",
+        "Keep test points at least 100 mil from edges for ICT fixture vacuum seal."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
     }
   ]
 }
