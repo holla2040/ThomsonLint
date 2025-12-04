@@ -35,69 +35,80 @@ The repository is organized as follows:
 -   `tests/ontology_schema.json`: A JSON schema for validating `ontology/ontology.json`.
 -   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
 -   `validate_json.py`: A Python script for validating the JSON files against their schemas.
--   `gen_context.sh`: A bash script to generate a consolidated knowledge base file for use with Gemini.
+-   `gen_context.sh`: A bash script to generate the review instructions file.
+-   `review_instructions.txt`: Pre-generated file containing the complete knowledge base and AI instructions. Ready to use immediately.
 
 ## 5. How to Use
 
-### 5.1. Validation
+This framework serves two types of users:
+- **Design Reviewers**: Engineers who want to review their circuit designs using AI
+- **Contributors**: Developers who want to extend the knowledge base with new rules
 
-To ensure the integrity and correctness of the JSON files (`ontology.json` and `examples.json`), a validation script is provided. To use it, follow these steps:
+---
 
-1.  **Install dependencies:**
-    ```bash
-    pip install jsonschema
-    ```
-2.  **Run the validation script:**
-    ```bash
-    python validate_json.py
-    ```
-    The script will output the validation status for each file.
+### 5.1. For Design Reviewers (Quick Start)
 
-### 5.2. Extending the Framework
+If you just want to review your hardware design, you don't need to clone or run anything.
 
-The framework is designed to be extensible. To add new rules, examples, or knowledge:
+1.  **Download `review_instructions.txt`** from this repository (it's pre-generated and always up-to-date).
+2.  **Go to [https://gemini.google.com/](https://gemini.google.com/)** (or another AI with file upload support).
+3.  **Upload two things:**
+    -   The `review_instructions.txt` file
+    -   Your design files (schematic images, PCB layout screenshots, etc.)
+4.  **Type:** `Please begin the review.`
+
+The AI will perform a pre-review assessment, ask for any missing information (datasheets, component values, stackup details), and then provide a comprehensive review with specific rule references.
+
+---
+
+### 5.2. For Contributors
+
+If you want to extend the knowledge base or customize the rules:
+
+#### Clone the Repository
+```bash
+git clone <repository-url>
+cd ThomsonLint
+```
+
+#### Validate JSON Files
+```bash
+pip install jsonschema  # if not installed
+python validate_json.py
+```
+
+#### Extend the Framework
 
 1.  **Modify the JSON files:** Add new entries to `ontology/ontology.json` or `examples/examples.json` following the existing structure.
-2.  **Update the knowledge base:** If necessary, add new sections or appendices to `docs/AI_Hardware_Design_Review_KnowledgeBase.md` to provide context for the new rules.
-3.  **Validate your changes:** Run the `validate_json.py` script to ensure your changes are syntactically correct.
-
-### 5.3. Using with Google Gemini (Web Interface)
-
-You can use this framework to have an interactive, AI-assisted hardware design review. The included script now instructs Gemini to first assess if it has enough information before starting, making the review more thorough.
-
-#### **Step 1: Generate the Context File**
-
-A helper script `gen_context.sh` is provided to automatically consolidate the knowledge base and instructions into a single file.
-
-1.  **Run the script** from your terminal and redirect the output to a file named `gemini_context.txt`:
+2.  **Update the knowledge base:** If necessary, add new sections to `docs/AI_Hardware_Design_Review_KnowledgeBase.md`.
+3.  **Validate your changes:** Run `python validate_json.py`.
+4.  **Regenerate the review file:**
     ```bash
-    ./gen_context.sh > gemini_context.txt
+    ./gen_context.sh > review_instructions.txt
     ```
-2.  **Open the newly created `gemini_context.txt`** file in a text editor.
 
-#### **Step 2: Start the Review Session in Gemini**
+---
 
-1.  Open your web browser and go to **[https://gemini.google.com/](https://gemini.google.com/)**.
-2.  In the prompt box, click the **upload button** (usually a paperclip or a plus symbol `+`) and upload the `gemini_context.txt` file you just created.
-3.  In the same prompt, upload your design files (e.g., schematic images, PCB layout images).
-4.  Once all files are uploaded, type a simple starting command in the prompt box:
-    ```
-    Please begin the review.
-    ```
-5.  Press **Enter**.
+### 5.3. Using with AI (Detailed Workflow)
 
-#### **Step 3: Respond to the AI's Pre-Review Assessment**
+#### **Step 1: Upload Files**
 
-Gemini will now follow the instructions inside `gemini_context.txt`. Its first step is to perform a **Pre-Review Assessment**.
+1.  Open **[https://gemini.google.com/](https://gemini.google.com/)** (or Claude, ChatGPT, etc.).
+2.  Upload `review_instructions.txt` along with your design files (schematic images, PCB layout images).
+3.  Type: `Please begin the review.`
 
-*   It will analyze your request and the files you uploaded.
-*   If critical information (like datasheets, component ratings, or PCB stackup details) is missing, **it will ask you to provide it.**
+#### **Step 2: Respond to the Pre-Review Assessment**
 
-This is your opportunity to provide the specific details it needs. You can copy-paste text from datasheets or just write the component values directly into the chat.
+The AI will analyze your files and ask for missing information:
+*   Datasheets for critical ICs
+*   Component ratings (inductor saturation current, fuse ratings, etc.)
+*   PCB stackup details
 
-#### **Step 4: Receive the Comprehensive Review**
+Provide these details via copy-paste or direct answers.
 
-Once Gemini has the information it needs, it will automatically proceed with the full, comprehensive review based on the rules from the knowledge base. It will output a list of potential issues, each with a corresponding `rule_id` for reference.
+#### **Step 3: Receive the Review**
+
+The AI will output a list of potential issues, each citing a specific `rule_id` from the knowledge base.
 
 ## 6. Future Work
 

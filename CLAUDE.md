@@ -23,10 +23,19 @@ pip install jsonschema  # if not installed
 python validate_json.py
 ```
 
-### Generate context file for Gemini
+### Generate review instructions file
 ```bash
-./gen_context.sh > gemini_context.txt
+./gen_context.sh > review_instructions.txt
 ```
+
+## Pre-Commit Requirement
+
+**Before every commit**, regenerate the `review_instructions.txt` file:
+```bash
+./gen_context.sh > review_instructions.txt
+```
+
+This ensures `review_instructions.txt` is always up-to-date in the repository, allowing users to immediately use it with their design files without needing to run any scripts.
 
 ## File Modification Guidelines (from TODO.md)
 
