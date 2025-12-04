@@ -663,6 +663,230 @@
       "kb_references": [
         "Section 4.1.5 Thermal & Mechanical"
       ]
+    },
+    {
+      "id": "DFT_FID_001",
+      "name": "Fiducials for pick and place alignment",
+      "domain": ["DFT", "Mechanical"],
+      "description": "PCBs must have at least 2 fiducial markers placed in opposite corners of the board for pick and place machine alignment.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "fiducial_count_less_than_2": true,
+        "fiducials_not_in_opposite_corners": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "assembly_misalignment",
+        "component_placement_errors",
+        "assembly_rejection"
+      ],
+      "recommended_actions": [
+        "Add at least 2 fiducial markers in diagonally opposite corners of the board.",
+        "Use standard fiducial size (typically 1mm copper dot with 2mm solder mask opening).",
+        "Consider adding a third fiducial for improved accuracy on larger boards."
+      ],
+      "kb_references": [
+        "Section 2.5 DFT & DFM"
+      ]
+    },
+    {
+      "id": "MEC_MOUNT_001",
+      "name": "Mounting holes for board installation",
+      "domain": ["Mechanical", "DFT"],
+      "description": "PCBs should include mounting holes for secure installation in enclosures or systems.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "mounting_holes_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "board_cannot_be_mounted",
+        "mechanical_stress_on_components",
+        "vibration_induced_failures"
+      ],
+      "recommended_actions": [
+        "Add mounting holes at board corners or strategic locations.",
+        "Use standard hole sizes (e.g., 3.2mm for M3 screws).",
+        "Ensure adequate clearance from mounting holes to nearby traces and components."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "DFT_TP_002",
+      "name": "Through-hole ground test point for oscilloscope",
+      "domain": ["DFT"],
+      "description": "A dedicated through-hole ground test point should be provided for oscilloscope ground clip attachment during debugging.",
+      "applies_to": ["PCB", "Net"],
+      "conditions": {
+        "through_hole_ground_test_point_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "difficult_debugging",
+        "poor_scope_measurements",
+        "ground_loop_issues_during_probing"
+      ],
+      "recommended_actions": [
+        "Add a through-hole test point connected to ground for scope ground clip.",
+        "Place near areas likely to be probed (e.g., near high-speed signals, power rails).",
+        "Use a sturdy through-hole pad that can withstand repeated clip attachment."
+      ],
+      "kb_references": [
+        "Section 1.8 Design for Test & Bring-Up"
+      ]
+    },
+    {
+      "id": "DFT_SILK_001",
+      "name": "Silkscreen area for unit identification marking",
+      "domain": ["DFT"],
+      "description": "A blank silkscreen box or area should be provided for handwritten unit identification (e.g., serial number, test notes) using a marker.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "sharpie_marking_area_missing": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "difficult_unit_tracking",
+        "no_space_for_test_notes"
+      ],
+      "recommended_actions": [
+        "Add a silkscreen rectangle or box (e.g., 15mm x 10mm) in a visible location.",
+        "Place on top layer where it won't be obscured by components.",
+        "Label it 'S/N' or 'ID' to indicate its purpose."
+      ],
+      "kb_references": [
+        "Section 2.5 DFT & DFM"
+      ]
+    },
+    {
+      "id": "DFT_SILK_002",
+      "name": "Board identification silkscreen header",
+      "domain": ["DFT"],
+      "description": "PCB silkscreen should include a company header with company name, board name, version number, and date for traceability.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "board_identification_header_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "board_version_confusion",
+        "traceability_issues",
+        "wrong_board_used_in_production"
+      ],
+      "recommended_actions": [
+        "Add silkscreen text with: company name, board name, revision (e.g., 'Rev 1.0'), and date.",
+        "Place in a consistent location (e.g., board edge or near a corner).",
+        "Ensure text is readable (minimum 0.8mm height for legibility)."
+      ],
+      "kb_references": [
+        "Section 2.5 DFT & DFM"
+      ]
+    },
+    {
+      "id": "DFT_POL_001",
+      "name": "Polarity marking on power connectors",
+      "domain": ["DFT"],
+      "description": "Power connectors must have clear +/- polarity markings on the silkscreen to prevent reverse polarity connection.",
+      "applies_to": ["Connector"],
+      "conditions": {
+        "power_connector_polarity_unmarked": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "reverse_polarity_damage",
+        "board_destruction",
+        "component_failure"
+      ],
+      "recommended_actions": [
+        "Add '+' and '-' symbols next to power connector pins on silkscreen.",
+        "Consider adding voltage label (e.g., '+5V', 'GND').",
+        "Use bold or larger text for visibility."
+      ],
+      "kb_references": [
+        "Section 2.5 DFT & DFM"
+      ]
+    },
+    {
+      "id": "MS_RST_001",
+      "name": "Output lines must have defined state during reset",
+      "domain": ["MixedSignal"],
+      "description": "All operational output lines (GPIOs configured as outputs, enable signals, chip selects, etc.) must have pull-up or pull-down resistors to ensure a defined, safe state during MCU/IC reset or power-up when outputs are high-impedance.",
+      "applies_to": ["MCU", "FPGA", "GPIO", "Enable"],
+      "conditions": {
+        "output_line_active": true,
+        "no_pullup_or_pulldown": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "unintended_device_activation",
+        "bus_contention",
+        "motor_runaway",
+        "relay_chatter",
+        "undefined_system_behavior_at_startup"
+      ],
+      "recommended_actions": [
+        "Add pull-up or pull-down resistor to ensure safe default state during reset.",
+        "Choose pull direction based on safe state (e.g., active-low enables should be pulled high).",
+        "Typical values: 10k-100k ohm depending on application."
+      ],
+      "kb_references": [
+        "Section 2.1 Power Systems"
+      ]
+    },
+    {
+      "id": "MS_I2C_001",
+      "name": "I2C bus pull-ups and test points",
+      "domain": ["MixedSignal", "DFT"],
+      "description": "I2C SDA and SCL lines require pull-up resistors for proper open-drain operation, and should have accessible test points for debugging.",
+      "applies_to": ["I2C"],
+      "conditions": {
+        "i2c_pullups_missing": true,
+        "i2c_test_points_missing": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "i2c_bus_failure",
+        "communication_errors",
+        "difficult_debugging",
+        "intermittent_operation"
+      ],
+      "recommended_actions": [
+        "Add pull-up resistors on SDA and SCL (typically 2.2k-10k ohm depending on bus speed and capacitance).",
+        "Use lower resistance for faster I2C speeds or higher bus capacitance.",
+        "Add solderable test points on SDA and SCL for logic analyzer/scope access.",
+        "Consider 0-ohm jumper option for pull-ups if multiple masters exist."
+      ],
+      "kb_references": [
+        "Section 1.8 Design for Test & Bring-Up"
+      ]
+    },
+    {
+      "id": "SCH_NET_001",
+      "name": "Cross-sheet net labels must have matching connections",
+      "domain": ["DFT"],
+      "description": "Net labels used for cross-sheet references must appear on at least two sheets or locations to form a valid connection. A single orphan label indicates a likely missing connection or typo.",
+      "applies_to": ["Net", "Schematic"],
+      "conditions": {
+        "net_label_appears_only_once": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "open_circuit",
+        "missing_signal_connection",
+        "board_will_not_function",
+        "costly_respin"
+      ],
+      "recommended_actions": [
+        "Run ERC (Electrical Rule Check) in schematic tool to find single-pin nets.",
+        "Verify all cross-sheet labels have matching labels on destination sheets.",
+        "Check for typos in net label names (case sensitivity, underscores, spaces).",
+        "Remove orphan labels or add the missing connection."
+      ],
+      "kb_references": [
+        "Section 1.1 Multi-Pass Review Framework"
+      ]
     }
   ]
 }

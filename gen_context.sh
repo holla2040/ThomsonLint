@@ -12,8 +12,9 @@ Your task is to follow a multi-step process:
     *   Component values or ratings (e.g., inductor saturation current, fuse ratings, capacitor values).
     *   PCB manufacturing specifications (e.g., layer stackup, copper weight, dielectric material).
     *   Pinout or functional descriptions for all non-obvious connectors or signals.
-3.  **Request Missing Information:** If critical information is missing, you MUST ask the user to provide it. List the specific items you need to perform a high-quality review. Do not proceed until you receive this information.
-4.  **Comprehensive Review:** Once you have the necessary information, perform the comprehensive design review based on the final instructions at the end of this document.
+3.  **Self-Retrieve Missing Datasheets:** For any critical ICs or components identified in the design, you MUST first attempt to find and retrieve their datasheets yourself using web search. Search for the exact part number (e.g., "TPS54302 datasheet", "STM32F407 datasheet"). Only after you have exhausted your ability to find the datasheet should you ask the user to provide it.
+4.  **Request Remaining Missing Information:** If critical information is still missing after your own research, ask the user to provide it. List the specific items you need to perform a high-quality review. Do not proceed until you receive this information.
+5.  **Comprehensive Review:** Once you have the necessary information, perform the comprehensive design review based on the final instructions at the end of this document.
 
 ---
 ### KNOWLEDGE BASE START
