@@ -934,6 +934,936 @@ Here is the knowledge base you must use for the review:
       "kb_references": [
         "Section 1.8 Design for Test & Bring-Up"
       ]
+    },
+    {
+      "id": "PWR_BUCK_003",
+      "name": "Buck converter input capacitor must be on same layer as IC",
+      "domain": ["Power"],
+      "description": "The input capacitor for a buck converter must be placed on the same PCB surface layer as the IC pins it connects to. Placing it on the opposite side introduces via inductance that creates voltage noise.",
+      "applies_to": ["Buck Converter", "SMPS"],
+      "conditions": {
+        "input_cap_on_different_layer": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "voltage_noise",
+        "EMI",
+        "instability"
+      ],
+      "recommended_actions": [
+        "Place input capacitor on the same layer as the buck converter IC.",
+        "Ensure capacitor terminals overlap the VIN and GND pour as close to the IC as possible.",
+        "Avoid vias between the capacitor and IC power pins."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Buck Converter Layout"
+      ]
+    },
+    {
+      "id": "PWR_BUCK_004",
+      "name": "No GND plane or signal routing directly under inductor",
+      "domain": ["Power", "EMC"],
+      "description": "Ground plane wiring should not be placed immediately below power inductors because magnetic lines of force would pass through the GND layer, causing eddy currents that reduce inductor value and Q factor. Signal lines should also be avoided due to noise coupling.",
+      "applies_to": ["Inductor", "SMPS"],
+      "conditions": {
+        "routing_under_inductor": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "reduced_inductance",
+        "reduced_Q_factor",
+        "switching_noise_propagation",
+        "EMI"
+      ],
+      "recommended_actions": [
+        "Create a keepout zone under power inductors for all layers.",
+        "Route signals around the inductor footprint area.",
+        "If ground plane must exist, ensure adequate clearance from inductor footprint."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Buck Converter Layout"
+      ]
+    },
+    {
+      "id": "PWR_BUCK_005",
+      "name": "Switching node copper area must be minimized",
+      "domain": ["Power", "EMC"],
+      "description": "The switching node (SW) copper area should be minimized to reduce parasitic coupling capacitance to other traces. However, it must remain large enough to conduct inductor current and provide heat sinking for power MOSFETs.",
+      "applies_to": ["Buck Converter", "SMPS"],
+      "conditions": {
+        "sw_node_copper_excessive": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "noise_coupling",
+        "EMI",
+        "interference_with_sensitive_signals"
+      ],
+      "recommended_actions": [
+        "Keep SW node copper as small as practical while meeting current and thermal requirements.",
+        "Place ground copper underneath the SW node for additional shielding.",
+        "Route sensitive traces away from the SW node area."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Buck Converter Layout"
+      ]
+    },
+    {
+      "id": "PWR_BUCK_006",
+      "name": "Output capacitor must be separated from input capacitor",
+      "domain": ["Power"],
+      "description": "The output capacitor should be placed 1-2 cm away from the input capacitor to prevent high-frequency noise on the input from coupling to the output. The grounds of input and output capacitors should not be directly adjacent.",
+      "applies_to": ["Buck Converter", "SMPS"],
+      "conditions": {
+        "output_cap_too_close_to_input_cap": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "output_noise",
+        "noise_coupling",
+        "reduced_filtering_effectiveness"
+      ],
+      "recommended_actions": [
+        "Place output capacitor close to the inductor output, not directly adjacent to input capacitor.",
+        "Maintain 1-2 cm separation between input and output capacitor grounds.",
+        "Route the output return path separately from the input high-frequency loop."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Buck Converter Layout"
+      ]
+    },
+    {
+      "id": "PWR_DECPL_002",
+      "name": "Use distributed decoupling with multiple smaller capacitors",
+      "domain": ["Power"],
+      "description": "Multiple smaller capacitors in parallel are preferred over a single large capacitor for decoupling. Ten 10nF capacitors provide lower inductance and better high-frequency performance than one 100nF capacitor.",
+      "applies_to": ["IC", "ASIC", "MCU", "FPGA"],
+      "conditions": {
+        "single_large_decoupling_cap": true,
+        "high_frequency_requirements": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "inadequate_high_frequency_decoupling",
+        "rail_noise",
+        "increased_inductance"
+      ],
+      "recommended_actions": [
+        "Distribute multiple smaller capacitors around the IC rather than using one large capacitor.",
+        "Use parallel combinations of different values to cover a broader frequency range.",
+        "Place capacitors in different locations around the IC to reduce inductance."
+      ],
+      "kb_references": [
+        "Section 1.3 Decoupling & Local Regulation"
+      ]
+    },
+    {
+      "id": "PWR_DECPL_003",
+      "name": "Use via-in-pad for BGA decoupling capacitors",
+      "domain": ["Power"],
+      "description": "For BGA packages, decoupling capacitors should use via-in-pad to maximize the number of capacitors that can be placed directly under the package and to minimize loop inductance.",
+      "applies_to": ["BGA", "FPGA", "ASIC"],
+      "conditions": {
+        "bga_package": true,
+        "decoupling_not_via_in_pad": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "insufficient_decoupling",
+        "increased_loop_inductance",
+        "power_integrity_issues"
+      ],
+      "recommended_actions": [
+        "Use via-in-pad for decoupling capacitors under BGA packages.",
+        "Fill and cap vias to prevent solder wicking during assembly.",
+        "Place capacitors as close as possible to power/ground ball pairs."
+      ],
+      "kb_references": [
+        "Section 2.2 Power Integrity & Decoupling"
+      ]
+    },
+    {
+      "id": "PWR_DECPL_004",
+      "name": "Use smaller capacitor packages for high-frequency decoupling",
+      "domain": ["Power"],
+      "description": "Smaller capacitor packages (0402, 0201) have lower parasitic inductance than larger packages (0805, 1206) and should be used for high-frequency decoupling applications.",
+      "applies_to": ["IC", "ASIC", "MCU", "FPGA"],
+      "conditions": {
+        "large_cap_package_for_hf_decoupling": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "reduced_high_frequency_effectiveness",
+        "self_resonance_issues"
+      ],
+      "recommended_actions": [
+        "Use 0402 or 0201 capacitors for high-frequency decoupling (100MHz+).",
+        "Reserve larger packages (0805, 1206) for bulk capacitance.",
+        "Consider X7R or C0G dielectric for stable performance."
+      ],
+      "kb_references": [
+        "Section 1.3 Decoupling & Local Regulation"
+      ]
+    },
+    {
+      "id": "HS_DIFF_002",
+      "name": "Differential pair traces must maintain symmetry",
+      "domain": ["HighSpeed"],
+      "description": "Both traces of a differential pair must have identical geometry, spacing, and via placement throughout their length. Any mismatch in length, spacing, or geometry leads to skew, mode conversion, and loss of noise immunity.",
+      "applies_to": ["USB", "PCIe", "LVDS", "Ethernet", "MIPI"],
+      "conditions": {
+        "differential_pair_asymmetric": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "timing_skew",
+        "mode_conversion",
+        "reduced_noise_immunity",
+        "signal_integrity_degradation"
+      ],
+      "recommended_actions": [
+        "Route differential pairs with matched trace widths and spacing.",
+        "Place vias in symmetrical pairs when layer changes are required.",
+        "Maintain uniform clearance along the entire length, including around bends.",
+        "Route both traces on the same layer whenever possible."
+      ],
+      "kb_references": [
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "HS_DIFF_003",
+      "name": "Via stubs must be minimized for high-speed signals above 3 Gbps",
+      "domain": ["HighSpeed"],
+      "description": "At data rates above 3 Gbps, via stubs become a critical source of signal loss. Stub length should be shorter than one-quarter of the signal wavelength, ideally less than one-tenth.",
+      "applies_to": ["USB3.x", "PCIe", "10GbE", "25GbE"],
+      "conditions": {
+        "data_rate_above_3gbps": true,
+        "via_stub_length_excessive": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "signal_reflection",
+        "insertion_loss",
+        "link_failures",
+        "reduced_eye_opening"
+      ],
+      "recommended_actions": [
+        "Use back-drilling to remove via stubs.",
+        "Use via-in-pad with microvias for high-speed signals.",
+        "Route high-speed signals on outer layers when possible to minimize via usage.",
+        "Calculate maximum allowable stub length based on signal frequency."
+      ],
+      "kb_references": [
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "HS_DIFF_004",
+      "name": "Fiber weave effect must be mitigated for high-speed differential pairs",
+      "domain": ["HighSpeed"],
+      "description": "Fiber weave in PCB substrate can introduce differential skew due to varying dielectric constants between fiberglass (εr≈6) and epoxy (εr≈3). This affects signal integrity at high speeds.",
+      "applies_to": ["USB3.x", "PCIe", "10GbE", "25GbE", "DDR4"],
+      "conditions": {
+        "high_speed_differential": true,
+        "fiber_weave_mitigation_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "intra_pair_skew",
+        "timing_errors",
+        "reduced_timing_margin"
+      ],
+      "recommended_actions": [
+        "Rotate PCB image 10-35 degrees relative to fiber weave direction.",
+        "Use angled routing (not parallel to board edges) for critical pairs.",
+        "Consider zig-zag routing to average out dielectric variations.",
+        "Specify spread glass or low-Dk materials for critical applications."
+      ],
+      "kb_references": [
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "HS_DIFF_005",
+      "name": "High-speed traces must maintain edge clearance",
+      "domain": ["HighSpeed", "EMC"],
+      "description": "High-speed traces should be kept at least 10-15 mils away from board edges and plane edges to prevent impedance variation and EMI leakage.",
+      "applies_to": ["USB", "PCIe", "Ethernet", "LVDS", "DDR"],
+      "conditions": {
+        "trace_near_board_edge": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "impedance_discontinuity",
+        "EMI_radiation",
+        "signal_integrity_issues"
+      ],
+      "recommended_actions": [
+        "Maintain minimum 10-15 mil clearance from board and plane edges.",
+        "Avoid routing high-speed signals near cutouts or slots in reference planes.",
+        "Add ground stitching vias along board edges for EMI containment."
+      ],
+      "kb_references": [
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "HS_DIFF_006",
+      "name": "Prefer inner layer routing for differential pairs",
+      "domain": ["HighSpeed"],
+      "description": "Routing differential pairs on inner layers (stripline) provides better shielding from crosstalk and EMI compared to outer layer (microstrip) routing.",
+      "applies_to": ["USB", "PCIe", "LVDS", "Ethernet"],
+      "conditions": {
+        "differential_on_outer_layer": true,
+        "crosstalk_sensitive_design": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "crosstalk",
+        "EMI_susceptibility",
+        "EMI_radiation"
+      ],
+      "recommended_actions": [
+        "Route sensitive differential pairs on inner stripline layers when possible.",
+        "If outer layer routing is required, maintain larger spacing from adjacent signals.",
+        "Use ground pours on outer layers to provide shielding."
+      ],
+      "kb_references": [
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "EMC_ESD_003",
+      "name": "TVS diode must be placed as close as possible to connector",
+      "domain": ["EMC"],
+      "description": "ESD protection TVS diodes must be placed as close as possible to the connector or ESD entry point. The trace length between the connector and TVS should be minimized to reduce inductance.",
+      "applies_to": ["Connector", "TVS"],
+      "conditions": {
+        "tvs_far_from_connector": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "inadequate_ESD_protection",
+        "voltage_overshoot_before_clamping",
+        "component_damage"
+      ],
+      "recommended_actions": [
+        "Place TVS diode immediately adjacent to the connector.",
+        "Minimize and widen traces between connector and TVS.",
+        "Avoid vias in the path between connector and TVS diode."
+      ],
+      "kb_references": [
+        "Section 1.7 EMC, ESD & Protection"
+      ]
+    },
+    {
+      "id": "EMC_ESD_004",
+      "name": "TVS diode must have low-impedance ground path",
+      "domain": ["EMC"],
+      "description": "TVS diodes require a low-impedance path to ground to effectively shunt ESD currents. Multiple vias should connect the TVS ground pad to the ground plane.",
+      "applies_to": ["TVS"],
+      "conditions": {
+        "tvs_ground_path_high_impedance": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "reduced_clamping_effectiveness",
+        "ground_bounce",
+        "ESD_damage_despite_protection"
+      ],
+      "recommended_actions": [
+        "Use multiple vias to connect TVS ground to the ground plane.",
+        "Keep ground trace short and wide.",
+        "Connect to an uninterrupted ground plane area.",
+        "Avoid routing ground through narrow traces or bottlenecks."
+      ],
+      "kb_references": [
+        "Section 1.7 EMC, ESD & Protection"
+      ]
+    },
+    {
+      "id": "EMC_ESD_005",
+      "name": "Avoid parallel routing near ESD-exposed traces",
+      "domain": ["EMC"],
+      "description": "Board traces should not run parallel to traces that could be exposed to ESD events. Particularly avoid routing traces leading to ESD-sensitive devices parallel to ESD-exposed connector traces.",
+      "applies_to": ["Net", "Trace"],
+      "conditions": {
+        "sensitive_trace_parallel_to_esd_path": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "ESD_coupling_to_sensitive_circuits",
+        "secondary_ESD_damage",
+        "noise_coupling"
+      ],
+      "recommended_actions": [
+        "Route sensitive signals perpendicular to or away from ESD-exposed paths.",
+        "Increase spacing between sensitive traces and ESD paths.",
+        "Use ground traces or planes as shields between sensitive and ESD paths."
+      ],
+      "kb_references": [
+        "Section 1.7 EMC, ESD & Protection"
+      ]
+    },
+    {
+      "id": "EMC_ESD_006",
+      "name": "Use low-capacitance TVS for high-speed data lines",
+      "domain": ["EMC", "HighSpeed"],
+      "description": "TVS diodes on high-speed data lines must have low capacitance to avoid signal distortion. High capacitance slows circuit response and degrades signal integrity on USB, Ethernet, HDMI, and similar interfaces.",
+      "applies_to": ["USB", "Ethernet", "HDMI", "DisplayPort", "TVS"],
+      "conditions": {
+        "high_speed_data_line": true,
+        "tvs_capacitance_too_high": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "signal_distortion",
+        "reduced_data_rate",
+        "eye_closure",
+        "link_failures"
+      ],
+      "recommended_actions": [
+        "Select TVS arrays specifically designed for high-speed interfaces.",
+        "Choose TVS with capacitance <1pF for multi-gigabit interfaces.",
+        "Verify TVS bandwidth is sufficient for the data rate.",
+        "Consider integrated TVS arrays with matched capacitance for differential pairs."
+      ],
+      "kb_references": [
+        "Section 1.7 EMC, ESD & Protection"
+      ]
+    },
+    {
+      "id": "EMC_STITCH_002",
+      "name": "Ground stitching via grid required for copper pours",
+      "domain": ["EMC"],
+      "description": "When filling top and bottom layers with ground copper pour, a grid of ground stitching vias should be added across the entire PCB. Otherwise, small isolated ground copper areas can act as radiating antennas.",
+      "applies_to": ["Ground Plane", "Copper Pour"],
+      "conditions": {
+        "ground_pour_without_stitching_grid": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "EMI_radiation",
+        "antenna_effect",
+        "ground_potential_differences"
+      ],
+      "recommended_actions": [
+        "Add ground stitching vias in a regular grid pattern (4+ vias per cm²).",
+        "Ensure all ground pour islands are connected to the main ground plane.",
+        "Place additional stitching vias near high-speed signals and switching nodes.",
+        "Remove small isolated copper areas that cannot be properly stitched."
+      ],
+      "kb_references": [
+        "Section 2.5 EMC & EMI Layout"
+      ]
+    },
+    {
+      "id": "AN_ADC_004",
+      "name": "ADC should be placed at analog/digital boundary",
+      "domain": ["Analog", "MixedSignal"],
+      "description": "Discrete ADCs should be placed along the boundary between the analog and digital sections of the PCB. This is where analog signals interface with the digital world.",
+      "applies_to": ["ADC"],
+      "conditions": {
+        "adc_not_at_partition_boundary": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "noise_coupling",
+        "difficult_grounding",
+        "reduced_SNR"
+      ],
+      "recommended_actions": [
+        "Place ADC at the boundary between analog and digital circuit sections.",
+        "Keep analog input traces in the analog section.",
+        "Route digital outputs into the digital section.",
+        "Minimize digital trace length in the analog section."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: ADC Layout"
+      ]
+    },
+    {
+      "id": "AN_ADC_005",
+      "name": "Connect AGND and DGND at single point at ADC",
+      "domain": ["Analog", "MixedSignal"],
+      "description": "Analog ground and digital ground should be connected together at a single point, typically at or under the ADC. This prevents digital return currents from flowing through analog ground.",
+      "applies_to": ["ADC", "DAC"],
+      "conditions": {
+        "agnd_dgnd_multiple_connections": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "ground_loops",
+        "digital_noise_in_analog_section",
+        "reduced_ADC_accuracy"
+      ],
+      "recommended_actions": [
+        "Connect AGND and DGND at a single point at the ADC.",
+        "Use a ferrite bead or 0-ohm resistor at the connection point if needed.",
+        "Ensure digital return currents cannot flow through the analog ground.",
+        "Keep separate ground planes for analog and digital sections if using split planes."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: ADC Layout"
+      ]
+    },
+    {
+      "id": "AN_ADC_006",
+      "name": "Digital switching currents must not flow through ADC ground",
+      "domain": ["Analog", "MixedSignal"],
+      "description": "Return currents from switching loads and digital circuits must not flow through the ADC or sensor section. The path from switching load grounds back to their voltage regulators should not cross the ADC area.",
+      "applies_to": ["ADC", "Sensor"],
+      "conditions": {
+        "switching_current_through_adc_ground": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "ground_noise",
+        "measurement_errors",
+        "reduced_ADC_accuracy",
+        "LSB_errors"
+      ],
+      "recommended_actions": [
+        "Trace return current paths from switching loads to their regulators.",
+        "Ensure these paths do not cross the ADC or sensor section.",
+        "Place voltage regulators for ADC near the sensor/ADC section.",
+        "Use star-point grounding topology for sensitive analog circuits."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: ADC Layout"
+      ]
+    },
+    {
+      "id": "AN_ADC_007",
+      "name": "High-resolution ADC designs should use 4+ layer stackup",
+      "domain": ["Analog", "MixedSignal"],
+      "description": "High-performance data acquisition systems with precision ADCs should use four or more PCB layers. This provides dedicated ground reference planes essential for impedance control and noise isolation.",
+      "applies_to": ["ADC"],
+      "conditions": {
+        "precision_adc": true,
+        "layer_count_less_than_4": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "inadequate_shielding",
+        "ground_impedance_issues",
+        "noise_coupling",
+        "reduced_ADC_performance"
+      ],
+      "recommended_actions": [
+        "Use minimum 4-layer stackup for precision ADC designs.",
+        "Dedicate Layer 2 as continuous ground reference plane.",
+        "Use adjacent power and ground planes for interplane decoupling capacitance.",
+        "Route analog signals on layers with solid reference planes."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: ADC Layout"
+      ]
+    },
+    {
+      "id": "HS_XTAL_001",
+      "name": "Crystal must be placed close to MCU oscillator pins",
+      "domain": ["HighSpeed", "Analog"],
+      "description": "The crystal and its load capacitors must be placed as close as possible to the MCU/IC oscillator pins to minimize parasitic capacitance and interference. Trace length should be minimized.",
+      "applies_to": ["Crystal", "MCU", "FPGA"],
+      "conditions": {
+        "crystal_far_from_mcu": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "oscillator_startup_failure",
+        "frequency_drift",
+        "increased_jitter",
+        "noise_susceptibility"
+      ],
+      "recommended_actions": [
+        "Place crystal within 5mm of MCU oscillator pins.",
+        "Keep crystal traces as short as possible.",
+        "Place load capacitors between crystal and MCU, close to crystal.",
+        "Minimize parasitic capacitance from long traces."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "HS_XTAL_002",
+      "name": "Avoid vias in crystal oscillator traces",
+      "domain": ["HighSpeed", "Analog"],
+      "description": "Vias should be avoided in the traces connecting the crystal to the MCU oscillator pins. Vias add inductance and parasitic effects that can affect oscillator stability.",
+      "applies_to": ["Crystal", "MCU"],
+      "conditions": {
+        "vias_in_crystal_traces": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "added_parasitic_inductance",
+        "oscillator_instability",
+        "reduced_gain_margin"
+      ],
+      "recommended_actions": [
+        "Route crystal traces entirely on one layer.",
+        "Place crystal on the same layer as MCU if possible.",
+        "If vias are unavoidable, minimize their number and use low-inductance via structures."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "HS_XTAL_003",
+      "name": "No routing under crystal on multi-layer PCBs",
+      "domain": ["HighSpeed", "EMC"],
+      "description": "Digital, RF, and high-speed signal lines should not be routed under the crystal on internal layers. Crosstalk from digital activity may disturb the oscillator.",
+      "applies_to": ["Crystal"],
+      "conditions": {
+        "routing_under_crystal": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "oscillator_jitter",
+        "frequency_pulling",
+        "crosstalk_induced_noise"
+      ],
+      "recommended_actions": [
+        "Create a routing keepout zone under the crystal footprint.",
+        "Keep clock lines and frequently switching signals away from crystal area.",
+        "Ground plane under crystal is acceptable and recommended."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "HS_XTAL_004",
+      "name": "Crystal oscillator return currents must be locally contained",
+      "domain": ["HighSpeed", "EMC"],
+      "description": "High-frequency return currents from the crystal oscillator circuit should be contained locally and not allowed to flow across the main ground plane, which could turn it into a radiating antenna.",
+      "applies_to": ["Crystal", "MCU"],
+      "conditions": {
+        "crystal_return_currents_spread": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "EMI_radiation",
+        "ground_plane_antenna_effect",
+        "oscillator_noise"
+      ],
+      "recommended_actions": [
+        "Provide local ground return path for crystal and load capacitors.",
+        "Keep ground connection for load capacitors short.",
+        "On single-layer PCBs, use a ground guard ring around oscillator components.",
+        "Avoid return currents from fast communication interfaces in crystal ground."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "HS_XTAL_005",
+      "name": "Crystal load capacitors must be within 5mm with matched traces",
+      "domain": ["HighSpeed", "Analog"],
+      "description": "Load capacitors (NP0/C0G dielectric) must be placed within 5mm of crystal pins with matched-length traces and grounded through low-inductance vias.",
+      "applies_to": ["Crystal"],
+      "conditions": {
+        "load_caps_far_from_crystal": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "asymmetric_loading",
+        "frequency_error",
+        "oscillator_instability"
+      ],
+      "recommended_actions": [
+        "Place load capacitors within 5mm of crystal pins.",
+        "Use NP0/C0G dielectric capacitors for stability.",
+        "Match trace lengths from crystal to each capacitor.",
+        "Ground capacitors through low-inductance vias (≥0.3mm hole diameter)."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "HS_XTAL_006",
+      "name": "Avoid right-angle bends in crystal traces",
+      "domain": ["HighSpeed"],
+      "description": "Right-angle bends in crystal oscillator traces should be avoided. The 45-degree corner region increases capacitance, changing trace impedance and causing reflections.",
+      "applies_to": ["Crystal"],
+      "conditions": {
+        "right_angle_bends_in_crystal_traces": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "impedance_discontinuity",
+        "signal_reflection",
+        "parasitic_capacitance"
+      ],
+      "recommended_actions": [
+        "Use 45-degree angles or curved traces for crystal routing.",
+        "Round right angles if they cannot be avoided.",
+        "Keep crystal traces as short and direct as possible."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "THM_VIA_002",
+      "name": "Thermal via diameter should be 0.2-0.4mm",
+      "domain": ["Thermal"],
+      "description": "Thermal vias should have a diameter between 0.2mm and 0.4mm. The optimal diameter for best thermal conductivity is 0.30mm. Use smaller vias for dense designs, larger for maximum heat dissipation.",
+      "applies_to": ["Component", "Thermal Pad"],
+      "conditions": {
+        "thermal_via_diameter_out_of_range": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "inadequate_heat_transfer",
+        "manufacturability_issues"
+      ],
+      "recommended_actions": [
+        "Use thermal via diameter of 0.25-0.35mm (optimal 0.30mm).",
+        "Use smaller vias (0.2mm) for dense BGA designs.",
+        "Use larger vias (0.4mm) for maximum thermal conductivity.",
+        "Ensure via size is compatible with PCB manufacturer capabilities."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "THM_VIA_003",
+      "name": "Thermal via spacing should prevent solder wicking",
+      "domain": ["Thermal"],
+      "description": "Thermal vias should be spaced 0.8-1.2mm apart (center to center) to prevent solder wicking during assembly while maintaining adequate heat transfer.",
+      "applies_to": ["Component", "Thermal Pad"],
+      "conditions": {
+        "thermal_via_spacing_too_small": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "solder_wicking",
+        "voiding_under_thermal_pad",
+        "reduced_solder_joint_reliability"
+      ],
+      "recommended_actions": [
+        "Maintain 0.8-1.2mm via-to-via spacing for thermal vias.",
+        "Use solder mask tenting or plugging to prevent wicking on critical vias.",
+        "Consider via-in-pad with filled and capped vias for best results.",
+        "Optimal spacing is 0.8mm for best thermal performance."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "THM_VIA_004",
+      "name": "Thermal via density should be 8-12 vias per square centimeter",
+      "domain": ["Thermal"],
+      "description": "A common guideline is to use 8-12 thermal vias per square centimeter under high-power components, though the specific requirement depends on heat load.",
+      "applies_to": ["Component", "Thermal Pad"],
+      "conditions": {
+        "thermal_via_density_insufficient": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "inadequate_heat_dissipation",
+        "hot_spots",
+        "component_overheating"
+      ],
+      "recommended_actions": [
+        "Provide 8-12 thermal vias per cm² under thermal pads.",
+        "Increase density for higher power dissipation components.",
+        "Connect vias to large copper planes on inner layers.",
+        "Consider via arrays directly under hottest areas of the component."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "THM_PWR_002",
+      "name": "Board area requirement for power dissipation",
+      "domain": ["Thermal"],
+      "description": "To dissipate 1 watt of power, the PCB needs approximately 15.3 cm² (2.4 in²) for a 40°C temperature rise. With airflow, this requirement is halved to 7.7 cm² (1.2 in²) per watt.",
+      "applies_to": ["PCB", "Component"],
+      "conditions": {
+        "board_area_insufficient_for_power": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "board_overheating",
+        "component_thermal_shutdown",
+        "reduced_reliability",
+        "thermal_runaway"
+      ],
+      "recommended_actions": [
+        "Calculate total board power dissipation and required copper area.",
+        "Allow 15.3 cm² per watt for passive cooling (40°C rise).",
+        "Allow 7.7 cm² per watt with forced airflow.",
+        "Consider heatsinks or metal-core PCBs for high-power designs.",
+        "Use thermal simulation tools for critical applications."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "THM_VIA_005",
+      "name": "4-layer PCB provides 30% better thermal dissipation than 2-layer",
+      "domain": ["Thermal"],
+      "description": "Using a 4-layer PCB design instead of 2-layer can increase power dissipation capacity by up to 30% for the same board area due to additional copper planes for heat spreading.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "high_power_on_2_layer_pcb": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "inadequate_heat_spreading",
+        "localized_hot_spots",
+        "reduced_thermal_margin"
+      ],
+      "recommended_actions": [
+        "Consider 4-layer PCB for designs with significant power dissipation.",
+        "Connect thermal vias to internal power and ground planes.",
+        "Use thicker copper (2oz) on internal layers for better heat spreading.",
+        "Evaluate thermal performance during design phase."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "SCH_PULLUP_001",
+      "name": "Unused op-amp and comparator inputs must be tied properly",
+      "domain": ["Analog"],
+      "description": "Unused op-amps should have their outputs tied to the negative input and positive input tied to ground. Unused comparators should have all pins tied to ground. Floating inputs can cause oscillation and excess power consumption.",
+      "applies_to": ["OpAmp", "Comparator"],
+      "conditions": {
+        "unused_opamp_inputs_floating": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "oscillation",
+        "excess_power_consumption",
+        "noise_generation",
+        "unpredictable_output_state"
+      ],
+      "recommended_actions": [
+        "Connect unused op-amp output to its negative input (unity gain follower).",
+        "Tie unused op-amp positive input to ground or mid-rail reference.",
+        "Connect all unused comparator pins to ground.",
+        "Never leave analog inputs floating."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: Op-amp Stability"
+      ]
+    },
+    {
+      "id": "SCH_FET_001",
+      "name": "FET gates must have defined state at startup",
+      "domain": ["Power", "MixedSignal"],
+      "description": "MOSFET gates must have a resistor to ensure a defined off-state during startup, reset, or when the driving signal is high-impedance. This prevents uncontrolled switching.",
+      "applies_to": ["MOSFET", "FET"],
+      "conditions": {
+        "fet_gate_no_pulldown": true,
+        "n_channel_mosfet": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "uncontrolled_turn_on",
+        "shoot_through",
+        "load_damage",
+        "power_supply_damage"
+      ],
+      "recommended_actions": [
+        "Add pull-down resistor (10k-100k) on N-channel MOSFET gates.",
+        "Add pull-up resistor on P-channel MOSFET gates.",
+        "Ensure gate driver can override pull resistor during normal operation.",
+        "Consider gate resistor for switching speed control."
+      ],
+      "kb_references": [
+        "Section 2.1 Power Systems"
+      ]
+    },
+    {
+      "id": "SCH_UART_001",
+      "name": "UART TX/RX connections must be verified for proper crossover",
+      "domain": ["MixedSignal", "DFT"],
+      "description": "UART connections require TX from one device to connect to RX of the other device. This crossover is a common source of errors in schematic review.",
+      "applies_to": ["UART", "MCU"],
+      "conditions": {
+        "uart_tx_rx_not_crossed": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "communication_failure",
+        "no_data_received",
+        "board_respin_required"
+      ],
+      "recommended_actions": [
+        "Verify TX connects to RX and RX connects to TX between devices.",
+        "Check connector pinouts against cable wiring (straight vs crossover).",
+        "Label signals clearly as TX and RX from each device's perspective.",
+        "Double-check against datasheet pin descriptions."
+      ],
+      "kb_references": [
+        "Section 1.1 Multi-Pass Review Framework"
+      ]
+    },
+    {
+      "id": "DFT_DRC_001",
+      "name": "Run DRC to identify unconnected nets and schematic errors",
+      "domain": ["DFT"],
+      "description": "The schematic capture tool's Design Rule Check (DRC) feature must be run to identify unconnected nets, duplicate nets, missing power connections, and other common schematic errors.",
+      "applies_to": ["Schematic"],
+      "conditions": {
+        "drc_not_run_or_errors_present": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "open_circuits",
+        "missing_connections",
+        "duplicate_net_names",
+        "power_pin_errors"
+      ],
+      "recommended_actions": [
+        "Run DRC before completing schematic.",
+        "Address all errors - do not ignore warnings without justification.",
+        "Verify all power pins show as connected.",
+        "Check for single-pin nets that indicate missing connections."
+      ],
+      "kb_references": [
+        "Section 1.1 Multi-Pass Review Framework"
+      ]
+    },
+    {
+      "id": "SCH_SYMBOL_001",
+      "name": "Verify symbol pinouts against datasheet",
+      "domain": ["DFT"],
+      "description": "Schematic symbol pinouts must be verified against the manufacturer's datasheet, especially for new symbols and parts with multiple package options. Check for errata that may indicate pinout changes.",
+      "applies_to": ["IC", "Component"],
+      "conditions": {
+        "symbol_pinout_not_verified": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "wrong_pin_connections",
+        "board_will_not_function",
+        "component_damage",
+        "costly_respin"
+      ],
+      "recommended_actions": [
+        "Compare every pin on schematic symbol to datasheet.",
+        "Check for multiple package options (QFN vs QFP vs BGA).",
+        "Review vendor errata for pinout corrections.",
+        "Pay special attention to power, ground, and NC pins."
+      ],
+      "kb_references": [
+        "Section 1.1 Multi-Pass Review Framework"
+      ]
     }
   ]
 }
