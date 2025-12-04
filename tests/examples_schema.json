@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Examples Schema",
+  "description": "Schema for validating the examples.json file in the AI Hardware Design Review project.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "examples"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of the examples schema."
+    },
+    "project": {
+      "type": "string",
+      "description": "Name of the project."
+    },
+    "examples": {
+      "type": "array",
+      "description": "Array of example design scenarios.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "triggered_rules",
+          "expected_issue"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the example (e.g., EX_PWR_001)."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short title for the example."
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the example scenario."
+          },
+          "triggered_rules": {
+            "type": "array",
+            "description": "IDs of the ontology rules that this example triggers.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "expected_issue": {
+            "type": "object",
+            "description": "The expected issue output when this example is processed.",
+            "required": [
+              "rule_id",
+              "severity",
+              "domain",
+              "summary",
+              "recommended_actions"
+            ],
+            "properties": {
+              "rule_id": {
+                "type": "string",
+                "description": "The ID of the rule triggered."
+              },
+              "severity": {
+                "type": "string",
+                "description": "Severity level of the issue.",
+                "enum": ["Critical", "Major", "Minor", "Advisory"]
+              },
+              "domain": {
+                "type": "string",
+                "description": "The domain of the issue."
+              },
+              "summary": {
+                "type": "string",
+                "description": "A concise summary of the issue."
+              },
+              "recommended_actions": {
+                "type": "array",
+                "description": "Actions recommended to resolve the issue.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

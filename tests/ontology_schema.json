@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ontology Schema",
+  "description": "Schema for validating the ontology.json file in the AI Hardware Design Review project.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "domains",
+    "severity_levels",
+    "rules"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of the ontology schema."
+    },
+    "project": {
+      "type": "string",
+      "description": "Name of the project."
+    },
+    "domains": {
+      "type": "array",
+      "description": "List of domains covered by the rules.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "severity_levels": {
+      "type": "array",
+      "description": "List of defined severity levels for issues.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "rules": {
+      "type": "array",
+      "description": "Array of design rules.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "domain",
+          "description",
+          "applies_to",
+          "conditions",
+          "default_severity",
+          "failure_modes",
+          "recommended_actions",
+          "kb_references"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the rule (e.g., PWR_DECPL_001)."
+          },
+          "name": {
+            "type": "string",
+            "description": "Short, human-readable name of the rule."
+          },
+          "domain": {
+            "type": "array",
+            "description": "One or more domains this rule applies to.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the rule."
+          },
+          "applies_to": {
+            "type": "array",
+            "description": "Types of components or nets this rule applies to.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "conditions": {
+            "type": "object",
+            "description": "High-level patterns or conditions that trigger this rule.",
+            "additionalProperties": true
+          },
+          "default_severity": {
+            "type": "string",
+            "description": "Default severity level if the rule is violated.",
+            "enum": ["Critical", "Major", "Minor", "Advisory"]
+          },
+          "failure_modes": {
+            "type": "array",
+            "description": "Potential failure modes if this rule is violated.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_actions": {
+            "type": "array",
+            "description": "Actions recommended to resolve the violation.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kb_references": {
+            "type": "array",
+            "description": "References to sections in the Knowledge Base (AI_Hardware_Design_Review_KnowledgeBase.md).",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

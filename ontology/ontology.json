@@ -1,0 +1,668 @@
+{
+  "schema_version": "1.0",
+  "project": "AI Hardware Design Review Knowledge Base",
+  "domains": [
+    "Power",
+    "HighSpeed",
+    "Analog",
+    "MixedSignal",
+    "EMC",
+    "Thermal",
+    "DFT",
+    "Mechanical"
+  ],
+  "severity_levels": [
+    "Critical",
+    "Major",
+    "Minor",
+    "Advisory"
+  ],
+  "rules": [
+    {
+      "id": "PWR_DECPL_001",
+      "name": "IC power pins must be locally decoupled",
+      "domain": ["Power"],
+      "description": "Every IC power pin should have at least one local high-frequency decoupling capacitor placed close to the pin.",
+      "applies_to": ["IC", "ASIC", "MCU", "FPGA"],
+      "conditions": {
+        "has_power_pin": true,
+        "decoupling_caps_nearby": false
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "rail_noise",
+        "random_reset",
+        "digital_timing_errors"
+      ],
+      "recommended_actions": [
+        "Place a 100 nF ceramic capacitor as close as possible to each power pin.",
+        "Add bulk capacitance at the group/rail entry."
+      ],
+      "kb_references": [
+        "Section 1.3 Decoupling & Local Regulation",
+        "Section 2.2 Power Integrity & Decoupling"
+      ]
+    },
+    {
+      "id": "HS_DIFF_001",
+      "name": "Differential pair must not cross plane splits",
+      "domain": ["HighSpeed", "EMC"],
+      "description": "High-speed differential pairs should be routed over a continuous reference plane to ensure stable impedance and return paths.",
+      "applies_to": ["USB", "Ethernet", "PCIe", "LVDS", "DDR"],
+      "conditions": {
+        "signal_type": "differential_pair",
+        "crosses_plane_split": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "high_jitter",
+        "eye_closure",
+        "link_training_failures",
+        "EMI"
+      ],
+      "recommended_actions": [
+        "Re-route over a continuous ground plane.",
+        "If split is unavoidable, add stitching vias to provide return paths."
+      ],
+      "kb_references": [
+        "Section 1.5 High-Speed Interfaces",
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "AN_OPAMP_001",
+      "name": "Op-amp common-mode range must be respected",
+      "domain": ["Analog", "MixedSignal"],
+      "description": "All op-amp inputs must remain within the valid common-mode input range across operating conditions.",
+      "applies_to": ["OpAmp"],
+      "conditions": {
+        "input_common_mode_out_of_range": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "saturation",
+        "nonlinear_distortion",
+        "oscillation"
+      ],
+      "recommended_actions": [
+        "Adjust biasing or supply rails so that inputs stay within the valid common-mode range.",
+        "Use a rail-to-rail input op-amp if low-end operation is required."
+      ],
+      "kb_references": [
+        "Section 1.6 Analog & Mixed-Signal: Op-Amps"
+      ]
+    },
+    {
+      "id": "EMC_ESD_001",
+      "name": "External connectors must have ESD protection nearby",
+      "domain": ["EMC"],
+      "description": "External-facing connectors should include ESD protection components placed close to the connector.",
+      "applies_to": ["Connector"],
+      "conditions": {
+        "is_external_connector": true,
+        "has_esd_protection": false
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "esd_damage",
+        "field_failures"
+      ],
+      "recommended_actions": [
+        "Add suitable TVS diodes or ESD arrays close to the connector pins.",
+        "Ensure a low-inductance discharge path to ground or chassis."
+      ],
+      "kb_references": [
+        "Section 1.7 EMC, ESD & Protection",
+        "Section 2.5 EMC & EMI Layout"
+      ]
+    },
+    {
+      "id": "AN_ADC_001",
+      "name": "ADC input must be protected and filtered",
+      "domain": ["Analog", "MixedSignal"],
+      "description": "ADC inputs should include input protection components and appropriate anti-aliasing filters.",
+      "applies_to": ["ADC"],
+      "conditions": {
+        "adc_has_protection": false,
+        "adc_has_filter": false
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "adc_damage",
+        "aliased_noise",
+        "saturation"
+      ],
+      "recommended_actions": [
+        "Add series resistance and clamp protection for ADC inputs.",
+        "Add RC anti-aliasing filter tuned to the application requirements."
+      ],
+      "kb_references": [
+        "Section 1.6.2 ADC Inputs"
+      ]
+    },
+    {
+      "id": "DFT_TP_001",
+      "name": "Critical rails and signals need test points",
+      "domain": ["DFT"],
+      "description": "All major power rails and important clocks/resets should have test points or exposed vias for measurement.",
+      "applies_to": ["Net"],
+      "conditions": {
+        "is_critical_net": true,
+        "has_test_point": false
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "difficult_debug",
+        "slow_bringup"
+      ],
+      "recommended_actions": [
+        "Add test pads or vias on all major rails.",
+        "Expose test points for critical clocks and reset lines."
+      ],
+      "kb_references": [
+        "Section 1.8 Design for Test & Bring-Up"
+      ]
+    },
+    {
+      "id": "HS_DDR_001",
+      "name": "DDR: Data/Address/Command length matching",
+      "domain": ["HighSpeed"],
+      "description": "DDR data (DQ/DQS) and address/command lines must be length matched within specified tolerances to ensure proper timing.",
+      "applies_to": ["DDR3", "DDR4", "LPDDR"],
+      "conditions": {
+        "signal_type": "DDR_data_address_command",
+        "length_mismatch_exceeds_tolerance": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "timing_violations",
+        "data_corruption",
+        "memory_initialization_failure"
+      ],
+      "recommended_actions": [
+        "Route DDR signals with length matching groups (e.g., DQS group, address/command group).",
+        "Verify length matching using CAD tools and adjust routing."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): DDR"
+      ]
+    },
+    {
+      "id": "HS_DDR_002",
+      "name": "DDR: VREF/VTT/VDDQ rail integrity",
+      "domain": ["HighSpeed", "Power"],
+      "description": "DDR reference voltage (VREF), termination voltage (VTT), and data power (VDDQ) rails must be stable and properly decoupled.",
+      "applies_to": ["DDR3", "DDR4", "LPDDR"],
+      "conditions": {
+        "ddr_power_rail_stability_compromised": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "signal_integrity_issues",
+        "data_errors",
+        "increased_BER"
+      ],
+      "recommended_actions": [
+        "Ensure adequate bulk and local decoupling for VDDQ, VREF, VTT.",
+        "Minimize trace inductance for these rails.",
+        "Verify VTT termination resistor placement."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): DDR"
+      ]
+    },
+    {
+      "id": "HS_SER_001",
+      "name": "High-speed serial: Differential impedance control",
+      "domain": ["HighSpeed"],
+      "description": "High-speed differential pairs (USB3, PCIe, LVDS, MIPI) must be routed with controlled differential impedance (typically 90 or 100 ohms).",
+      "applies_to": ["USB3.x", "PCIe", "MIPI", "LVDS", "DisplayPort"],
+      "conditions": {
+        "differential_impedance_not_controlled": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "signal_reflections",
+        "data_corruption",
+        "link_training_failures",
+        "EMI"
+      ],
+      "recommended_actions": [
+        "Route differential pairs with consistent trace width and spacing over a continuous reference plane.",
+        "Consult PCB manufacturer stackup for target impedance calculations."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): High-Speed Serial"
+      ]
+    },
+    {
+      "id": "HS_SER_002",
+      "name": "High-speed serial: Max vias and plane splits",
+      "domain": ["HighSpeed", "EMC"],
+      "description": "High-speed serial differential pairs should have a minimal number of vias and must not cross plane splits to maintain signal integrity.",
+      "applies_to": ["USB3.x", "PCIe", "MIPI", "LVDS", "DisplayPort"],
+      "conditions": {
+        "number_of_vias_exceeds_max": true,
+        "crosses_plane_split": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "impedance_discontinuities",
+        "increased_jitter",
+        "EMI",
+        "link_failures"
+      ],
+      "recommended_actions": [
+        "Minimize vias on differential pairs, ideally no more than 2 per trace.",
+        "Ensure differential pairs route over a continuous reference plane without splits."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): High-Speed Serial"
+      ]
+    },
+    {
+      "id": "HS_CLK_001",
+      "name": "Clock nets: Single-source driving & termination",
+      "domain": ["HighSpeed"],
+      "description": "Clock signals should ideally be driven by a single source and properly terminated to prevent reflections and ringing.",
+      "applies_to": ["Clock"],
+      "conditions": {
+        "multiple_clock_drivers": true,
+        "missing_series_termination": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "clock_skew",
+        "jitter",
+        "overshoot_undershoot",
+        "functional_failure"
+      ],
+      "recommended_actions": [
+        "Use a single clock driver for critical clocks or a dedicated clock buffer.",
+        "Add series termination resistors (e.g., 33 Ohm) close to the clock source.",
+        "Match trace impedance to source/load."
+      ],
+      "kb_references": [
+        "Section 4.1.1 High-Speed Digital (SI): Clock Nets"
+      ]
+    },
+    {
+      "id": "PWR_BUCK_001",
+      "name": "Buck converter hot loop minimization",
+      "domain": ["Power"],
+      "description": "The input capacitor, switching FET, and output diode (for asynchronous) or top/bottom FETs (for synchronous) form a high dI/dt 'hot loop' in buck converters. This loop area must be minimized.",
+      "applies_to": ["Buck Converter", "SMPS"],
+      "conditions": {
+        "hot_loop_area_excessive": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "high_EMI",
+        "voltage_ripple",
+        "switching_noise",
+        "instability"
+      ],
+      "recommended_actions": [
+        "Place input capacitors (Cin) as close as possible to the VIN and GND pins of the buck converter IC.",
+        "Minimize the loop formed by Cin, the switching node, and the IC ground."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Buck Converter Layout"
+      ]
+    },
+    {
+      "id": "PWR_BUCK_002",
+      "name": "Buck converter input/output capacitor placement",
+      "domain": ["Power"],
+      "description": "Input and output capacitors for buck converters must be placed immediately adjacent to the IC to maintain stable operation and filter switching noise.",
+      "applies_to": ["Buck Converter", "SMPS"],
+      "conditions": {
+        "input_output_caps_far_from_ic": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "voltage_ripple",
+        "instability",
+        "EMI"
+      ],
+      "recommended_actions": [
+        "Place input capacitors directly at the VIN pin and output capacitors at the VOUT pin, with short connections to the IC's ground pad.",
+        "Use multiple smaller ceramic capacitors in parallel if necessary."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Buck Converter Layout"
+      ]
+    },
+    {
+      "id": "PWR_RATING_001",
+      "name": "Inductor saturation current margin",
+      "domain": ["Power"],
+      "description": "Power inductors in SMPS circuits must have a saturation current rating significantly higher than the peak inductor current to avoid saturation and loss of inductance.",
+      "applies_to": ["Inductor", "SMPS"],
+      "conditions": {
+        "inductor_peak_current_exceeds_saturation_margin": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "power_supply_instability",
+        "overheating_inductor",
+        "reduced_efficiency",
+        "output_voltage_drop"
+      ],
+      "recommended_actions": [
+        "Select an inductor with a saturation current rating at least 1.2 to 1.5 times the calculated peak inductor current.",
+        "Consider temperature effects on saturation current."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Inductor/FET/Diode Ratings"
+      ]
+    },
+    {
+      "id": "PWR_RATING_002",
+      "name": "FET/Diode voltage rating margin",
+      "domain": ["Power"],
+      "description": "Switching FETs and diodes in SMPS must have a voltage rating significantly higher than the maximum expected voltage across them (e.g., VIN for buck, VOUT for boost).",
+      "applies_to": ["MOSFET", "Diode", "SMPS"],
+      "conditions": {
+        "component_voltage_rating_insufficient": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "component_failure",
+        "system_failure"
+      ],
+      "recommended_actions": [
+        "Select components with a voltage rating at least 1.2 to 1.5 times the maximum expected voltage.",
+        "Account for voltage spikes due to switching transients."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Inductor/FET/Diode Ratings"
+      ]
+    },
+    {
+      "id": "PWR_COMP_001",
+      "name": "Presence of SMPS compensation network",
+      "domain": ["Power"],
+      "description": "Switching mode power supplies (SMPS) often require an external compensation network to ensure stable operation over various load and line conditions.",
+      "applies_to": ["SMPS Controller", "Buck Converter", "Boost Converter"],
+      "conditions": {
+        "compensation_network_missing_when_required": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "power_supply_instability",
+        "oscillation",
+        "poor_transient_response"
+      ],
+      "recommended_actions": [
+        "Implement the compensation network as recommended by the power IC datasheet (e.g., Type II or Type III compensation).",
+        "Calculate component values based on the power stage parameters."
+      ],
+      "kb_references": [
+        "Section 4.1.2 Power & SMPS: Compensation"
+      ]
+    },
+    {
+      "id": "AN_OPAMP_002",
+      "name": "Op-amp stability with large capacitive loads",
+      "domain": ["Analog"],
+      "description": "Driving large capacitive loads with op-amps can lead to instability (oscillation).",
+      "applies_to": ["OpAmp"],
+      "conditions": {
+        "driving_large_capacitive_load": true,
+        "no_isolation_resistor": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "oscillation",
+        "instability",
+        "reduced_bandwidth"
+      ],
+      "recommended_actions": [
+        "Add a small series resistor (e.g., 10-100 Ohm) at the op-amp output before the capacitive load.",
+        "Add a feedback capacitor across the series resistor to maintain AC feedback."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: Op-amp Stability"
+      ]
+    },
+    {
+      "id": "AN_OPAMP_003",
+      "name": "Op-amp feedback network topology",
+      "domain": ["Analog"],
+      "description": "The topology of the feedback network (e.g., inverting, non-inverting, differentiator, integrator) must be appropriate for the desired function and stability.",
+      "applies_to": ["OpAmp"],
+      "conditions": {
+        "feedback_topology_incorrect": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "incorrect_gain",
+        "instability",
+        "unexpected_behavior"
+      ],
+      "recommended_actions": [
+        "Verify feedback component values and connections against the desired op-amp circuit function.",
+        "Ensure proper biasing for single-supply operation if applicable."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: Op-amp Stability"
+      ]
+    },
+    {
+      "id": "AN_ADC_002",
+      "name": "ADC driver bandwidth vs sampling rate",
+      "domain": ["Analog"],
+      "description": "The bandwidth of the ADC driver amplifier must be sufficient for the ADC's sampling rate and input signal characteristics to avoid signal distortion.",
+      "applies_to": ["ADC", "OpAmp"],
+      "conditions": {
+        "adc_driver_bandwidth_insufficient": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "signal_distortion",
+        "reduced_accuracy",
+        "aliasing"
+      ],
+      "recommended_actions": [
+        "Select an ADC driver with a -3dB bandwidth at least 3-5 times the sampling frequency or the signal bandwidth (whichever is greater).",
+        "Consider settling time requirements for switched capacitor ADCs."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: ADC Driver Requirements"
+      ]
+    },
+    {
+      "id": "AN_ADC_003",
+      "name": "ADC input RC anti-alias filters",
+      "domain": ["Analog"],
+      "description": "ADC inputs typically require an RC anti-alias filter to prevent unwanted high-frequency signals from folding back into the desired frequency band (aliasing).",
+      "applies_to": ["ADC"],
+      "conditions": {
+        "anti_alias_filter_missing_or_incorrect": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "aliasing_noise",
+        "reduced_SNR",
+        "measurement_errors"
+      ],
+      "recommended_actions": [
+        "Add an RC low-pass filter at the ADC input, with a cutoff frequency appropriate for the signal bandwidth and sampling rate.",
+        "Ensure the resistor and capacitor values are compatible with the ADC's input impedance and sampling capacitor."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: ADC Driver Requirements"
+      ]
+    },
+    {
+      "id": "AN_SENSOR_001",
+      "name": "High-impedance nodes isolation",
+      "domain": ["Analog"],
+      "description": "High-impedance analog nodes (e.g., sensor inputs, op-amp inputs) are susceptible to noise coupling and leakage currents and must be properly isolated.",
+      "applies_to": ["Sensor", "OpAmp"],
+      "conditions": {
+        "high_impedance_node_poorly_isolated": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "noise_pickup",
+        "measurement_drift",
+        "offset_errors"
+      ],
+      "recommended_actions": [
+        "Surround high-impedance traces with a guard ring connected to a stable reference (e.g., op-amp non-inverting input or ground).",
+        "Minimize trace length for high-impedance nodes.",
+        "Keep digital signals and noisy traces away from sensitive analog areas."
+      ],
+      "kb_references": [
+        "Section 4.1.3 Analog & Mixed-Signal: Sensor Front-End"
+      ]
+    },
+    {
+      "id": "EMC_ESD_002",
+      "name": "EMI filter placement at connector boundary",
+      "domain": ["EMC"],
+      "description": "EMI filters (e.g., common-mode chokes, pi filters) should be placed as close as possible to the connector boundary to be effective.",
+      "applies_to": ["Connector", "EMI Filter"],
+      "conditions": {
+        "emi_filter_far_from_connector": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "conducted_emi_failure",
+        "radiated_emi_failure",
+        "noise_ingress"
+      ],
+      "recommended_actions": [
+        "Place EMI filters immediately after the connector, before the signal traces route to other parts of the board."
+      ],
+      "kb_references": [
+        "Section 4.1.4 EMC / ESD"
+      ]
+    },
+    {
+      "id": "EMC_PATH_001",
+      "name": "Return paths for high di/dt currents",
+      "domain": ["EMC", "Power", "HighSpeed"],
+      "description": "High di/dt currents (e.g., from SMPS, high-speed drivers) require a direct, low-inductance return path to prevent ground bounce and EMI.",
+      "applies_to": ["Net", "Ground Plane"],
+      "conditions": {
+        "high_didt_current_path": true,
+        "return_path_compromised": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "ground_bounce",
+        "emi_radiation",
+        "signal_integrity_issues"
+      ],
+      "recommended_actions": [
+        "Ensure a continuous ground plane beneath high-speed signals and SMPS components.",
+        "Use wide ground traces or planes for return currents.",
+        "Avoid routing return currents through narrow bottlenecks or over plane splits."
+      ],
+      "kb_references": [
+        "Section 4.1.4 EMC / ESD"
+      ]
+    },
+    {
+      "id": "EMC_STITCH_001",
+      "name": "Ground stitching near board edges and layer changes",
+      "domain": ["EMC"],
+      "description": "Ground pours on different layers should be stitched together with vias, especially along board edges and where signals change layers, to ensure a low-impedance path and contain EMI.",
+      "applies_to": ["Ground Plane"],
+      "conditions": {
+        "ground_stitching_inadequate": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "emi_radiation",
+        "poor_ground_integrity"
+      ],
+      "recommended_actions": [
+        "Add a 'picket fence' of ground stitching vias along all board edges.",
+        "Add stitching vias near any signal via that changes layers to provide a return path."
+      ],
+      "kb_references": [
+        "Section 4.1.4 EMC / ESD"
+      ]
+    },
+    {
+      "id": "THM_PWR_001",
+      "name": "Power density and copper area for thermal dissipation",
+      "domain": ["Thermal"],
+      "description": "High power density components require adequate copper area on adjacent layers for effective heat spreading and dissipation.",
+      "applies_to": ["Component"],
+      "conditions": {
+        "component_power_dissipation_high": true,
+        "adjacent_copper_area_inadequate": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "overheating",
+        "component_damage",
+        "reduced_reliability",
+        "performance_throttling"
+      ],
+      "recommended_actions": [
+        "Ensure sufficient copper pour connected to thermal pads.",
+        "Consider internal layers for additional heat sinking.",
+        "Use thermal reliefs sparingly on high power connections."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "THM_VIA_001",
+      "name": "Thermal via arrays for heat transfer to other layers",
+      "domain": ["Thermal"],
+      "description": "Components with thermal pads or high heat dissipation should utilize arrays of thermal vias to transfer heat efficiently to internal copper planes or heatsinks.",
+      "applies_to": ["Component"],
+      "conditions": {
+        "component_has_thermal_pad": true,
+        "thermal_via_array_inadequate": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "overheating",
+        "component_damage",
+        "reduced_reliability",
+        "localized_hot_spots"
+      ],
+      "recommended_actions": [
+        "Implement a dense array of non-plated or plated-through thermal vias under the component's thermal pad.",
+        "Connect vias to large copper pours on internal layers."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    },
+    {
+      "id": "MEC_CONN_001",
+      "name": "Connector mechanical reinforcement",
+      "domain": ["Mechanical"],
+      "description": "Connectors, especially those subjected to frequent mating/unmating cycles or external forces, require mechanical reinforcement (e.g., mounting screws, large solder pads, thru-hole pins).",
+      "applies_to": ["Connector"],
+      "conditions": {
+        "connector_high_mechanical_stress": true,
+        "inadequate_mechanical_reinforcement": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "connector_breakage",
+        "solder_joint_cracking",
+        "intermittent_connections"
+      ],
+      "recommended_actions": [
+        "Utilize connectors with thru-hole mounting pins.",
+        "Add dedicated mounting screws if space allows.",
+        "Maximize solder pad size for surface-mount connectors."
+      ],
+      "kb_references": [
+        "Section 4.1.5 Thermal & Mechanical"
+      ]
+    }
+  ]
+}

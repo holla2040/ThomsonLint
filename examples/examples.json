@@ -1,0 +1,262 @@
+{
+  "schema_version": "1.0",
+  "project": "AI Hardware Design Review Knowledge Base",
+  "examples": [
+    {
+      "id": "EX_PWR_001",
+      "title": "Missing MCU Decoupling",
+      "description": "An MCU's main VCC pin lacks a local decoupling capacitor, leading to power rail instability.",
+      "triggered_rules": ["PWR_DECPL_001"],
+      "expected_issue": {
+        "rule_id": "PWR_DECPL_001",
+        "severity": "Critical",
+        "domain": "Power",
+        "summary": "Missing decoupling capacitor on MCU VCC pin.",
+        "recommended_actions": [
+          "Add a 100 nF ceramic capacitor (X7R) as close as possible to the MCU's VCC pin.",
+          "Ensure short return path to GND."
+        ]
+      }
+    },
+    {
+      "id": "EX_HS_001",
+      "title": "USB Differential Pair Crossing Plane Split",
+      "description": "A high-speed USB 2.0 differential pair is routed across a split in the ground plane.",
+      "triggered_rules": ["HS_DIFF_001", "HS_SER_002"],
+      "expected_issue": {
+        "rule_id": "HS_DIFF_001",
+        "severity": "Critical",
+        "domain": "HighSpeed",
+        "summary": "USB differential pair (USB_DP/DN) crosses a ground plane split.",
+        "recommended_actions": [
+          "Reroute the USB differential pair to avoid crossing any plane splits.",
+          "Ensure the entire length of the differential pair has a continuous reference plane beneath it."
+        ]
+      }
+    },
+    {
+      "id": "EX_AN_001",
+      "title": "Op-Amp Input Exceeds Common-Mode Range",
+      "description": "An operational amplifier's input signal goes below its negative common-mode input voltage limit.",
+      "triggered_rules": ["AN_OPAMP_001"],
+      "expected_issue": {
+        "rule_id": "AN_OPAMP_001",
+        "severity": "Major",
+        "domain": "Analog",
+        "summary": "Op-amp input common-mode voltage violation.",
+        "recommended_actions": [
+          "Adjust the input signal biasing or supply rails to keep the input within the valid common-mode range.",
+          "Consider using a rail-to-rail input op-amp if the signal swing cannot be limited."
+        ]
+      }
+    },
+    {
+      "id": "EX_EMC_001",
+      "title": "Missing ESD Protection on External USB-C",
+      "description": "An external USB-C connector lacks dedicated ESD protection components on its data and power lines.",
+      "triggered_rules": ["EMC_ESD_001"],
+      "expected_issue": {
+        "rule_id": "EMC_ESD_001",
+        "severity": "Major",
+        "domain": "EMC",
+        "summary": "Missing ESD protection on external USB-C connector (J1).",
+        "recommended_actions": [
+          "Add a low-capacitance TVS diode array (e.g., USBLC6-2SC6) near the USB-C connector's data lines (D+, D-, CC1, CC2).",
+          "Ensure VBUS also has overvoltage/ESD protection."
+        ]
+      }
+    },
+    {
+      "id": "EX_DFT_001",
+      "title": "No Test Point for 3.3V Rail",
+      "description": "The main 3.3V power rail on the board does not have an easily accessible test point.",
+      "triggered_rules": ["DFT_TP_001"],
+      "expected_issue": {
+        "rule_id": "DFT_TP_001",
+        "severity": "Minor",
+        "domain": "DFT",
+        "summary": "Missing test point for the 3.3V power rail.",
+        "recommended_actions": [
+          "Add a dedicated test pad (e.g., SMD test point or via) on the 3.3V rail for easier debugging and measurement during bring-up."
+        ]
+      }
+    },
+    {
+      "id": "EX_DDR_001",
+      "title": "DDR Address Line Length Mismatch",
+      "description": "A DDR4 address line in a group (A[0]-A[15]) has a significant length mismatch compared to others in its group.",
+      "triggered_rules": ["HS_DDR_001"],
+      "expected_issue": {
+        "rule_id": "HS_DDR_001",
+        "severity": "Critical",
+        "domain": "HighSpeed",
+        "summary": "DDR address line A[7] length mismatch exceeds tolerance within its group.",
+        "recommended_actions": [
+          "Adjust routing of DDR address lines to ensure all signals within the A[0]-A[15] group are length matched within the specified tolerance (e.g., +/- 5 mils).",
+          "Verify length matching using CAD tools."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_002",
+      "title": "Buck Converter Excessive Hot Loop Area",
+      "description": "A buck converter layout where the input capacitor and switching components are not placed close together, creating an excessively large high dI/dt loop.",
+      "triggered_rules": ["PWR_BUCK_001"],
+      "expected_issue": {
+        "rule_id": "PWR_BUCK_001",
+        "severity": "Critical",
+        "domain": "Power",
+        "summary": "Excessive hot loop area in buck converter layout.",
+        "recommended_actions": [
+          "Re-arrange components to minimize the loop formed by the input capacitor, switching FET(s), and the ground path.",
+          "Place input capacitors directly adjacent to the VIN and GND pins of the buck converter IC."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_003",
+      "title": "Inductor Insufficient Saturation Current Margin",
+      "description": "A power inductor in an SMPS circuit is selected with a saturation current rating that is too close to (or below) the peak inductor current under normal operation.",
+      "triggered_rules": ["PWR_RATING_001"],
+      "expected_issue": {
+        "rule_id": "PWR_RATING_001",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "Inductor saturation current margin is insufficient.",
+        "recommended_actions": [
+          "Select an inductor with a saturation current rating at least 1.2 to 1.5 times the calculated peak inductor current.",
+          "Verify peak current calculations across all operating conditions (e.g., maximum input voltage, minimum output voltage, maximum load)."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_004",
+      "title": "Missing SMPS Compensation Network",
+      "description": "A switching mode power supply controller that requires an external compensation network for stability, but this network is entirely missing from the schematic.",
+      "triggered_rules": ["PWR_COMP_001"],
+      "expected_issue": {
+        "rule_id": "PWR_COMP_001",
+        "severity": "Critical",
+        "domain": "Power",
+        "summary": "Missing external compensation network for SMPS controller.",
+        "recommended_actions": [
+          "Add the required compensation network (e.g., Type II or Type III) as specified in the power IC's datasheet.",
+          "Ensure component values are calculated for the specific power stage parameters."
+        ]
+      }
+    },
+    {
+      "id": "EX_AN_002",
+      "title": "Op-Amp Driving Large Capacitive Load",
+      "description": "An op-amp is directly driving a large capacitive load (>100pF) without any series isolation resistor, risking instability.",
+      "triggered_rules": ["AN_OPAMP_002"],
+      "expected_issue": {
+        "rule_id": "AN_OPAMP_002",
+        "severity": "Major",
+        "domain": "Analog",
+        "summary": "Op-amp driving large capacitive load without isolation.",
+        "recommended_actions": [
+          "Add a small series resistor (e.g., 10-100 Ohm) at the op-amp output before the capacitive load.",
+          "Consider adding a feedback capacitor across the series resistor to maintain AC feedback and stability."
+        ]
+      }
+    },
+    {
+      "id": "EX_AN_003",
+      "title": "Incorrect Op-Amp Feedback Topology",
+      "description": "An op-amp configured for a simple buffer has an incorrect feedback connection, leading to unexpected gain or instability.",
+      "triggered_rules": ["AN_OPAMP_003"],
+      "expected_issue": {
+        "rule_id": "AN_OPAMP_003",
+        "severity": "Major",
+        "domain": "Analog",
+        "summary": "Incorrect op-amp feedback network topology.",
+        "recommended_actions": [
+          "Review the op-amp datasheet and standard application circuits to correct the feedback network topology.",
+          "Verify component values and ensure proper biasing for the desired function."
+        ]
+      }
+    },
+    {
+      "id": "EX_AN_004",
+      "title": "Insufficient ADC Driver Bandwidth",
+      "description": "An ADC is driven by an amplifier whose -3dB bandwidth is insufficient for the ADC's sampling rate and input signal characteristics.",
+      "triggered_rules": ["AN_ADC_002"],
+      "expected_issue": {
+        "rule_id": "AN_ADC_002",
+        "severity": "Major",
+        "domain": "Analog",
+        "summary": "ADC driver amplifier bandwidth is insufficient.",
+        "recommended_actions": [
+          "Select an ADC driver with a -3dB bandwidth at least 3-5 times the sampling frequency or the signal bandwidth (whichever is greater).",
+          "Ensure the driver can settle within the ADC's acquisition time."
+        ]
+      }
+    },
+    {
+      "id": "EX_AN_005",
+      "title": "Missing ADC Anti-Alias Filter",
+      "description": "An ADC input lacks an RC anti-alias filter, making it susceptible to aliasing noise from high-frequency components that can fold back into the desired frequency band.",
+      "triggered_rules": ["AN_ADC_003"],
+      "expected_issue": {
+        "rule_id": "AN_ADC_003",
+        "severity": "Major",
+        "domain": "Analog",
+        "summary": "Missing or incorrect RC anti-alias filter on ADC input.",
+        "recommended_actions": [
+          "Add an RC low-pass filter at the ADC input, with a cutoff frequency appropriate for the signal bandwidth and sampling rate.",
+          "Consider the ADC's input impedance and sampling capacitor when choosing R and C values."
+        ]
+      }
+    },
+    {
+      "id": "EX_AN_006",
+      "title": "Poorly Isolated High-Impedance Sensor Node",
+      "description": "A high-impedance sensor input trace is routed long and close to noisy digital lines without a guard ring, leading to significant noise pickup and measurement drift.",
+      "triggered_rules": ["AN_SENSOR_001"],
+      "expected_issue": {
+        "rule_id": "AN_SENSOR_001",
+        "severity": "Major",
+        "domain": "Analog",
+        "summary": "Poor isolation for high-impedance sensor input node.",
+        "recommended_actions": [
+          "Route a guard ring around the high-impedance trace, connected to a stable reference (e.g., op-amp non-inverting input or ground).",
+          "Minimize the length of the high-impedance trace.",
+          "Increase physical separation from noisy digital or power lines."
+        ]
+      }
+    },
+    {
+      "id": "EX_EMC_002",
+      "title": "Missing ESD Protection on Data Lines",
+      "description": "Data lines of an external connector are routed directly to an IC without any ESD protection components.",
+      "triggered_rules": ["EMC_ESD_001"],
+      "expected_issue": {
+        "rule_id": "EMC_ESD_001",
+        "severity": "Major",
+        "domain": "EMC",
+        "summary": "ESD protection missing on data lines of connector J2.",
+        "recommended_actions": [
+          "Add appropriate TVS diodes or ESD arrays close to the connector pins for data lines.",
+          "Ensure proper grounding of the ESD protection components."
+        ]
+      }
+    },
+    {
+      "id": "EX_EMC_003",
+      "title": "Long Trace Between Connector and ESD Diode",
+      "description": "An ESD protection diode is placed several millimeters away from an external connector, leading to a long trace susceptible to inductive effects during an ESD event.",
+      "triggered_rules": ["EMC_ESD_001"],
+      "expected_issue": {
+        "rule_id": "EMC_ESD_001",
+        "severity": "Major",
+        "domain": "EMC",
+        "summary": "ESD protection diode placed too far from external connector J3.",
+        "recommended_actions": [
+          "Relocate the ESD protection diode as close as possible to the external connector pins (ideally within 1-2mm).",
+          "Minimize trace length and loop area between the connector, ESD diode, and ground."
+        ]
+      }
+    }
+  ]
+}
