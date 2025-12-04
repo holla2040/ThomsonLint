@@ -1844,6 +1844,124 @@
       "kb_references": [
         "Section 1.1 Multi-Pass Review Framework"
       ]
+    },
+    {
+      "id": "HS_ROUTE_001",
+      "name": "Serpentine routing for length matching",
+      "domain": ["HighSpeed"],
+      "description": "Serpentine routing is used to add length to a trace to match the length of other traces in a bus. The geometry of the serpentine routing should be carefully controlled to minimize signal integrity issues.",
+      "applies_to": ["DDR", "MIPI", "LVDS"],
+      "conditions": {
+        "uses_serpentine_routing": true,
+        "serpentine_geometry_incorrect": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "increased_crosstalk",
+        "impedance_discontinuity"
+      ],
+      "recommended_actions": [
+        "Use curved or 45° bends for the serpentine.",
+        "The spacing between adjacent segments of the serpentine should be at least 4 times the trace width."
+      ],
+      "kb_references": [
+        "Appendix D: Advanced High-Speed Design"
+      ]
+    },
+    {
+      "id": "HS_MAT_001",
+      "name": "Material selection for high-speed design",
+      "domain": ["HighSpeed"],
+      "description": "For very high-speed designs (multi-gigabit), the choice of PCB material is critical. Standard FR-4 is lossy at high frequencies and can cause significant signal degradation.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "is_high_speed_design": true,
+        "uses_standard_fr4": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "signal_degradation",
+        "eye_closure",
+        "link_training_failures"
+      ],
+      "recommended_actions": [
+        "Consider using low-loss materials like Rogers RO4350B or Isola I-Speed for high-speed designs.",
+        "Consult with the PCB manufacturer to select the appropriate material for the design's frequency of operation."
+      ],
+      "kb_references": [
+        "Appendix D: Advanced High-Speed Design"
+      ]
+    },
+    {
+      "id": "DFT_JTAG_001",
+      "name": "JTAG interface for testing and debugging",
+      "domain": ["DFT"],
+      "description": "If using ICs that support JTAG, the JTAG signals (TDI, TDO, TCK, TMS, and optionally TRST) should be connected to a standard JTAG header to allow for boundary scan testing and debugging.",
+      "applies_to": ["IC", "MCU", "FPGA"],
+      "conditions": {
+        "supports_jtag": true,
+        "jtag_header_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "cannot_perform_boundary_scan",
+        "difficult_debugging"
+      ],
+      "recommended_actions": [
+        "Add a standard JTAG header to the design.",
+        "Connect the JTAG signals from the ICs to the header."
+      ],
+      "kb_references": [
+        "Appendix E: Design for Testability (DFT)"
+      ]
+    },
+    {
+      "id": "MX_PWR_001",
+      "name": "Separate power supplies for mixed-signal design",
+      "domain": ["MixedSignal", "Power"],
+      "description": "Use separate power supplies for the analog and digital sections of the board to prevent digital switching noise from coupling into the analog power rails.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "is_mixed_signal_design": true,
+        "uses_single_power_supply": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "noise_coupling",
+        "reduced_snr",
+        "adc_accuracy_degradation"
+      ],
+      "recommended_actions": [
+        "Use separate power supplies for the analog and digital sections.",
+        "Use ferrite beads and capacitors to filter the power supplies for analog components."
+      ],
+      "kb_references": [
+        "Appendix F: Advanced Analog and Mixed-Signal Design"
+      ]
+    },
+    {
+      "id": "MX_ROUTE_001",
+      "name": "Routing techniques for mixed-signal design",
+      "domain": ["MixedSignal"],
+      "description": "Digital and analog traces should be routed separately to minimize crosstalk. If they must cross, they should do so at a 90-degree angle.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "is_mixed_signal_design": true,
+        "digital_analog_traces_parallel": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "crosstalk",
+        "noise_coupling"
+      ],
+      "recommended_actions": [
+        "Do not route digital traces through the analog section of the board, and vice-versa.",
+        "If digital and analog traces must cross, they should do so at a 90-degree angle.",
+        "For very sensitive analog signals, consider using guard traces."
+      ],
+      "kb_references": [
+        "Appendix F: Advanced Analog and Mixed-Signal Design"
+      ]
     }
   ]
 }
