@@ -10,11 +10,17 @@ The framework is built upon three core components:
 2.  **Knowledge Base (`docs/AI_Hardware_Design_Review_KnowledgeBase.md`):** A human-readable Markdown file that provides detailed explanations, appendices, and context for the rules defined in the ontology.
 3.  **Examples (`examples/examples.json`):** A collection of practical examples, both good and bad, that map to the rules in the ontology. These can be used for training, testing, and validating the AI's understanding of the rules.
 
-## 2. Project Status
+## 2. Why "ThomsonLint"?
+
+The name pays homage to **J.J. Thomson**, who discovered the electron in 1897 through his experiments with cathode rays at the Cavendish Laboratory in Cambridge, England. He demonstrated that cathode rays were composed of negatively charged particles much smaller than atoms, which he called "corpuscles" (later renamed electrons). He won the Nobel Prize in Physics in 1906 for this discovery.
+
+Just as Thomson revealed the fundamental building blocks of electrical circuits, this project aims to uncover the fundamental issues in hardware designs—catching the small problems that can have big consequences.
+
+## 3. Project Status
 
 The initial development phase of this project is complete. All tasks outlined in the `TODO.md` file have been implemented, resulting in a comprehensive and well-structured framework for AI-assisted hardware design review.
 
-## 3. Repository Contents
+## 4. Repository Contents
 
 The repository is organized as follows:
 
@@ -31,9 +37,9 @@ The repository is organized as follows:
 -   `validate_json.py`: A Python script for validating the JSON files against their schemas.
 -   `gen_context.sh`: A bash script to generate a consolidated knowledge base file for use with Gemini.
 
-## 4. How to Use
+## 5. How to Use
 
-### 4.1. Validation
+### 5.1. Validation
 
 To ensure the integrity and correctness of the JSON files (`ontology.json` and `examples.json`), a validation script is provided. To use it, follow these steps:
 
@@ -47,7 +53,7 @@ To ensure the integrity and correctness of the JSON files (`ontology.json` and `
     ```
     The script will output the validation status for each file.
 
-### 4.2. Extending the Framework
+### 5.2. Extending the Framework
 
 The framework is designed to be extensible. To add new rules, examples, or knowledge:
 
@@ -55,7 +61,7 @@ The framework is designed to be extensible. To add new rules, examples, or knowl
 2.  **Update the knowledge base:** If necessary, add new sections or appendices to `docs/AI_Hardware_Design_Review_KnowledgeBase.md` to provide context for the new rules.
 3.  **Validate your changes:** Run the `validate_json.py` script to ensure your changes are syntactically correct.
 
-### 4.3. Using with Google Gemini (Web Interface)
+### 5.3. Using with Google Gemini (Web Interface)
 
 You can use this framework to have an interactive, AI-assisted hardware design review. The included script now instructs Gemini to first assess if it has enough information before starting, making the review more thorough.
 
@@ -93,7 +99,7 @@ This is your opportunity to provide the specific details it needs. You can copy-
 
 Once Gemini has the information it needs, it will automatically proceed with the full, comprehensive review based on the rules from the knowledge base. It will output a list of potential issues, each with a corresponding `rule_id` for reference.
 
-## 5. Future Work
+## 6. Future Work
 
 While the initial development is complete, the framework is designed for continuous improvement. Future work could include:
 
