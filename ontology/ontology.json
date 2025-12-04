@@ -887,6 +887,33 @@
       "kb_references": [
         "Section 1.1 Multi-Pass Review Framework"
       ]
+    },
+    {
+      "id": "DFT_SWD_001",
+      "name": "SWD debug interface test points for STM32",
+      "domain": ["DFT"],
+      "description": "STM32 designs must include through-hole test points for SWCLK and SWDIO to enable programming and debugging access.",
+      "applies_to": ["STM32", "MCU"],
+      "conditions": {
+        "stm32_swd_test_points_missing": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "cannot_program_device",
+        "cannot_debug",
+        "difficult_firmware_development",
+        "board_unusable_without_rework"
+      ],
+      "recommended_actions": [
+        "Add through-hole test points for SWCLK and SWDIO.",
+        "Include NRST test point for reliable reset during programming.",
+        "Consider adding SWO test point for trace/debug output.",
+        "Place test points accessible for Tag-Connect or standard 0.1\" header.",
+        "Ensure GND and VCC test points are nearby for probe connection."
+      ],
+      "kb_references": [
+        "Section 1.8 Design for Test & Bring-Up"
+      ]
     }
   ]
 }
