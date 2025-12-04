@@ -247,3 +247,171 @@ This appendix builds on the mixed-signal concepts to provide more nuanced guidel
 - **Keep them Separated:** Do not route digital traces through the analog section of the board, and vice-versa.
 - **Orthogonal Routing:** If digital and analog traces must cross, they should do so at a 90-degree angle to minimize capacitive coupling.
 - **Guard Traces:** For very sensitive analog signals, consider using guard traces. A guard trace is a grounded trace routed alongside the sensitive signal trace to shield it from noise. The guard trace must be well-grounded with vias along its length.
+
+---
+## Appendix G: Design for Manufacturing (DFM)
+
+Design for Manufacturing (DFM) encompasses all the design decisions that affect whether a PCB can be reliably and cost-effectively fabricated and assembled. Poor DFM can lead to 20-30% increases in scrap rates, 15% higher production costs, and weeks of schedule delays. This appendix covers the critical DFM rules that every designer should follow.
+
+### G.1 Trace Width and Spacing
+
+Trace geometry is fundamental to manufacturability. The PCB fabrication process involves etching copper, and the achievable resolution depends on the manufacturer's capabilities and the copper weight.
+
+**Minimum Trace Width by Copper Weight:**
+| Copper Weight | Minimum Trace/Space |
+|---------------|---------------------|
+| 1 oz (35µm)   | 3-4 mil (0.075-0.1mm) |
+| 2 oz (70µm)   | 5 mil (0.125mm) |
+| 3 oz (105µm)  | 9 mil (0.23mm) |
+| 4 oz (140µm)  | 10 mil (0.25mm) |
+
+**Recommendations:**
+- Use 6 mil (0.15mm) trace/space as the standard minimum for cost-effective manufacturing.
+- Traces below 4 mil require advanced processes and significantly increase cost.
+- Apply the **3W Rule**: Center-to-center spacing of 3x trace width reduces crosstalk by ~70%.
+- Apply the **10W Rule**: Center-to-center spacing of 10x trace width reduces crosstalk by ~95%.
+
+### G.2 Via Design and Annular Ring
+
+The annular ring is the copper pad area surrounding a drilled hole. Manufacturing tolerances in drilling mean that holes may not be perfectly centered, so adequate annular ring width is critical for reliable connections.
+
+**Key Parameters:**
+- **Annular Ring:** Minimum 10 mil (0.25mm) for mechanically drilled vias.
+- **Via Pad Size:** Drill size + 10 mil minimum (e.g., 12 mil drill → 22 mil pad).
+- **Component Hole Pad Size:** Drill size + 14 mil minimum.
+- **Minimum Via Drill:** 0.15mm (mechanical), 0.075mm (laser). Vias below 0.25mm typically cost extra.
+
+**Inner Layer Considerations:**
+Inner layer annular rings are especially critical because defects cannot be repaired. IPC Class 3 requires minimum 1 mil internal and 2 mil external annular ring, but designing to larger margins improves yield.
+
+### G.3 Acid Traps
+
+An acid trap is a geometry that can trap etchant during PCB fabrication, causing over-etching and potentially creating open circuits.
+
+**What Creates Acid Traps:**
+- Acute angles (less than 90°) where traces meet pads
+- Sharp corners in trace routing
+- Small, nearly enclosed areas in copper pours
+
+**Prevention:**
+- Route traces to pads at 45° or 90° angles.
+- Use 45° chamfers or rounded corners instead of sharp 90° turns.
+- Avoid creating small enclosed copper areas where etchant can pool.
+- Run DFM checks to automatically identify potential acid traps.
+
+### G.4 Solder Mask Design
+
+Solder mask protects copper from oxidation and prevents solder bridges during assembly. Proper solder mask design is essential for reliable soldering.
+
+**Design Rules:**
+- **Solder Mask Web:** Minimum 4 mil between adjacent mask openings (5 mil for non-green colors).
+- **Solder Mask Clearance:** 2-4 mil larger than copper pads.
+- **Solder Mask Dam:** Ensure adequate mask between fine-pitch component pads to prevent bridging.
+
+**Common Issues:**
+- **Solder Mask Slivers:** Thin strips of mask between closely spaced pads can flake off and cause debris. Minimum sliver width is 4 mil.
+- **Missing Mask Between Pads:** If the mask web is too narrow, the manufacturer may remove it entirely, potentially causing solder bridges.
+
+### G.5 Silkscreen Guidelines
+
+Silkscreen provides visual reference for assembly and debugging. Poor silkscreen design can interfere with soldering or be illegible.
+
+**Clearance Requirements:**
+- Minimum 6 mil clearance from pads, vias, and solder mask openings.
+- Never place silkscreen over exposed copper or SMT pads.
+- Standard silkscreen-to-hole spacing: 8 mil.
+
+**Legibility Requirements:**
+- Minimum line width: 4 mil.
+- Minimum font height: 40 mil (1mm) for reliable readability.
+- Minimum stroke width: 6 mil.
+- Use sans-serif fonts for best clarity.
+
+**Best Practices:**
+- Orient all text to be readable from one or two directions (avoid random rotation).
+- Always mark pin 1 and component polarity.
+- Include reference designators near components.
+- Align text consistently across the board.
+
+### G.6 Panelization
+
+Most PCBs are manufactured in panels containing multiple boards. Proper panelization design affects assembly yield and board quality.
+
+**V-Score Guidelines:**
+- Keep copper and components at least 1mm from V-score lines.
+- Pull inner layer planes back 1mm from V-grooves.
+- V-score residual thickness: 0.3-0.5mm for balance between handling strength and easy separation.
+- Add jump scoring on leading/trailing edges to prevent array warping in wave solder.
+
+**Breakaway Tab Guidelines:**
+- Place tabs every 2-3 inches along board edges.
+- Keep SMT components 3mm (1/8 inch) from perforation holes.
+- **Critical:** Keep MLCCs at least 6mm (1/4 inch) from perforations—stress from depaneling can crack ceramic capacitors.
+- First tab should be 10-12mm from board corners.
+
+**Panel Rails:**
+- Add 5-10mm rails around the panel for handling and fixtures.
+- Rails provide space for fiducials and tooling holes.
+
+### G.7 Fiducial Marks
+
+Fiducials are alignment targets used by pick-and-place machines for accurate component placement.
+
+**Requirements:**
+- **Quantity:** Minimum 3 fiducials per panel/board in an L-shaped pattern.
+- **Size:** 1mm diameter (acceptable range: 1-3mm). All fiducials must be the same size.
+- **Clear Area:** Maintain clearance of at least 2x the fiducial radius (3x preferred) around each mark—no copper, silkscreen, or solder mask in this zone.
+- **Placement:** At least 5mm from V-score lines or breakaway tabs, at least 3mm from board edges.
+- **Asymmetry:** Place fiducials asymmetrically to prevent board orientation errors.
+
+**Local Fiducials:**
+For fine-pitch components (BGA, QFP with pitch ≤0.5mm), add local fiducials near the component for enhanced placement accuracy.
+
+### G.8 Board Edge Clearance
+
+Copper too close to board edges can be exposed during routing, leading to shorts, corrosion, or delamination.
+
+**Clearance Requirements:**
+- Minimum 10 mil (0.25mm) from copper to board edge.
+- Account for routing tolerance (typically ±4 mil).
+- Pull ground pours back from edges.
+
+**Exceptions:**
+- Castellated edges (plated half-holes) require specific manufacturer guidance.
+- Edge-plated boards for RF shielding have different requirements.
+
+### G.9 Copper Slivers
+
+Copper slivers are thin, narrow copper features that can break off during manufacturing, causing shorts or debris.
+
+**Prevention:**
+- Eliminate copper features narrower than 6 mil.
+- Remove isolated copper islands with no electrical purpose.
+- Check pour/fill areas for thin necks or appendages.
+- Run DFM checks to identify sliver conditions automatically.
+
+### G.10 DFM Checklist Summary
+
+Before releasing a design for fabrication, verify:
+
+| Check | Minimum Value |
+|-------|---------------|
+| Trace width | 6 mil (standard), 4 mil (advanced) |
+| Trace spacing | 6 mil (standard), 4 mil (advanced) |
+| Via annular ring | 10 mil |
+| Via drill size | 0.25mm (cost-effective) |
+| Solder mask web | 4 mil (green), 5 mil (other colors) |
+| Silkscreen clearance | 6 mil from pads |
+| Silkscreen line width | 4 mil |
+| Silkscreen font height | 40 mil |
+| Copper to board edge | 10 mil |
+| Fiducial count | 3 minimum |
+| Fiducial diameter | 1mm |
+| Component to V-score | 1mm |
+| MLCC to breakaway tab | 6mm |
+
+**IPC Standards Reference:**
+- IPC-2221: Generic Standard on Printed Board Design
+- IPC-A-600: Acceptability of Printed Boards
+- IPC-7351: Generic Requirements for Surface Mount Design
+- IPC-SM-840: Qualification and Performance of Permanent Solder Mask

@@ -1962,6 +1962,247 @@
       "kb_references": [
         "Appendix F: Advanced Analog and Mixed-Signal Design"
       ]
+    },
+    {
+      "id": "DFM_TRACE_001",
+      "name": "Minimum trace width and spacing",
+      "domain": ["DFT"],
+      "description": "Trace widths and spacing must meet the PCB manufacturer's minimum capabilities. Standard designs should use at least 6 mil (0.15mm) trace width and spacing. Tighter tolerances increase cost and reduce yield.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "trace_width_below_minimum": true,
+        "trace_spacing_below_minimum": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "open_circuits",
+        "short_circuits",
+        "manufacturing_yield_loss",
+        "increased_cost"
+      ],
+      "recommended_actions": [
+        "Use minimum 6 mil (0.15mm) trace width and spacing for standard designs.",
+        "For 2oz copper, increase minimum to 5 mil trace/space.",
+        "Consult manufacturer's capabilities before using traces below 4 mil.",
+        "Apply 3W rule (3x trace width center-to-center spacing) to reduce crosstalk."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_VIA_001",
+      "name": "Via size and annular ring requirements",
+      "domain": ["DFT"],
+      "description": "Vias must have adequate annular ring width to ensure reliable plating and electrical connection. Drill registration tolerance requires sufficient copper around the hole.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "annular_ring_too_small": true,
+        "via_drill_size_too_small": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "broken_annular_ring",
+        "unreliable_connections",
+        "plating_voids",
+        "open_circuits"
+      ],
+      "recommended_actions": [
+        "Maintain minimum 10 mil (0.25mm) annular ring for mechanical drilled vias.",
+        "Pad size should be at least drill size + 10 mil for vias.",
+        "For component holes, pad size should be drill size + 14 mil.",
+        "Vias smaller than 0.25mm drill typically incur additional cost."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_ACID_001",
+      "name": "Acid trap prevention",
+      "domain": ["DFT"],
+      "description": "Acute angles in copper traces can trap etchant during PCB fabrication, causing over-etching and open circuits. Avoid angles less than 90 degrees in trace routing.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "acute_angles_in_traces": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "over_etched_traces",
+        "open_circuits",
+        "reduced_trace_width"
+      ],
+      "recommended_actions": [
+        "Use 45° or 90° angles when routing traces to pads.",
+        "Avoid sharp corners and acute angles in trace geometry.",
+        "Avoid small, nearly closed-off areas in copper layout.",
+        "Run DFM check to identify potential acid traps before fabrication."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_MASK_001",
+      "name": "Solder mask design rules",
+      "domain": ["DFT"],
+      "description": "Solder mask openings and web widths must meet manufacturing minimums to prevent solder bridging and ensure proper mask adhesion.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "solder_mask_web_too_narrow": true,
+        "solder_mask_clearance_incorrect": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "solder_bridging",
+        "solder_mask_adhesion_failure",
+        "exposed_copper",
+        "assembly_defects"
+      ],
+      "recommended_actions": [
+        "Maintain minimum 4 mil solder mask web between pads.",
+        "Solder mask clearance should be 2-4 mil larger than copper pads.",
+        "Ensure minimum 1 mil annular ring of solder mask around features.",
+        "For non-green solder mask colors, use minimum 5 mil web width."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_SILK_001",
+      "name": "Silkscreen clearance and legibility",
+      "domain": ["DFT"],
+      "description": "Silkscreen must not overlap pads or vias and must meet minimum line width and font size requirements for legibility.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "silkscreen_over_pads": true,
+        "silkscreen_text_too_small": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "solder_joint_interference",
+        "illegible_markings",
+        "assembly_errors",
+        "component_misplacement"
+      ],
+      "recommended_actions": [
+        "Maintain minimum 6 mil clearance between silkscreen and pads/vias.",
+        "Use minimum 4 mil line width for silkscreen features.",
+        "Use minimum 40 mil (1mm) font height for text legibility.",
+        "Use minimum 6 mil stroke width for text.",
+        "Mark polarity, pin 1, and reference designators clearly."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_PANEL_001",
+      "name": "PCB panelization requirements",
+      "domain": ["DFT"],
+      "description": "Panelized PCBs require proper V-score or breakaway tab design, adequate rails, and consideration for depaneling stress on components.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "panelization_required": true,
+        "panel_design_incorrect": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "board_damage_during_depanel",
+        "component_cracking",
+        "assembly_fixture_issues",
+        "warping_during_reflow"
+      ],
+      "recommended_actions": [
+        "Keep copper and components 1mm from V-score lines.",
+        "Keep SMT components 3mm from breakaway tab perforations.",
+        "Keep MLCCs 6mm (1/4 inch) from tab perforations to prevent cracking.",
+        "Place breakaway tabs every 2-3 inches along board edges.",
+        "Add 5-10mm rails around panel for handling and fiducials."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_FID_001",
+      "name": "Fiducial mark placement",
+      "domain": ["DFT"],
+      "description": "Fiducial marks are required for automated SMT assembly. They must be properly sized, placed, and have adequate clearance for machine vision recognition.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "fiducials_missing": true,
+        "fiducial_clearance_insufficient": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "assembly_machine_alignment_failure",
+        "component_misplacement",
+        "assembly_line_stoppage"
+      ],
+      "recommended_actions": [
+        "Include at least 3 fiducial marks in an L-shaped asymmetric pattern.",
+        "Use 1mm diameter fiducials (range: 1-3mm).",
+        "Maintain clear area of 2x fiducial radius (3x preferred) around each mark.",
+        "Place fiducials at least 5mm from V-score lines or breakaway tabs.",
+        "Keep fiducials at least 3mm from board edges."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_EDGE_001",
+      "name": "Copper to board edge clearance",
+      "domain": ["DFT"],
+      "description": "Copper features must maintain adequate clearance from board edges to prevent exposure during routing and to allow for manufacturing tolerances.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "copper_too_close_to_edge": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "exposed_copper_at_edge",
+        "shorts_to_enclosure",
+        "corrosion",
+        "delamination"
+      ],
+      "recommended_actions": [
+        "Maintain minimum 10 mil (0.25mm) clearance from copper to board edge.",
+        "For plated edges (castellations), consult manufacturer for requirements.",
+        "Keep ground pours pulled back from board edges.",
+        "Account for routing tolerance (typically ±4 mil)."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFM_SLIVER_001",
+      "name": "Copper and solder mask slivers",
+      "domain": ["DFT"],
+      "description": "Thin slivers of copper or solder mask can cause shorts, mask adhesion failures, or debris during manufacturing. Minimum feature sizes must be maintained.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "copper_slivers_present": true,
+        "solder_mask_slivers_present": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "copper_debris_shorts",
+        "solder_mask_flaking",
+        "intermittent_connections"
+      ],
+      "recommended_actions": [
+        "Eliminate copper features narrower than 6 mil.",
+        "Avoid isolated copper islands that serve no electrical purpose.",
+        "Ensure solder mask slivers are at least 4 mil wide.",
+        "Run DFM check to identify sliver conditions."
+      ],
+      "kb_references": [
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
     }
   ]
 }
