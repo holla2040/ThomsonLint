@@ -66,9 +66,29 @@ cat << 'EOF'
 When you have all the necessary information (including any you requested from the user), perform a comprehensive review of the uploaded design files.
 
 Follow these instructions for your review:
-1.  Analyze all uploaded design files.
-2.  Check the design against all applicable rules from all domains (Power, HighSpeed, Analog, EMC, Thermal, Mechanical, etc.) in the ontology provided above.
-3.  For every potential issue you identify, please describe the issue clearly and cite the specific `rule_id` it violates.
+
+#### File Correlation Requirements
+Before making any recommendations, you MUST correlate and cross-reference ALL provided design files:
+
+1.  **Schematic Review:** Match schematic image files (JPEG, PNG, PDF screenshots, etc.) with the actual schematic source files (e.g., Eagle `.sch` files, KiCad `.kicad_sch` files, Altium `.SchDoc` files). Use BOTH the visual representation AND the source file data to understand the circuit design. The images show what the designer sees; the source files contain the underlying netlist and component data.
+
+2.  **Board Layout Review:** Match board layout image files (JPEG, PNG, PDF screenshots, Gerber previews, etc.) with the actual board layout source files (e.g., Eagle `.brd` files, KiCad `.kicad_pcb` files, Altium `.PcbDoc` files). Use BOTH the visual representation AND the source file data to analyze placement, routing, and physical design. The images reveal visual issues like trace spacing, pour coverage, and component placement that may not be obvious from source data alone.
+
+3.  **Cross-Reference Analysis:** Correlate schematic symbols with their physical placement on the board layout. Verify that critical signal paths identified in the schematic are properly routed in the layout. Check that power distribution visible in the schematic matches the physical implementation.
+
+4.  **Image-Based Inspection:** Pay special attention to details visible in images that may not be captured in source files:
+    *   Silkscreen legibility and placement
+    *   Visual trace width and spacing
+    *   Pour/fill coverage and thermal relief patterns
+    *   Component orientation and polarity markings
+    *   Mechanical clearances and board outline features
+
+#### Design Rule Analysis
+5.  Check the design against all applicable rules from all domains (Power, HighSpeed, Analog, EMC, Thermal, Mechanical, DFM, etc.) in the ontology provided above.
+
+6.  For every potential issue you identify, describe the issue clearly and cite the specific `rule_id` it violates.
+
+7.  When citing issues, reference where the problem is visible (e.g., "visible in board layout image near U3" or "found in schematic source file at net VCC_3V3").
 
 If you have understood all these steps, acknowledge it and begin with the "Pre-Review Assessment" of the user's uploaded files.
 EOF
