@@ -29,6 +29,7 @@ The repository is organized as follows:
 -   `tests/ontology_schema.json`: A JSON schema for validating `ontology/ontology.json`.
 -   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
 -   `validate_json.py`: A Python script for validating the JSON files against their schemas.
+-   `gen_context.sh`: A bash script to generate a consolidated knowledge base file for use with Gemini.
 
 ## 4. How to Use
 
@@ -53,6 +54,44 @@ The framework is designed to be extensible. To add new rules, examples, or knowl
 1.  **Modify the JSON files:** Add new entries to `ontology/ontology.json` or `examples/examples.json` following the existing structure.
 2.  **Update the knowledge base:** If necessary, add new sections or appendices to `docs/AI_Hardware_Design_Review_KnowledgeBase.md` to provide context for the new rules.
 3.  **Validate your changes:** Run the `validate_json.py` script to ensure your changes are syntactically correct.
+
+### 4.3. Using with Google Gemini (Web Interface)
+
+You can use this framework to have an interactive, AI-assisted hardware design review. The included script now instructs Gemini to first assess if it has enough information before starting, making the review more thorough.
+
+#### **Step 1: Generate the Context File**
+
+A helper script `gen_context.sh` is provided to automatically consolidate the knowledge base and instructions into a single file.
+
+1.  **Run the script** from your terminal and redirect the output to a file named `gemini_context.txt`:
+    ```bash
+    ./gen_context.sh > gemini_context.txt
+    ```
+2.  **Open the newly created `gemini_context.txt`** file in a text editor.
+
+#### **Step 2: Start the Review Session in Gemini**
+
+1.  Open your web browser and go to **[https://gemini.google.com/](https://gemini.google.com/)**.
+2.  In the prompt box, click the **upload button** (usually a paperclip or a plus symbol `+`) and upload the `gemini_context.txt` file you just created.
+3.  In the same prompt, upload your design files (e.g., schematic images, PCB layout images).
+4.  Once all files are uploaded, type a simple starting command in the prompt box:
+    ```
+    Please begin the review.
+    ```
+5.  Press **Enter**.
+
+#### **Step 3: Respond to the AI's Pre-Review Assessment**
+
+Gemini will now follow the instructions inside `gemini_context.txt`. Its first step is to perform a **Pre-Review Assessment**.
+
+*   It will analyze your request and the files you uploaded.
+*   If critical information (like datasheets, component ratings, or PCB stackup details) is missing, **it will ask you to provide it.**
+
+This is your opportunity to provide the specific details it needs. You can copy-paste text from datasheets or just write the component values directly into the chat.
+
+#### **Step 4: Receive the Comprehensive Review**
+
+Once Gemini has the information it needs, it will automatically proceed with the full, comprehensive review based on the rules from the knowledge base. It will output a list of potential issues, each with a corresponding `rule_id` for reference.
 
 ## 5. Future Work
 
