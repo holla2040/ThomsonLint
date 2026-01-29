@@ -442,3 +442,306 @@ Before releasing a design for fabrication, verify:
 - IPC-A-600: Acceptability of Printed Boards
 - IPC-7351: Generic Requirements for Surface Mount Design
 - IPC-SM-840: Qualification and Performance of Permanent Solder Mask
+
+---
+## Appendix H: Schematic Review Checks
+
+This appendix provides systematic schematic review guidelines based on common errors that lead to board respins. A thorough schematic review catches the majority of issues before they become expensive layout or manufacturing problems.
+
+### H.1 Net and Connection Verification
+
+Net connectivity issues are the most common source of schematic errors and often the most costly to fix.
+
+**Single-Pin Nets (`SCH_NET_002`):**
+- Run ERC (Electrical Rule Check) to identify nets with only one connection
+- These typically indicate forgotten connections or incomplete wiring
+- Use "no connect" symbols for intentionally floating pins to distinguish from errors
+
+**Net Name Consistency (`SCH_NET_003`):**
+- The same signal must have identical names everywhere
+- Watch for case sensitivity issues (VCC vs Vcc vs vcc)
+- Check for separator inconsistencies (VCC_3V3 vs VCC-3V3 vs VCC3V3)
+- Typos in common character pairs (0/O, 1/l/I) cause hidden disconnections
+
+**Duplicate Net Names (`SCH_NET_004`):**
+- Using "VCC" for multiple voltage rails shorts them together
+- Use explicit voltage values: 3V3, 5V0, 1V8, not generic VCC/VDD
+- Power domains should have clear, distinct names
+
+### H.2 Component Application Verification
+
+**IC Datasheet Compliance (`SCH_IC_001`):**
+- Read the complete datasheet, not just the pinout
+- Check application circuits and reference designs
+- Review errata documents for known issues
+- Verify recommended external component values
+
+**Floating Input Prevention (`SCH_FLOAT_001`):**
+- CMOS inputs must never float—they oscillate between rails
+- Tie unused digital inputs to ground or VCC (check datasheet preference)
+- ADC inputs need defined bias voltage, not floating
+- Consider weak pull resistors for inputs that may be used in future revisions
+
+### H.3 Component Value and Rating Verification
+
+**Value Sanity Check (`SCH_VAL_001`):**
+Common transcription errors include:
+- 10 vs 10k vs 10M (factor of 1000 errors)
+- 100 vs 100k (missing 'k')
+- 4.7 vs 47 (decimal point errors)
+- p vs n vs u prefix confusion
+
+**Polar Capacitor Verification (`SCH_POL_001`):**
+- Verify polarity direction on schematic matches circuit voltage
+- Voltage rating should be ≥1.5x maximum applied voltage
+- Check for reverse voltage during power sequencing
+- Electrolytic capacitors can fail violently if reverse biased
+
+**DNP Status (`SCH_DNP_001`):**
+- Review all "Do Not Populate" marked components
+- Verify optional variants are correctly flagged
+- Ensure BOM matches schematic DNP status
+- Test DNP configurations before production
+
+### H.4 Protection and Safety
+
+**Relay and Inductive Load Protection (`PWR_RELAY_001`):**
+- Relay coils, solenoids, and motors need flyback diodes
+- Place diode cathode to positive terminal
+- Use fast recovery diodes for faster turn-off
+- Diode must handle coil current
+
+**Overcurrent Protection (`PWR_FUSE_001`):**
+- Size fuses to protect wiring and connectors, not just load
+- Consider resettable PTCs for user-accessible circuits
+- Verify interrupting capacity exceeds possible fault current
+- Critical for battery-powered and high-current designs
+
+### H.5 Experimental Options
+
+**Design Flexibility (`SCH_OPT_001`):**
+When behavior is uncertain, add options to tune circuit:
+- Optional series resistor positions (populate with 0Ω default)
+- Optional parallel capacitor footprints
+- Jumper options for configuration selection
+- DNP positions for alternate component values
+
+---
+## Appendix I: Component Selection Guidelines
+
+Component selection significantly impacts reliability, performance, and cost. This appendix covers critical selection criteria for passive components.
+
+### I.1 Capacitor Selection
+
+**Dielectric Material Selection:**
+
+| Dielectric | Characteristics | Use Cases |
+|------------|-----------------|-----------|
+| C0G/NP0 | Stable with voltage, temperature, time | Oscillators, precision filters, low-noise circuits |
+| X5R | ±15% over -55°C to +85°C, DC bias derating | General decoupling, bulk bypass |
+| X7R | ±15% over -55°C to +125°C, DC bias derating | General decoupling, higher temp applications |
+| Y5V | -82% to +22% over temp, severe DC bias derating | Non-critical bulk only (avoid for timing/filtering) |
+
+**DC Bias Derating (`COMP_CAP_001`):**
+Class 2 ceramics (X5R, X7R, Y5V) lose capacitance under DC bias:
+- Y5V can lose up to 80% at rated voltage
+- X7R typically loses 20-40% at rated voltage
+- Always check manufacturer's DC bias curves
+- Select voltage rating 2-3x applied voltage for full capacitance
+
+**ESR and ESL Considerations (`COMP_CAP_006`):**
+- SMPS output capacitors: ESR affects stability and ripple
+- High-frequency decoupling: low ESL critical (use X2Y, reverse geometry)
+- Parallel multiple smaller caps for lower effective ESR/ESL
+
+**Electrolytic Limitations:**
+- High leakage current (`COMP_CAP_003`): avoid for sample-and-hold
+- Ripple current affects life (`COMP_CAP_005`): life halves per 10°C above rated
+- ESR increases with age and cold temperature
+- Consider polymer aluminum for lower ESR and leakage
+
+### I.2 Resistor Selection
+
+**Technology Comparison:**
+
+| Type | Noise | Tempco | Linearity | Cost | Notes |
+|------|-------|--------|-----------|------|-------|
+| Thick Film | High 1/f | 100-250 ppm/°C | Poor | Low | Standard general purpose |
+| Thin Film | Low | 25-50 ppm/°C | Excellent | Medium | Precision applications |
+| Metal Film | Very Low | 15-50 ppm/°C | Good | Medium | Low noise, precision |
+| Wire Wound | Lowest | 5-20 ppm/°C | Excellent | High | Highest precision, inductive |
+
+**Low-Noise Applications (`COMP_RES_001`):**
+- Thick-film 1/f noise can dominate in sensitive circuits
+- Use thin-film or metal-film for audio, sensor, and precision analog
+- 1/f noise increases with resistance value
+- Check noise index specification in datasheet
+
+**Precision Applications (`COMP_RES_002`):**
+- Thick-film nonlinearity causes distortion
+- Temperature coefficient mismatch causes gain drift
+- Use resistor networks for matched tempco
+- Thin-film provides best overall precision
+
+**Power Derating (`COMP_RES_003`):**
+- Calculate P = I²R for each resistor
+- Derate to 50% of rated power for reliability
+- Account for ambient temperature in derating
+- Use larger package for significant dissipation
+
+### I.3 Inductor Selection
+
+**Saturation Current (`COMP_IND_002`):**
+- Most critical parameter for power inductors
+- Select Isat ≥ 1.3x peak operating current
+- Saturation decreases with temperature
+- Ferrite cores saturate abruptly; powder cores saturate gradually
+
+**Tolerance and Q Factor:**
+- Cored inductors can have ±20% tolerance (`COMP_IND_001`)
+- Q factor varies with frequency (`COMP_IND_004`)
+- Air-core inductors have highest Q but larger size
+- Match tolerances in filter applications
+
+**Self-Resonant Frequency (`COMP_IND_003`):**
+- Operating frequency must be well below SRF
+- Above SRF, inductor becomes capacitive
+- Rule of thumb: SRF ≥ 10x operating frequency
+- Check impedance vs frequency curves in datasheet
+
+---
+## Appendix J: Hans Rosenberg Checklist Reference
+
+This appendix documents the design review process from Hans Rosenberg's "First Time Right Electronics" checklist, a systematic approach to catching common electronics design errors before manufacturing.
+
+**Source:** Hans Rosenberg, hans-rosenberg.com
+
+### J.1 Schematic Phase Checks
+
+Before proceeding to layout, verify:
+
+1. **Net Integrity**
+   - No single-pin (orphan) nets
+   - Consistent naming across all sheets
+   - No duplicate names for different signals
+   - All cross-sheet labels have matching destinations
+
+2. **Component Application**
+   - Every IC applied per datasheet requirements
+   - No floating digital or ADC inputs
+   - Component values checked for transcription errors
+   - DNP status verified for all optional components
+
+3. **Power and Protection**
+   - Polar capacitor polarity verified
+   - Voltage ratings adequate with margin
+   - Relay/inductor flyback protection present
+   - Fuses sized for safety requirements
+
+### J.2 Component Selection Phase
+
+Critical parameter verification:
+
+1. **Capacitors**
+   - DC bias derating for ceramic types
+   - Voltage rating margin (≥1.5x)
+   - ESR/ESL requirements for SMPS
+   - Ripple current rating for electrolytics
+
+2. **Resistors**
+   - Power rating with 50% derating
+   - Noise index for low-noise circuits
+   - Tempco matching for precision applications
+   - Inductance consideration for HF
+
+3. **Inductors**
+   - Saturation current margin (≥1.3x peak)
+   - SRF above operating frequency
+   - Q factor for resonant circuits
+   - Tolerance for filter applications
+
+### J.3 Thermal Design Phase
+
+1. **Power Dissipation Analysis**
+   - Calculate dissipation for each power component
+   - Identify hottest components
+   - Determine required thermal solutions
+
+2. **Temperature Rise Verification**
+   - Calculate junction temperature: Tj = Ta + (θja × Pd)
+   - Verify 20°C margin below maximum
+   - Account for worst-case ambient
+
+3. **Thermal Solutions**
+   - Heatsink sizing if required
+   - Forced cooling if passive insufficient
+   - Component spreading for heat distribution
+
+### J.4 Mechanical Verification
+
+1. **Enclosure Compatibility**
+   - Board outline matches enclosure
+   - Mounting holes in correct positions
+   - Component height restrictions verified
+   - UI elements align with cutouts
+
+2. **Heatsink Integration**
+   - Heatsink fitment verified with 3D model
+   - Mounting hardware clearance confirmed
+   - Thermal interface gap appropriate
+
+### J.5 Layout Phase Checks
+
+1. **Placement**
+   - Reserve routing channels for critical signals
+   - Minimize critical trace lengths
+   - Separate aggressors from sensitive circuits
+   - Logical placement minimizes crossings
+
+2. **Library Verification**
+   - Print 1:1 and verify footprints with parts
+   - Pin numbers match datasheet exactly
+   - Connector orientations verified
+
+3. **Stackup**
+   - Each signal layer has ground reference
+   - 4+ layers for RF and high-DR designs
+   - Standard via size (≥0.3mm) where possible
+   - Trace/space ≥0.15mm for cost control
+
+### J.6 DFT/DFM Verification
+
+1. **Design Rule Checks**
+   - Layout DRC passed with no errors
+   - Connectivity check shows 100% routed
+   - Paste layer verified for each component
+
+2. **Assembly Preparation**
+   - Fiducials placed for P&P alignment
+   - Board identification text added
+   - Layer markers for stackup verification
+   - BOM has order codes for all parts
+
+3. **Manufacturing Verification**
+   - Courtyard spacing adequate
+   - Trace current capacity verified
+   - Copper balance checked
+   - Ground planes without problematic slots
+
+### J.7 Validation Phase
+
+1. **Prototype Build**
+   - Assemble prototype before production
+   - Document all issues encountered
+   - Update design based on learnings
+
+2. **Parameter Verification**
+   - Measure all design parameters
+   - Verify against specifications
+   - Test under worst-case conditions
+
+3. **Production Readiness**
+   - Complete validation testing
+   - Environmental testing as appropriate
+   - EMC pre-compliance verification
+   - Design approval documented

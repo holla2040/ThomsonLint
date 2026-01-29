@@ -9,7 +9,9 @@
     "EMC",
     "Thermal",
     "DFT",
-    "Mechanical"
+    "Mechanical",
+    "Schematic",
+    "Component"
   ],
   "severity_levels": [
     "Critical",
@@ -2229,6 +2231,1789 @@
       ],
       "kb_references": [
         "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "SCH_NET_002",
+      "name": "Single-pin nets must be flagged",
+      "domain": ["Schematic"],
+      "description": "Nets with only one pin indicate unconnected signals and must be flagged during ERC. These often represent missing connections or forgotten wiring.",
+      "applies_to": ["Net", "Schematic"],
+      "conditions": {
+        "net_has_single_pin": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "open_circuit",
+        "unconnected_signal",
+        "missing_functionality"
+      ],
+      "recommended_actions": [
+        "Run ERC to identify single-pin nets.",
+        "Verify if the net should be connected elsewhere.",
+        "Remove orphan net labels that serve no purpose.",
+        "Add 'no connect' symbols for intentionally floating pins."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_NET_003",
+      "name": "Net names must be consistent across schematic",
+      "domain": ["Schematic"],
+      "description": "The same signal must have identical net names everywhere it appears. Inconsistent naming (case sensitivity, underscores, spaces) creates unintended separate nets.",
+      "applies_to": ["Net", "Schematic"],
+      "conditions": {
+        "inconsistent_net_naming": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "open_circuit",
+        "unintended_separate_nets",
+        "signal_not_connected"
+      ],
+      "recommended_actions": [
+        "Establish naming conventions (case, separators, prefixes).",
+        "Use schematic tool search to find similar names.",
+        "Verify net names match across all sheets.",
+        "Check for typos in commonly confused characters (0/O, 1/l/I)."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_NET_004",
+      "name": "Avoid duplicate net names for different signals",
+      "domain": ["Schematic"],
+      "description": "Different signals must not share the same net name. Common mistakes include using generic names like VCC for multiple different voltages (3V3, 5V, etc.).",
+      "applies_to": ["Net", "Schematic"],
+      "conditions": {
+        "duplicate_net_name_different_signal": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "power_rails_shorted",
+        "signals_merged",
+        "component_damage",
+        "system_failure"
+      ],
+      "recommended_actions": [
+        "Use explicit voltage values in power net names (3V3, 5V0, 1V8).",
+        "Avoid generic names like VCC, VDD without qualifiers.",
+        "Run DRC to check for nets with same name on different power domains.",
+        "Use hierarchical net naming for complex designs."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_POL_001",
+      "name": "Polar capacitor polarity and voltage check",
+      "domain": ["Schematic", "Component"],
+      "description": "Verify that polar capacitors (electrolytics, tantalums) have correct polarity in the schematic and that their voltage rating exceeds the applied voltage with adequate margin.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "polar_capacitor": true,
+        "polarity_or_voltage_unverified": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "capacitor_explosion",
+        "fire_hazard",
+        "board_damage",
+        "component_failure"
+      ],
+      "recommended_actions": [
+        "Verify polarity matches power rail direction on schematic.",
+        "Ensure voltage rating is at least 1.5x the maximum applied voltage.",
+        "Check for reverse voltage during power sequencing or AC coupling.",
+        "Use non-polar capacitors where polarity may reverse."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks",
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "SCH_IC_001",
+      "name": "Read IC datasheet in detail",
+      "domain": ["Schematic"],
+      "description": "Every IC must be applied according to its datasheet requirements. Check reference designs, application notes, and errata for proper implementation.",
+      "applies_to": ["IC", "MCU", "FPGA", "ASIC"],
+      "conditions": {
+        "ic_application_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "ic_malfunction",
+        "reduced_performance",
+        "reliability_issues",
+        "component_damage"
+      ],
+      "recommended_actions": [
+        "Read entire datasheet, not just pinout section.",
+        "Review application circuits and reference designs.",
+        "Check errata documents for known issues.",
+        "Verify recommended external components and values."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_FLOAT_001",
+      "name": "Floating digital and ADC inputs must be tied",
+      "domain": ["Schematic"],
+      "description": "Unused digital inputs and ADC inputs must be tied to a known voltage (ground, supply, or bias). Floating CMOS inputs oscillate, consuming excess power and generating noise.",
+      "applies_to": ["IC", "MCU", "FPGA", "ADC"],
+      "conditions": {
+        "unused_input_floating": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "excess_power_consumption",
+        "oscillation",
+        "noise_generation",
+        "unpredictable_behavior"
+      ],
+      "recommended_actions": [
+        "Tie unused digital inputs to ground or VCC through resistor.",
+        "Check datasheet for recommended unused pin treatment.",
+        "For ADC inputs, tie to appropriate bias voltage.",
+        "Use weak pull-up/pull-down for inputs that may be used later."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_VAL_001",
+      "name": "Component value sanity check",
+      "domain": ["Schematic"],
+      "description": "Review all component values for transcription errors. Common mistakes include confusing 10 with 10k, 100 with 100k, or using wrong multiplier prefixes.",
+      "applies_to": ["Resistor", "Capacitor", "Inductor"],
+      "conditions": {
+        "component_value_unverified": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "circuit_malfunction",
+        "wrong_time_constants",
+        "incorrect_filtering",
+        "gain_errors"
+      ],
+      "recommended_actions": [
+        "Double-check all component values against design calculations.",
+        "Verify multiplier prefixes (k, M, n, p, u).",
+        "Cross-reference with reference designs and datasheets.",
+        "Check standard value series (E12, E24, E96) availability."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_DNP_001",
+      "name": "Check mounted and not-mounted component property",
+      "domain": ["Schematic"],
+      "description": "Verify the DNP (Do Not Populate) status of all components. Ensure optional components are correctly marked and that required components are not accidentally marked DNP.",
+      "applies_to": ["Component"],
+      "conditions": {
+        "dnp_status_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "missing_critical_component",
+        "unnecessary_component_placed",
+        "BOM_errors",
+        "assembly_confusion"
+      ],
+      "recommended_actions": [
+        "Review all DNP-marked components for correctness.",
+        "Verify optional component variants are properly documented.",
+        "Cross-reference BOM with schematic DNP flags.",
+        "Ensure DNP variants are tested before production."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "SCH_OPT_001",
+      "name": "Add experimental options for uncertain circuits",
+      "domain": ["Schematic"],
+      "description": "When circuit behavior is uncertain, add options to experiment with different component values or configurations. Include footprints for series resistors, parallel capacitors, or alternate components.",
+      "applies_to": ["Circuit", "Component"],
+      "conditions": {
+        "circuit_behavior_uncertain": true,
+        "no_experimental_options": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "board_respin_required",
+        "cannot_tune_circuit",
+        "limited_flexibility"
+      ],
+      "recommended_actions": [
+        "Add optional series resistor positions (0 ohm default).",
+        "Include optional capacitor footprints near filters and oscillators.",
+        "Provide jumper options for configuration choices.",
+        "Document experimental positions and their purpose."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "PWR_RELAY_001",
+      "name": "Relay coils need clamping diodes",
+      "domain": ["Power"],
+      "description": "Relay and solenoid coils generate inductive voltage spikes when switched off. Flyback diodes are required to protect the driving transistor or IC from damage.",
+      "applies_to": ["Relay", "Solenoid", "Inductor"],
+      "conditions": {
+        "inductive_load": true,
+        "flyback_diode_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "driver_transistor_damage",
+        "ic_damage",
+        "EMI_generation",
+        "system_reset"
+      ],
+      "recommended_actions": [
+        "Add flyback diode across relay coil (cathode to positive).",
+        "Use fast recovery diode for faster turn-off.",
+        "Consider TVS diode for faster clamping with higher voltage.",
+        "Place diode as close to coil as possible."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "PWR_FUSE_001",
+      "name": "Safety fuses for critical circuits",
+      "domain": ["Power"],
+      "description": "Add fuses or resettable PTCs where overcurrent could cause component damage, fire hazard, or safety issues. Critical for battery-powered and high-current designs.",
+      "applies_to": ["Power", "Battery", "Connector"],
+      "conditions": {
+        "high_current_path": true,
+        "overcurrent_protection_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "fire_hazard",
+        "component_damage",
+        "safety_risk",
+        "liability_issues"
+      ],
+      "recommended_actions": [
+        "Add fuse at power input with rating 1.5-2x normal current.",
+        "Consider resettable PTC for user-accessible circuits.",
+        "Size fuse to protect wiring and connectors, not just load.",
+        "Verify fuse interrupting capacity exceeds possible fault current."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "PWR_TRACE_002",
+      "name": "Wide traces for power consumers",
+      "domain": ["Power"],
+      "description": "Route power traces first with adequate width for low impedance and current capacity. Power distribution should be planned before signal routing.",
+      "applies_to": ["Power", "Trace"],
+      "conditions": {
+        "power_trace_undersized": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "voltage_drop",
+        "trace_overheating",
+        "power_supply_instability",
+        "reduced_efficiency"
+      ],
+      "recommended_actions": [
+        "Calculate required trace width based on current and temperature rise.",
+        "Route power distribution before signal routing.",
+        "Use copper planes for high-current distribution.",
+        "Consider internal layer power planes for uniform distribution."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "PWR_RES_001",
+      "name": "Check DC resistance of supply traces",
+      "domain": ["Power"],
+      "description": "High resistance in supply traces causes voltage drop under load, affecting circuit performance. Calculate and verify trace resistance meets requirements.",
+      "applies_to": ["Power", "Trace"],
+      "conditions": {
+        "supply_trace_resistance_high": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "voltage_drop",
+        "load_regulation_errors",
+        "circuit_malfunction",
+        "power_loss"
+      ],
+      "recommended_actions": [
+        "Calculate trace resistance: R = ρL/(W×t).",
+        "Verify voltage drop is acceptable at maximum load current.",
+        "Use wider traces or copper planes for long power runs.",
+        "Consider Kelvin sensing for precision voltage regulation."
+      ],
+      "kb_references": [
+        "Appendix H: Schematic Review Checks"
+      ]
+    },
+    {
+      "id": "COMP_CAP_001",
+      "name": "Y5V capacitors lose 80% capacitance under bias",
+      "domain": ["Component"],
+      "description": "Y5V dielectric capacitors can lose up to 80% of their capacitance at rated voltage and temperature extremes. Avoid for decoupling, filtering, and timing-critical applications.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "y5v_dielectric": true,
+        "critical_application": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "inadequate_decoupling",
+        "filter_cutoff_shift",
+        "timing_errors",
+        "temperature_dependent_behavior"
+      ],
+      "recommended_actions": [
+        "Use X5R or X7R for general decoupling and bypass.",
+        "Use C0G/NP0 for precision timing and filtering.",
+        "Derate capacitance for DC bias and temperature.",
+        "Check manufacturer's DC bias curves for actual capacitance."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_CAP_002",
+      "name": "Use Class-1 capacitors for precision circuits",
+      "domain": ["Component"],
+      "description": "C0G/NP0 (Class-1) capacitors provide stable capacitance with voltage, temperature, and time. Required for oscillators, precision filters, and low-noise analog circuits.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "precision_circuit": true,
+        "class2_capacitor_used": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "frequency_drift",
+        "filter_instability",
+        "microphonics",
+        "aging_drift"
+      ],
+      "recommended_actions": [
+        "Use C0G/NP0 for oscillator load capacitors.",
+        "Use C0G/NP0 for precision analog filters.",
+        "Avoid X5R/X7R in audio signal paths (microphonics).",
+        "Verify temperature coefficient meets application needs."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_CAP_003",
+      "name": "Check electrolytic leakage current",
+      "domain": ["Component"],
+      "description": "Electrolytic capacitors have significant leakage current that varies with voltage, temperature, and age. Avoid for low-leakage applications like sample-and-hold circuits.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "electrolytic_capacitor": true,
+        "low_leakage_required": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "signal_droop",
+        "timing_errors",
+        "battery_drain",
+        "measurement_errors"
+      ],
+      "recommended_actions": [
+        "Use film or ceramic capacitors for low-leakage applications.",
+        "Check leakage current in datasheet (typically 0.01CV or 3μA).",
+        "Consider that leakage increases with temperature.",
+        "Use polymer aluminum capacitors for lower leakage than wet aluminum."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_CAP_004",
+      "name": "Verify capacitor maximum voltage rating",
+      "domain": ["Component"],
+      "description": "Capacitor voltage rating must exceed maximum applied voltage including transients. Derate by 50-80% of rated voltage for reliability and long life.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "voltage_rating_insufficient": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "dielectric_breakdown",
+        "capacitor_failure",
+        "short_circuit",
+        "fire_hazard"
+      ],
+      "recommended_actions": [
+        "Use capacitors rated at 1.5-2x maximum applied voltage.",
+        "Account for voltage transients and spikes.",
+        "For electrolytic, use 80% derating for long life.",
+        "Consider surge voltage rating for input capacitors."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_CAP_005",
+      "name": "Check electrolytic ripple current and temperature",
+      "domain": ["Component"],
+      "description": "Electrolytic capacitor life is strongly affected by ripple current, ambient temperature, and applied voltage. Verify operating conditions are within limits.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "electrolytic_capacitor": true,
+        "high_ripple_application": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "premature_failure",
+        "capacitance_loss",
+        "ESR_increase",
+        "electrolyte_dryout"
+      ],
+      "recommended_actions": [
+        "Verify ripple current is within datasheet limits.",
+        "Life doubles for every 10°C below rated temperature.",
+        "Use higher voltage rating for cooler operation.",
+        "Consider polymer capacitors for high ripple applications."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_CAP_006",
+      "name": "Verify ESR and ESL requirements",
+      "domain": ["Component"],
+      "description": "Some applications require specific ESR (Equivalent Series Resistance) or ESL (Equivalent Series Inductance) values. SMPS output capacitors and high-frequency decoupling are ESR/ESL critical.",
+      "applies_to": ["Capacitor"],
+      "conditions": {
+        "esr_esl_requirements": true,
+        "esr_esl_unverified": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "power_supply_instability",
+        "inadequate_filtering",
+        "resonance_issues",
+        "excessive_ripple"
+      ],
+      "recommended_actions": [
+        "Check ESR requirements for SMPS stability.",
+        "Use low-ESL capacitors for high-frequency decoupling.",
+        "Parallel multiple capacitors to reduce effective ESR/ESL.",
+        "Consider X2Y or reverse-geometry capacitors for lowest ESL."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_RES_001",
+      "name": "Thick-film 1/f noise in low-noise circuits",
+      "domain": ["Component"],
+      "description": "Thick-film resistors generate significant 1/f (flicker) noise that can dominate in low-noise analog circuits. Use thin-film or metal-film for noise-critical applications.",
+      "applies_to": ["Resistor"],
+      "conditions": {
+        "low_noise_circuit": true,
+        "thick_film_resistor": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "excess_noise",
+        "reduced_SNR",
+        "degraded_measurement_resolution"
+      ],
+      "recommended_actions": [
+        "Use thin-film or metal-film resistors for low-noise circuits.",
+        "1/f noise increases with resistance value—use lower values.",
+        "Check noise index specification in datasheet.",
+        "Wire-wound resistors have lowest noise for highest precision."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_RES_002",
+      "name": "Thick-film resistor nonlinearity and tempco",
+      "domain": ["Component"],
+      "description": "Thick-film resistors exhibit poor linearity and temperature coefficient that can cause distortion in precision analog circuits. Use thin-film for precision applications.",
+      "applies_to": ["Resistor"],
+      "conditions": {
+        "precision_circuit": true,
+        "thick_film_resistor": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "signal_distortion",
+        "temperature_dependent_errors",
+        "gain_drift",
+        "nonlinearity"
+      ],
+      "recommended_actions": [
+        "Use thin-film resistors for precision analog circuits.",
+        "Match tempco between resistors in ratio applications.",
+        "Consider resistor networks for matched tempco.",
+        "Check voltage coefficient for high-voltage applications."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_RES_003",
+      "name": "Verify resistor power rating",
+      "domain": ["Component"],
+      "description": "Resistor power dissipation must be less than rated power with adequate derating. Undersized resistors overheat, causing drift, degradation, and failure.",
+      "applies_to": ["Resistor"],
+      "conditions": {
+        "power_dissipation_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "overheating",
+        "resistance_drift",
+        "solder_joint_failure",
+        "fire_hazard"
+      ],
+      "recommended_actions": [
+        "Calculate P = I²R or P = V²/R for each resistor.",
+        "Derate to 50% of rated power for reliability.",
+        "Account for ambient temperature in derating.",
+        "Use larger package sizes for high power dissipation."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_RES_004",
+      "name": "Check resistor inductance for high frequency",
+      "domain": ["Component"],
+      "description": "All resistors have parasitic inductance that becomes significant at high frequencies. Wire-wound resistors are particularly inductive and unsuitable for RF applications.",
+      "applies_to": ["Resistor"],
+      "conditions": {
+        "high_frequency_circuit": true,
+        "resistor_inductance_unverified": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "impedance_variation_with_frequency",
+        "reduced_termination_effectiveness",
+        "high_frequency_gain_errors"
+      ],
+      "recommended_actions": [
+        "Avoid wire-wound resistors in high-frequency circuits.",
+        "Use chip resistors for frequencies above 1MHz.",
+        "Check impedance vs frequency curves for RF applications.",
+        "Consider specialized RF resistors for critical terminations."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_IND_001",
+      "name": "Cored inductor tolerance variations",
+      "domain": ["Component"],
+      "description": "Inductors with ferrite or powdered iron cores can have large tolerance variations (±20% or more). Account for tolerance in filter and SMPS designs.",
+      "applies_to": ["Inductor"],
+      "conditions": {
+        "cored_inductor": true,
+        "tolerance_unverified": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "filter_cutoff_variation",
+        "smps_compensation_mismatch",
+        "resonance_frequency_shift"
+      ],
+      "recommended_actions": [
+        "Use inductors with ±10% or better tolerance for filters.",
+        "Account for tolerance in SMPS compensation design.",
+        "Verify resonant frequency with worst-case inductor values.",
+        "Consider matched inductor pairs for differential filters."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_IND_002",
+      "name": "Check inductor saturation current",
+      "domain": ["Component"],
+      "description": "High currents can saturate the inductor core, causing dramatic loss of inductance. Saturation current rating must exceed peak operating current with margin.",
+      "applies_to": ["Inductor"],
+      "conditions": {
+        "peak_current_near_saturation": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "inductance_collapse",
+        "smps_instability",
+        "overcurrent_condition",
+        "efficiency_loss"
+      ],
+      "recommended_actions": [
+        "Select inductor with Isat at least 1.3x peak current.",
+        "Check both Isat and Irms ratings (different limits).",
+        "Account for inductor heating reducing Isat.",
+        "Verify saturation behavior is gradual (powder core) vs abrupt (ferrite)."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_IND_003",
+      "name": "Verify inductor self-resonant frequency",
+      "domain": ["Component"],
+      "description": "Every inductor has a self-resonant frequency (SRF) where parasitic capacitance resonates with inductance. Operating frequency must be well below SRF.",
+      "applies_to": ["Inductor"],
+      "conditions": {
+        "operating_frequency_near_srf": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "inductor_becomes_capacitive",
+        "filter_malfunction",
+        "unexpected_resonance"
+      ],
+      "recommended_actions": [
+        "Select inductor with SRF at least 10x operating frequency.",
+        "Check impedance vs frequency curves in datasheet.",
+        "For wideband applications, verify SRF across entire range.",
+        "Consider shielded inductors for lower parasitic capacitance."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "COMP_IND_004",
+      "name": "Inductor loss factor for high-Q circuits",
+      "domain": ["Component"],
+      "description": "For resonators, filters, and oscillators, inductor Q factor (quality factor) significantly affects circuit performance. Check Q at operating frequency.",
+      "applies_to": ["Inductor"],
+      "conditions": {
+        "high_q_required": true,
+        "q_factor_unverified": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "excessive_losses",
+        "wide_bandwidth_resonator",
+        "reduced_filter_selectivity"
+      ],
+      "recommended_actions": [
+        "Check Q factor at actual operating frequency.",
+        "Use air-core inductors for highest Q.",
+        "Account for Q variation with frequency and current.",
+        "For LC filters, balance inductor and capacitor Q contributions."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "THM_DISS_001",
+      "name": "Calculate component power dissipation",
+      "domain": ["Thermal"],
+      "description": "Calculate heat generated by each power-dissipating component. This is required for thermal design and selecting appropriate cooling solutions.",
+      "applies_to": ["Component", "IC", "Regulator"],
+      "conditions": {
+        "power_dissipation_uncalculated": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "overheating",
+        "thermal_shutdown",
+        "reduced_reliability",
+        "premature_failure"
+      ],
+      "recommended_actions": [
+        "Calculate dissipation: P = (Vin - Vout) × Iload for linear regulators.",
+        "Use efficiency curves for switching regulators.",
+        "Account for quiescent current and switching losses.",
+        "Identify hottest components for thermal management focus."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "THM_RISE_001",
+      "name": "Verify temperature rise is acceptable",
+      "domain": ["Thermal"],
+      "description": "Calculate expected temperature rise for each power-dissipating component and verify it stays within operating limits including safety margin.",
+      "applies_to": ["Component", "PCB"],
+      "conditions": {
+        "temperature_rise_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "component_overtemperature",
+        "thermal_shutdown",
+        "derating_required",
+        "reliability_degradation"
+      ],
+      "recommended_actions": [
+        "Calculate Tj = Ta + (θja × Pd) for each component.",
+        "Verify junction temperature stays 20°C below maximum.",
+        "Account for worst-case ambient temperature.",
+        "Consider thermal coupling between nearby hot components."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "THM_HEAT_001",
+      "name": "Add heatsink when temperature exceeds limit",
+      "domain": ["Thermal"],
+      "description": "If calculated temperature rise exceeds limits, add heatsink, use larger package, or implement other thermal management to reduce junction temperature.",
+      "applies_to": ["Component", "IC", "Regulator"],
+      "conditions": {
+        "temperature_exceeds_limit": true,
+        "no_thermal_mitigation": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "component_damage",
+        "thermal_runaway",
+        "system_failure"
+      ],
+      "recommended_actions": [
+        "Add heatsink with thermal interface material.",
+        "Use component with lower thermal resistance package.",
+        "Increase copper area under component for heat spreading.",
+        "Add thermal vias to internal copper planes."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "THM_COOL_001",
+      "name": "Consider forced air cooling for high heat designs",
+      "domain": ["Thermal"],
+      "description": "For designs with significant total power dissipation where passive cooling is insufficient, consider active cooling with fans or blowers.",
+      "applies_to": ["PCB", "Enclosure"],
+      "conditions": {
+        "high_total_power": true,
+        "passive_cooling_insufficient": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "system_overheating",
+        "thermal_throttling",
+        "reduced_performance"
+      ],
+      "recommended_actions": [
+        "Calculate required airflow based on total dissipation.",
+        "Ensure airflow path through enclosure is not blocked.",
+        "Consider fan reliability and lifetime in system design.",
+        "Provide monitoring for fan failure detection."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "THM_SPREAD_001",
+      "name": "Spread heat-dissipating components across PCB",
+      "domain": ["Thermal"],
+      "description": "When not using heatsinks, distribute power-dissipating components across the PCB area to avoid localized hot spots and improve heat spreading.",
+      "applies_to": ["PCB", "Component"],
+      "conditions": {
+        "no_heatsink": true,
+        "power_components_clustered": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "localized_hot_spots",
+        "thermal_coupling",
+        "reduced_component_life"
+      ],
+      "recommended_actions": [
+        "Space power components apart for heat spreading.",
+        "Avoid placing multiple hot components adjacent to each other.",
+        "Place hot components near board edges for convection.",
+        "Use copper pours connected to power components for spreading."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "MEC_OUTLINE_001",
+      "name": "Verify board outline and mounting holes",
+      "domain": ["Mechanical"],
+      "description": "Board outline dimensions and mounting hole locations must match the enclosure and mechanical mounting requirements. Verify against mechanical drawings.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "board_outline_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "board_does_not_fit_enclosure",
+        "mounting_holes_misaligned",
+        "assembly_failure"
+      ],
+      "recommended_actions": [
+        "Import or overlay mechanical CAD data for enclosure.",
+        "Verify all mounting hole positions and sizes.",
+        "Check board edge clearances to enclosure walls.",
+        "Confirm connector positions align with enclosure openings."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "MEC_HEATSINK_001",
+      "name": "Verify heatsink fitment",
+      "domain": ["Mechanical"],
+      "description": "Components requiring heatsinks must have adequate clearance for heatsink mounting. Verify heatsink footprint, height, and mounting hardware.",
+      "applies_to": ["Component", "Heatsink"],
+      "conditions": {
+        "heatsink_required": true,
+        "heatsink_fitment_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "heatsink_interference",
+        "cannot_mount_heatsink",
+        "inadequate_thermal_contact"
+      ],
+      "recommended_actions": [
+        "Import heatsink 3D model into PCB design.",
+        "Verify clearance to adjacent components.",
+        "Account for mounting hardware (screws, clips, springs).",
+        "Check that thermal interface material gap is appropriate."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "MEC_UI_001",
+      "name": "Check button, display, and connector locations",
+      "domain": ["Mechanical"],
+      "description": "User interface elements (buttons, LEDs, displays, connectors) must be positioned for accessibility through the enclosure. Verify alignment with cutouts and windows.",
+      "applies_to": ["Button", "LED", "Display", "Connector"],
+      "conditions": {
+        "ui_element_positions_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "ui_elements_not_accessible",
+        "misaligned_with_enclosure",
+        "assembly_issues"
+      ],
+      "recommended_actions": [
+        "Overlay enclosure panel drawings on PCB layout.",
+        "Verify LED window, button, and display alignment.",
+        "Check connector positions match enclosure cutouts.",
+        "Account for tolerances in both PCB and enclosure."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "MEC_HEIGHT_001",
+      "name": "Verify component height restrictions",
+      "domain": ["Mechanical"],
+      "description": "All components must fit within the available height envelope of the enclosure. Check both top and bottom side component heights.",
+      "applies_to": ["Component", "PCB"],
+      "conditions": {
+        "component_heights_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "components_too_tall",
+        "enclosure_interference",
+        "cannot_close_enclosure"
+      ],
+      "recommended_actions": [
+        "Document maximum component heights for each board side.",
+        "Verify tallest components against enclosure clearance.",
+        "Check for internal enclosure features (ribs, bosses).",
+        "Use 3D PCB model export to verify against enclosure model."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "PWR_DECPL_005",
+      "name": "Decoupling capacitors need dedicated ground via",
+      "domain": ["Power"],
+      "description": "Each decoupling capacitor should have its own dedicated via to the ground plane, placed close to the capacitor ground pad. Sharing vias increases inductance.",
+      "applies_to": ["Capacitor", "IC"],
+      "conditions": {
+        "decoupling_cap_shares_ground_via": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "increased_loop_inductance",
+        "reduced_decoupling_effectiveness",
+        "ground_bounce"
+      ],
+      "recommended_actions": [
+        "Place dedicated ground via adjacent to each decoupling cap.",
+        "Use via-in-pad for minimum inductance.",
+        "Avoid routing ground through traces between cap and plane.",
+        "Multiple vias per cap for lowest inductance."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_CRIT_001",
+      "name": "Reserve space for critical signal traces",
+      "domain": ["HighSpeed"],
+      "description": "During component placement, reserve adequate routing channels for critical signals including RF, crystal oscillator, high-speed differential, and sensitive analog traces.",
+      "applies_to": ["PCB", "Trace"],
+      "conditions": {
+        "critical_traces_blocked": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "cannot_route_critical_signals",
+        "forced_layer_changes",
+        "compromised_signal_integrity"
+      ],
+      "recommended_actions": [
+        "Identify critical signal paths before placement.",
+        "Reserve routing channels during component placement.",
+        "Consider trace width, spacing, and keep-out requirements.",
+        "Route critical signals before general routing."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_SHORT_001",
+      "name": "Keep component connections short",
+      "domain": ["HighSpeed"],
+      "description": "Place components to minimize critical trace lengths. Short traces reduce parasitic inductance, capacitance, and susceptibility to noise pickup.",
+      "applies_to": ["Component", "Trace"],
+      "conditions": {
+        "critical_traces_long": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "increased_parasitics",
+        "noise_pickup",
+        "signal_degradation"
+      ],
+      "recommended_actions": [
+        "Place connected components close together.",
+        "Minimize trace length for high-speed and sensitive signals.",
+        "Use direct routing without unnecessary meandering.",
+        "Consider signal integrity vs manufacturability tradeoffs."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "EMC_AGG_001",
+      "name": "Separate aggressors from sensitive circuits",
+      "domain": ["EMC"],
+      "description": "Keep noise-generating circuits (switching power supplies, digital clocks, motor drivers) physically separated from noise-sensitive circuits (analog inputs, RF, oscillators).",
+      "applies_to": ["PCB", "Component"],
+      "conditions": {
+        "aggressors_near_victims": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "noise_coupling",
+        "EMI_interference",
+        "reduced_measurement_accuracy",
+        "oscillator_jitter"
+      ],
+      "recommended_actions": [
+        "Identify aggressor circuits (SMPS, clocks, digital buses).",
+        "Identify victim circuits (ADC, oscillators, RF, sensors).",
+        "Partition PCB layout to separate these areas.",
+        "Use ground plane as shield between sections."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_CROSS_001",
+      "name": "Minimize crossing signal traces",
+      "domain": ["HighSpeed"],
+      "description": "Logical component placement minimizes signal crossings and reduces the need for vias and layer changes. Plan placement to align signal flow.",
+      "applies_to": ["PCB", "Component"],
+      "conditions": {
+        "excessive_signal_crossings": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "crosstalk",
+        "routing_congestion",
+        "increased_vias",
+        "layer_changes"
+      ],
+      "recommended_actions": [
+        "Arrange components to follow signal flow.",
+        "Keep related components grouped together.",
+        "Orient IC pins to minimize crossing.",
+        "Use schematic layout to guide PCB placement."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_LIB_001",
+      "name": "Print 1:1 scale and verify footprints",
+      "domain": ["DFT", "Mechanical"],
+      "description": "Print PCB layout at 1:1 scale and physically verify component footprints before manufacturing. Place actual components on printout to confirm fit.",
+      "applies_to": ["Component", "Footprint"],
+      "conditions": {
+        "footprints_unverified": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "wrong_footprint_size",
+        "component_does_not_fit",
+        "solder_joint_issues",
+        "board_respin_required"
+      ],
+      "recommended_actions": [
+        "Print PCB at exactly 1:1 scale on paper.",
+        "Place actual components on printout to verify fit.",
+        "Check pin 1 orientation and pad dimensions.",
+        "Verify connector mating alignment."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_LIB_002",
+      "name": "Verify pin and pad numbers against datasheet",
+      "domain": ["DFT"],
+      "description": "Footprint pin numbering must match the component datasheet exactly. Pin 1 location, numbering direction, and thermal pad connections must be verified.",
+      "applies_to": ["Component", "Footprint"],
+      "conditions": {
+        "pin_numbering_unverified": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "wrong_pin_connections",
+        "rotated_component",
+        "board_failure",
+        "component_damage"
+      ],
+      "recommended_actions": [
+        "Compare footprint pin map to datasheet drawing.",
+        "Verify pin 1 marker matches datasheet convention.",
+        "Check for different views (top vs bottom, schematic vs package).",
+        "Verify thermal/exposed pad connections."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_LIB_003",
+      "name": "Check connector pinout orientation",
+      "domain": ["DFT"],
+      "description": "Connector pinouts can easily be mirrored or rotated incorrectly. Verify orientation matches mating connector and cable expectations.",
+      "applies_to": ["Connector"],
+      "conditions": {
+        "connector_orientation_unverified": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "connector_mirrored",
+        "wrong_signal_routing",
+        "cable_incompatibility",
+        "functional_failure"
+      ],
+      "recommended_actions": [
+        "Verify pin 1 location matches mating connector.",
+        "Check if viewing from top or bottom of board.",
+        "Consider cable wiring (straight vs crossover).",
+        "Test with mating connector before production."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_STACK_001",
+      "name": "Each signal layer needs ground reference plane",
+      "domain": ["HighSpeed"],
+      "description": "Every signal routing layer must have an adjacent ground plane layer for controlled impedance and proper return current paths. Signals without reference planes have undefined impedance.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "signal_layer_without_reference": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "uncontrolled_impedance",
+        "EMI_radiation",
+        "crosstalk",
+        "signal_integrity_issues"
+      ],
+      "recommended_actions": [
+        "Use stackup with ground plane adjacent to each signal layer.",
+        "Avoid signal layers between two power planes.",
+        "Place ground on Layer 2 for microstrip on Layer 1.",
+        "Use symmetric stackup for manufacturing reliability."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_STACK_002",
+      "name": "RF and high-DR circuits need 4+ layers",
+      "domain": ["HighSpeed"],
+      "description": "Designs with RF circuits or high dynamic range analog require minimum 4-layer stackup with both inner layers as ground planes for proper shielding and signal integrity.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "rf_or_high_dr_design": true,
+        "layer_count_less_than_4": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "inadequate_shielding",
+        "crosstalk",
+        "EMI_radiation",
+        "reduced_dynamic_range"
+      ],
+      "recommended_actions": [
+        "Use minimum 4-layer stackup for RF/high-DR designs.",
+        "Place ground planes on Layers 2 and 3.",
+        "Route sensitive signals on inner layers (stripline).",
+        "Consider 6+ layers for complex RF designs."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_VIA_003",
+      "name": "Via size greater than 0.3mm keeps cost low",
+      "domain": ["DFT"],
+      "description": "Via drill sizes below 0.3mm typically increase fabrication cost. Use standard via sizes unless signal integrity or density requires smaller vias.",
+      "applies_to": ["Via", "PCB"],
+      "conditions": {
+        "small_vias_not_required": true,
+        "via_size_below_standard": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "increased_fabrication_cost",
+        "longer_lead_time",
+        "reduced_yield"
+      ],
+      "recommended_actions": [
+        "Use 0.3mm or larger vias as default.",
+        "Reserve smaller vias for high-density or impedance-critical areas.",
+        "Check PCB manufacturer capability and cost breakpoints.",
+        "Consider via-in-pad separately (typically requires filling)."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_TRACE_004",
+      "name": "Trace and clearance greater than 0.15mm keeps cost low",
+      "domain": ["DFT"],
+      "description": "Trace widths and clearances below 0.15mm (6 mil) increase fabrication cost and reduce yield. Use standard design rules unless routing density requires tighter tolerances.",
+      "applies_to": ["Trace", "PCB"],
+      "conditions": {
+        "tight_tolerances_not_required": true,
+        "trace_space_below_standard": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "increased_fabrication_cost",
+        "reduced_yield",
+        "manufacturing_rejects"
+      ],
+      "recommended_actions": [
+        "Use 0.15mm (6 mil) minimum trace/space as default.",
+        "Reserve tighter rules for escape routing and fine-pitch.",
+        "Verify manufacturer capabilities before specifying tighter rules.",
+        "Balance cost vs routing density requirements."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "EMC_PLANE_002",
+      "name": "Minimize holes and slots in ground planes",
+      "domain": ["EMC"],
+      "description": "Holes and slots in ground planes disrupt return current paths and create EMI. Scattered vias are acceptable, but avoid creating continuous slots or walls of vias.",
+      "applies_to": ["Ground Plane", "PCB"],
+      "conditions": {
+        "ground_plane_slots": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "EMI_radiation",
+        "return_path_disruption",
+        "increased_crosstalk",
+        "signal_integrity_issues"
+      ],
+      "recommended_actions": [
+        "Avoid creating slots in ground planes from component placement.",
+        "Don't route signals that create continuous copper-free channels.",
+        "Scattered vias are OK if they don't form walls.",
+        "Add stitching vias if large ground plane openings are unavoidable."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_SENS_001",
+      "name": "Route sensitive signals with care",
+      "domain": ["HighSpeed", "Analog"],
+      "description": "Sensitive signals (sensors, microphones, RF, crystal oscillators, reset lines) require careful routing with adequate clearance from noise sources and proper shielding.",
+      "applies_to": ["Trace", "Signal"],
+      "conditions": {
+        "sensitive_signal": true,
+        "routing_care_not_applied": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "noise_pickup",
+        "interference",
+        "measurement_errors",
+        "oscillator_jitter"
+      ],
+      "recommended_actions": [
+        "Identify all sensitive signals before routing.",
+        "Keep sensitive traces away from switching nodes and clocks.",
+        "Use guard traces or ground pours for shielding.",
+        "Route on inner layers (stripline) when possible."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "HS_CLK_002",
+      "name": "Keep digital clock traces short to reduce EMI",
+      "domain": ["HighSpeed", "EMC"],
+      "description": "Digital clock signals are primary EMI sources. Keep clock traces as short as possible to minimize radiation and crosstalk to other circuits.",
+      "applies_to": ["Clock", "Trace"],
+      "conditions": {
+        "clock_traces_long": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "EMI_radiation",
+        "crosstalk_to_sensitive_circuits",
+        "regulatory_compliance_failure"
+      ],
+      "recommended_actions": [
+        "Place clock source close to clock consumers.",
+        "Minimize clock trace length on PCB.",
+        "Use series termination at clock source.",
+        "Consider clock buffer if distribution to multiple loads."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "EMC_VIA_003",
+      "name": "Each ground connection needs its own via",
+      "domain": ["EMC"],
+      "description": "Ground connections for high-frequency circuits must have dedicated vias. Sharing ground vias between components increases inductance and degrades performance.",
+      "applies_to": ["Via", "Ground"],
+      "conditions": {
+        "shared_ground_via": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "increased_ground_inductance",
+        "ground_bounce",
+        "crosstalk",
+        "noise_coupling"
+      ],
+      "recommended_actions": [
+        "Provide dedicated ground via for each IC ground pin.",
+        "Each decoupling cap should have its own ground via.",
+        "Avoid long traces between component ground and via.",
+        "Use multiple vias for lowest inductance paths."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_TP_003",
+      "name": "Test points for voltages, currents, and signals",
+      "domain": ["DFT"],
+      "description": "Add test points for all power rails, key signals, and current monitoring points to enable testing, production validation, and debugging.",
+      "applies_to": ["Net", "PCB"],
+      "conditions": {
+        "test_points_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "difficult_testing",
+        "production_validation_issues",
+        "debug_challenges"
+      ],
+      "recommended_actions": [
+        "Add test points on all power rails.",
+        "Include test points for critical digital and analog signals.",
+        "Place current sense resistor or test point for current monitoring.",
+        "Consider automated test requirements when placing test points."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_GND_003",
+      "name": "Ground measurement point for probing",
+      "domain": ["DFT"],
+      "description": "Provide a convenient ground attachment point near test areas for oscilloscope ground clip or probe ground connection.",
+      "applies_to": ["PCB", "Ground"],
+      "conditions": {
+        "probe_ground_point_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "long_probe_ground_leads",
+        "measurement_errors",
+        "ground_loop_issues"
+      ],
+      "recommended_actions": [
+        "Add through-hole ground test points near signal test areas.",
+        "Use sturdy pads that withstand repeated clip attachment.",
+        "Distribute ground points across board for convenience.",
+        "Consider ground terminals with hooks for scope clips."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_DRC_002",
+      "name": "Run layout DRC before release",
+      "domain": ["DFT"],
+      "description": "Design Rule Check must be run on the layout before releasing for fabrication. All errors must be resolved or explicitly waived with documented justification.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "layout_drc_not_run": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "short_circuits",
+        "open_circuits",
+        "manufacturing_defects",
+        "board_failure"
+      ],
+      "recommended_actions": [
+        "Run comprehensive DRC on final layout.",
+        "Address all errors - do not ignore without justification.",
+        "Document any intentional DRC waivers.",
+        "Verify DRC rules match manufacturer capabilities."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_CONN_001",
+      "name": "Run connectivity check before release",
+      "domain": ["DFT"],
+      "description": "Verify all schematic nets are properly connected in the layout with no unrouted connections or missing nets. This is typically part of DRC but critical enough to verify separately.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "connectivity_check_not_run": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "missing_connections",
+        "open_circuits",
+        "board_does_not_function"
+      ],
+      "recommended_actions": [
+        "Run connectivity/netlist check before manufacturing release.",
+        "Verify all nets show 100% routed.",
+        "Check for unconnected pins and ratsnest lines.",
+        "Compare layout netlist to schematic netlist."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_FID_002",
+      "name": "Place fiducial marks for assembly",
+      "domain": ["DFT"],
+      "description": "Add fiducial marks for automated pick-and-place alignment. Minimum 3 fiducials in an asymmetric L-pattern for proper board orientation detection.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "fiducials_for_assembly_missing": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "assembly_machine_cannot_align",
+        "component_placement_errors",
+        "production_delays"
+      ],
+      "recommended_actions": [
+        "Add at least 3 global fiducials per board/panel.",
+        "Place in asymmetric L-pattern for orientation detection.",
+        "Add local fiducials near fine-pitch components (BGA, QFP).",
+        "Maintain clear area around fiducials for vision system."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_LABEL_001",
+      "name": "Add board identification text and version",
+      "domain": ["DFT"],
+      "description": "Include board name, revision number, date, and company name in silkscreen for identification and traceability throughout the product lifecycle.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "board_identification_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "version_confusion",
+        "traceability_issues",
+        "wrong_board_used"
+      ],
+      "recommended_actions": [
+        "Add board name and revision to silkscreen.",
+        "Include date or date code.",
+        "Add company name or logo.",
+        "Consider adding assembly variant identifier."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_LAYER_001",
+      "name": "Add layer markers for identification",
+      "domain": ["DFT"],
+      "description": "Add unique markers on each copper layer to verify correct layer stackup during manufacturing and to identify layers during debugging.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "layer_markers_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "layer_stackup_errors_undetected",
+        "layer_identification_difficulty"
+      ],
+      "recommended_actions": [
+        "Add unique identifier on each copper layer (e.g., L1, L2...).",
+        "Place in consistent location near board corner.",
+        "Consider step markers (ladder) for layer sequence verification.",
+        "Ensure markers don't interfere with copper pours."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_BOM_001",
+      "name": "Add manufacturer order codes to all parts",
+      "domain": ["DFT"],
+      "description": "BOM must include manufacturer part numbers and/or distributor order codes for all components to enable accurate procurement.",
+      "applies_to": ["BOM", "Component"],
+      "conditions": {
+        "order_codes_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "procurement_delays",
+        "wrong_parts_ordered",
+        "BOM_ambiguity"
+      ],
+      "recommended_actions": [
+        "Add manufacturer part number (MPN) for each component.",
+        "Include distributor codes if preferred suppliers exist.",
+        "Specify approved alternates with their MPNs.",
+        "Keep BOM synchronized with schematic component properties."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_VIA_004",
+      "name": "Avoid smallest via size everywhere",
+      "domain": ["DFT"],
+      "description": "Using the smallest available via size throughout the design reduces reliability. Reserve small vias for high-density areas and use larger vias where space permits.",
+      "applies_to": ["Via", "PCB"],
+      "conditions": {
+        "small_vias_used_everywhere": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "reduced_reliability",
+        "plating_issues",
+        "increased_resistance"
+      ],
+      "recommended_actions": [
+        "Use standard size vias (0.3mm+) as default.",
+        "Reserve minimum vias for BGA escape and tight areas.",
+        "Use larger vias for power and ground connections.",
+        "Consider via reliability requirements for harsh environments."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_TP_004",
+      "name": "Name test points for identification",
+      "domain": ["DFT"],
+      "description": "Label test points with their signal name or net name in silkscreen to save time during measurements and debugging.",
+      "applies_to": ["Test Point", "PCB"],
+      "conditions": {
+        "test_point_labels_missing": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "confusion_during_testing",
+        "measurement_errors",
+        "debug_time_wasted"
+      ],
+      "recommended_actions": [
+        "Add net name or signal name near each test point.",
+        "Use abbreviated names if space is limited.",
+        "Keep labeling convention consistent.",
+        "Consider adding voltage values for power rails (3V3, 5V)."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_PASTE_001",
+      "name": "Check paste layer for correct pads",
+      "domain": ["DFT"],
+      "description": "Verify solder paste stencil openings are correct for each component. Some pads should not have paste (thermal vias, test points), while others require modified apertures.",
+      "applies_to": ["PCB", "Stencil"],
+      "conditions": {
+        "paste_layer_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "solder_bridging",
+        "insufficient_solder",
+        "tombstoning",
+        "via_solder_wicking"
+      ],
+      "recommended_actions": [
+        "Review paste layer openings for all components.",
+        "Verify thermal pads have segmented paste openings.",
+        "Ensure test point and mounting hole pads have no paste.",
+        "Check fine-pitch component aperture reduction."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_COPPER_001",
+      "name": "Check copper balance for PCB reliability",
+      "domain": ["DFT"],
+      "description": "Significant copper imbalance between PCB layers can cause warping and delamination during reflow. Balance copper distribution across layers.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "copper_balance_uneven": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "PCB_warping",
+        "delamination",
+        "assembly_issues",
+        "bow_and_twist"
+      ],
+      "recommended_actions": [
+        "Check copper percentage on each layer.",
+        "Add copper fill or thieving to balance layers.",
+        "Ensure symmetric stackup copper distribution.",
+        "Consult manufacturer for copper balance requirements."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_COURT_001",
+      "name": "Check courtyard spacing for assembly",
+      "domain": ["DFT"],
+      "description": "Component courtyards (assembly outlines) must not overlap to ensure pick-and-place machine access and prevent component interference.",
+      "applies_to": ["Component", "PCB"],
+      "conditions": {
+        "courtyard_overlap": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "pick_and_place_interference",
+        "assembly_issues",
+        "component_damage"
+      ],
+      "recommended_actions": [
+        "Check component courtyards for overlap in EDA tool.",
+        "Maintain minimum clearance per IPC-7351 guidelines.",
+        "Account for pick-and-place nozzle clearance.",
+        "Verify tall components don't block adjacent placements."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFM_TRACE_005",
+      "name": "Verify trace width for current capacity",
+      "domain": ["DFT", "Power"],
+      "description": "Power and signal traces must be adequately sized for their current load. Undersized traces overheat, causing damage or fire hazard.",
+      "applies_to": ["Trace", "PCB"],
+      "conditions": {
+        "trace_current_capacity_unverified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "trace_overheating",
+        "solder_reflow",
+        "open_circuit",
+        "fire_hazard"
+      ],
+      "recommended_actions": [
+        "Calculate required trace width using IPC-2221 or Saturn PCB Toolkit.",
+        "Account for temperature rise acceptable for application.",
+        "Use polygon pours for high-current paths.",
+        "Consider internal layers for additional current capacity."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_BUILD_001",
+      "name": "Assemble prototype PCBs before production",
+      "domain": ["DFT"],
+      "description": "Build and test prototype PCBs before committing to production quantities. Prototype assembly reveals design issues that cannot be found in review.",
+      "applies_to": ["PCB"],
+      "conditions": {
+        "no_prototype_built": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "production_issues_discovered_late",
+        "expensive_production_rework",
+        "schedule_delays"
+      ],
+      "recommended_actions": [
+        "Order small quantity prototypes before production.",
+        "Assemble and fully test prototype units.",
+        "Document any issues found during prototype build.",
+        "Update design based on prototype learnings."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_MEAS_001",
+      "name": "Measure all parameters during validation",
+      "domain": ["DFT"],
+      "description": "Measure and verify all design parameters meet specifications during prototype testing. This includes power consumption, signal timing, analog performance, and thermal behavior.",
+      "applies_to": ["PCB", "System"],
+      "conditions": {
+        "parameter_verification_incomplete": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "out_of_spec_performance",
+        "field_failures",
+        "customer_complaints"
+      ],
+      "recommended_actions": [
+        "Create test plan covering all specifications.",
+        "Measure power consumption at all operating conditions.",
+        "Verify signal integrity with oscilloscope/analyzer.",
+        "Test thermal performance under worst-case conditions."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
+      ]
+    },
+    {
+      "id": "DFT_PROD_001",
+      "name": "Validate design before full production",
+      "domain": ["DFT"],
+      "description": "Confirm design meets all requirements through comprehensive testing before committing to production volume. Include environmental and reliability testing as appropriate.",
+      "applies_to": ["PCB", "System"],
+      "conditions": {
+        "design_validation_incomplete": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "production_recalls",
+        "field_failures",
+        "warranty_costs",
+        "reputation_damage"
+      ],
+      "recommended_actions": [
+        "Complete functional testing across operating range.",
+        "Perform environmental testing (temperature, humidity, vibration).",
+        "Conduct EMC pre-compliance testing.",
+        "Document test results and get design approval."
+      ],
+      "kb_references": [
+        "Appendix J: Hans Rosenberg Checklist Reference"
       ]
     }
   ]
