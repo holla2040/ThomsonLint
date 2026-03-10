@@ -23,23 +23,53 @@ def validate_json(json_file_path, schema_file_path):
         print(f"Error decoding JSON file {json_file_path}: {e}")
         return False
 
+def find_findings_files():
+    """Find *-findings.json files in the exports/ directory."""
+    findings_dir = 'exports'
+    if not os.path.isdir(findings_dir):
+        return []
+    return [
+        os.path.join(findings_dir, f)
+        for f in os.listdir(findings_dir)
+        if f.endswith('-findings.json')
+    ]
+
+
 if __name__ == "__main__":
+    import sys
+
     ontology_json = 'ontology/ontology.json'
     ontology_schema = 'tests/ontology_schema.json'
     examples_json = 'examples/examples.json'
     examples_schema = 'tests/examples_schema.json'
+    findings_schema = 'tests/findings_schema.json'
+
+    all_valid = True
 
     # Validate ontology.json
     print(f"Validating {ontology_json}...")
-    ontology_valid = validate_json(ontology_json, ontology_schema)
+    if not validate_json(ontology_json, ontology_schema):
+        all_valid = False
     print("-" * 30)
 
     # Validate examples.json
     print(f"Validating {examples_json}...")
-    examples_valid = validate_json(examples_json, examples_schema)
+    if not validate_json(examples_json, examples_schema):
+        all_valid = False
     print("-" * 30)
 
-    if ontology_valid and examples_valid:
+    # Validate findings JSON files (from exports/ or command-line arguments)
+    findings_files = find_findings_files()
+    extra_args = [a for a in sys.argv[1:] if a.endswith('.json')]
+    findings_files.extend(extra_args)
+
+    for fpath in findings_files:
+        print(f"Validating findings: {fpath}...")
+        if not validate_json(fpath, findings_schema):
+            all_valid = False
+        print("-" * 30)
+
+    if all_valid:
         print("All JSON files validated successfully.")
     else:
         print("Some JSON files failed validation.")

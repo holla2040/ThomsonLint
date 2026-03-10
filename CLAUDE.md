@@ -28,6 +28,12 @@ python validate_json.py
 ./gen_context.sh > review_instructions.txt
 ```
 
+### Generate HTML review report
+```bash
+python tools/gen_report.py exports/<project_name>-findings.json [--output exports/]
+```
+Takes a findings JSON file (see `tests/findings_schema.json` for the schema) and generates a self-contained HTML report at `exports/<project_name>-review.html`. The report provides an interactive checklist where users can triage each finding as Open/Accept/Ignore, with statuses persisted in browser localStorage.
+
 ## Pre-Commit Requirement
 
 **Before every commit**, regenerate the `review_instructions.txt` file:
@@ -64,6 +70,7 @@ Each example includes: `id`, `title`, `description`, `triggered_rules`, `expecte
 
 - `tests/ontology_schema.json` - Schema for validating ontology.json
 - `tests/examples_schema.json` - Schema for validating examples.json
+- `tests/findings_schema.json` - Schema for validating findings JSON files
 
 ## Hardware Domain Coverage
 

@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Findings",
+  "description": "Schema for ThomsonLint design review findings JSON files.",
+  "type": "object",
+  "required": ["project_name", "issues"],
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "description": "Name of the project being reviewed."
+    },
+    "review_date": {
+      "type": "string",
+      "description": "Date the review was performed (YYYY-MM-DD).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "issues": {
+      "type": "array",
+      "description": "List of findings from the design review.",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "severity", "domain", "summary"],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "description": "The ontology rule ID that was triggered."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["Critical", "Major", "Minor", "Advisory"],
+            "description": "Severity level of the finding."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Design domain (e.g., Power, HighSpeed, Analog, EMC, Thermal, DFM)."
+          },
+          "component_id": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Component reference designators involved."
+          },
+          "net_id": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Net names involved."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Brief one-line summary of the finding."
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the finding."
+          },
+          "recommended_actions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of recommended corrective actions."
+          },
+          "kb_references": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "References to knowledge base sections."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

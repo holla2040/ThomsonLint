@@ -1,5 +1,13 @@
 # AI Hardware Design Review Framework
 
+## Prerequisites
+
+- **Python 3** (3.8+)
+- **jsonschema** — required for JSON validation and report generation:
+  ```bash
+  pip install jsonschema
+  ```
+
 ## 1. Project Overview
 
 This repository hosts a knowledge and rule framework designed to empower AI models (like Gemini) with the specialized expertise required for comprehensive hardware design reviews. The goal is to provide a structured, machine-readable, and human-readable set of resources that enable an AI to analyze and identify potential issues in hardware designs, including schematics and PCB layouts.
@@ -166,10 +174,7 @@ claude
 
 Then prompt Claude to perform the review:
 
-```
-Read the review instructions in review_instructions.txt, then review my design
-using the exported JSON files and datasheets in exports/. Please begin the review.
-```
+**`Read the review instructions in review_instructions.txt, then review my design using the exported JSON files and datasheets in exports/. Please begin the review.`**
 
 Claude Code will:
 1. Read the ThomsonLint knowledge base, ontology, and examples from `review_instructions.txt`
