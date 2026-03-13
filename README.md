@@ -1,5 +1,20 @@
 # AI Hardware Design Review Framework
 
+## TL;DR
+
+```bash
+git clone git@github.com:holla2040/ThomsonLint.git
+cd ThomsonLint
+```
+
+1. Open your circuit design in Fusion Electronics
+2. Run `tools/fusion-electronics-export.ulp` in both the schematic and board layout workspace
+3. Run Claude Code and enter this prompt:
+
+**`Read the review instructions in review_instructions.txt, then review my design using the exported JSON files and datasheets in exports/. Please begin the review.`**
+
+---
+
 ## Prerequisites
 
 - **Python 3** (3.8+)
