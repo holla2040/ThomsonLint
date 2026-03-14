@@ -865,6 +865,71 @@ output(FileName, "wt") {
     if (edgeCount > 0) printf("\n");
     printf("    ],\n");
 
+    // Decoupling proximity: pad-to-pad distance from IC power pins to nearest cap
+    printf("    \"decoupling_proximity\": [\n");
+    int dpCount = 0;
+    board(B) {
+      B.signals(S) {
+        if (!IsPowerNet(S.name)) continue;
+        if (IsGroundNet(S.name)) continue;
+
+        // Collect IC and capacitor contactrefs on this power net
+        int numIcPins = 0;
+        string icRef[];
+        string icPin[];
+        int icPinX[];
+        int icPinY[];
+
+        int numCapPins = 0;
+        string capRef[];
+        string capPin[];
+        int capPinX[];
+        int capPinY[];
+
+        S.contactrefs(CR) {
+          string ref = CR.element.name;
+          if (ref[0] == 'U') {
+            icRef[numIcPins] = ref;
+            icPin[numIcPins] = CR.contact.name;
+            icPinX[numIcPins] = CR.contact.x;
+            icPinY[numIcPins] = CR.contact.y;
+            numIcPins++;
+          } else if (ref[0] == 'C') {
+            capRef[numCapPins] = ref;
+            capPin[numCapPins] = CR.contact.name;
+            capPinX[numCapPins] = CR.contact.x;
+            capPinY[numCapPins] = CR.contact.y;
+            numCapPins++;
+          }
+        }
+
+        // For each IC pin, find nearest cap pin on this net
+        for (int ip = 0; ip < numIcPins; ip++) {
+          real bestDist = 99999.0;
+          int bestCap = -1;
+          for (int cp = 0; cp < numCapPins; cp++) {
+            real d = DistanceMM(icPinX[ip], icPinY[ip], capPinX[cp], capPinY[cp]);
+            if (d < bestDist) {
+              bestDist = d;
+              bestCap = cp;
+            }
+          }
+          if (bestCap >= 0) {
+            if (dpCount > 0) printf(",\n");
+            printf("      { \"ic_ref\": \"%s\", \"ic_pin\": \"%s\", \"ic_pin_x_mm\": %s, \"ic_pin_y_mm\": %s, \"cap_ref\": \"%s\", \"cap_pin\": \"%s\", \"cap_pin_x_mm\": %s, \"cap_pin_y_mm\": %s, \"distance_mm\": %.2f, \"net\": \"%s\" }",
+                   jsonEscape(icRef[ip]), jsonEscape(icPin[ip]),
+                   coordToMM(icPinX[ip]), coordToMM(icPinY[ip]),
+                   jsonEscape(capRef[bestCap]), jsonEscape(capPin[bestCap]),
+                   coordToMM(capPinX[bestCap]), coordToMM(capPinY[bestCap]),
+                   bestDist, jsonEscape(S.name));
+            dpCount++;
+          }
+        }
+      }
+    }
+    if (dpCount > 0) printf("\n");
+    printf("    ],\n");
+
     // Ground plane layers
     printf("    \"ground_plane_layers\": [");
     int gpCount = 0;

@@ -5078,6 +5078,14 @@ If a ThomsonLint JSON export file is provided (identified by the \`"thomsonlint_
 
 Cross-reference the JSON data with any uploaded images for visual verification. The structured data enables precise, quantitative rule checking that images alone cannot provide.
 
+#### Distance Measurements
+When checking rules that involve physical proximity (e.g., \`PWR_DECPL_001\` decoupling, \`EMC_ESD_001\` TVS placement), you MUST use **pad-level coordinates** from each component's \`"pads"\` array — NOT the component-level \`"x_mm"\` / \`"y_mm"\` fields, which are package centroids.
+
+For decoupling checks (\`PWR_DECPL_001\`):
+- Use the pre-computed \`"decoupling_proximity"\` array in the board export's \`"analysis"\` section — it gives exact pad-to-pad distances between IC power pins and their nearest decoupling capacitors.
+- If pre-computed data is not available, manually compute: find the IC's power pin pad coordinates, find the nearest cap pad on the same net, and use Euclidean distance.
+- Component centroids can be 5-10mm from the actual power pin on larger packages (SO8, TQFP, QFN), producing inflated distances and false positives.
+
 To generate this file, run the ThomsonLint export ULP from the Fusion Electronics (EAGLE) schematic editor:
 \`\`\`
 RUN fusion-electronics-export.ulp
