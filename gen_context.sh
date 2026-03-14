@@ -105,33 +105,39 @@ Before making any recommendations, you MUST correlate and cross-reference ALL pr
 7.  When citing issues, reference where the problem is visible (e.g., "visible in board layout image near U3" or "found in schematic source file at net VCC_3V3").
 
 #### Structured Findings Output
-8.  After completing your review, output all findings as a JSON object matching this schema:
-\`\`\`json
-{
-  "project_name": "<project name>",
-  "review_date": "<YYYY-MM-DD>",
-  "issues": [
-    {
-      "rule_id": "<ontology rule ID>",
-      "severity": "Critical|Major|Minor|Advisory",
-      "domain": "<design domain>",
-      "component_id": ["<ref designators>"],
-      "net_id": ["<net names>"],
-      "summary": "<one-line summary>",
-      "description": "<detailed description>",
-      "recommended_actions": ["<action 1>", "<action 2>"],
-      "kb_references": ["<section ref>"]
-    }
-  ]
-}
-\`\`\`
-Required per issue: \`rule_id\`, \`severity\`, \`domain\`, \`summary\`. Other fields are optional but recommended.
+8.  After completing your review, you MUST save all findings to a JSON file and generate an HTML report. Follow these steps exactly:
 
-9.  After printing the review, offer to generate an interactive HTML report. To do so, save the findings JSON to \`exports/<project_name>-findings.json\` and run:
-\`\`\`
-python tools/gen_report.py exports/<project_name>-findings.json
-\`\`\`
-This produces a self-contained HTML checklist at \`exports/<project_name>-review.html\` where users can triage each finding as Open/Accept/Ignore.
+    a.  **Build the findings JSON** matching this schema:
+    \`\`\`json
+    {
+      "project_name": "<project name — use only filename-safe characters, no slashes>",
+      "review_date": "<YYYY-MM-DD>",
+      "issues": [
+        {
+          "rule_id": "<ontology rule ID>",
+          "severity": "Critical|Major|Minor|Advisory",
+          "domain": "<design domain>",
+          "component_id": ["<ref designators>"],
+          "net_id": ["<net names>"],
+          "summary": "<one-line summary>",
+          "description": "<detailed description>",
+          "recommended_actions": ["<action 1>", "<action 2>"],
+          "kb_references": ["<section ref>"]
+        }
+      ]
+    }
+    \`\`\`
+    Required per issue: \`rule_id\`, \`severity\`, \`domain\`, \`summary\`. Other fields are optional but recommended.
+
+    b.  **Save** the JSON to \`exports/<project_name>-findings.json\` (replace spaces with underscores in the filename).
+
+    c.  **Generate the HTML report** by running:
+    \`\`\`
+    python tools/gen_report.py exports/<project_name>-findings.json --output exports/
+    \`\`\`
+    This produces a self-contained HTML checklist at \`exports/<project_name>-review.html\` where users can triage each finding as Open/Accept/Ignore.
+
+    d.  **Present a summary table** to the user listing each finding with its severity, rule ID, and one-line summary, followed by the paths to the generated findings JSON and HTML report files.
 
 If you have understood all these steps, acknowledge it and begin with the "Pre-Review Assessment" of the user's uploaded files.
 EOF

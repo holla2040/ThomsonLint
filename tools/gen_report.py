@@ -289,7 +289,11 @@ def main():
 
     # Write output
     os.makedirs(args.output, exist_ok=True)
-    out_name = findings["project_name"].replace(" ", "_") + "-review.html"
+    # Sanitise project name for use as a filename (remove path separators, etc.)
+    safe_name = findings["project_name"].replace(" ", "_")
+    for ch in r'/\:*?"<>|':
+        safe_name = safe_name.replace(ch, "_")
+    out_name = safe_name + "-review.html"
     out_path = os.path.join(args.output, out_name)
     with open(out_path, "w") as f:
         f.write(html)
