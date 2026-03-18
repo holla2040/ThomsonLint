@@ -25,7 +25,7 @@ cd ThomsonLint
 
 ## 1. Project Overview
 
-This repository hosts a knowledge and rule framework designed to empower AI models (like Gemini) with the specialized expertise required for comprehensive hardware design reviews. The goal is to provide a structured, machine-readable, and human-readable set of resources that enable an AI to analyze and identify potential issues in hardware designs, including schematics and PCB layouts.
+This repository hosts a knowledge and rule framework designed to empower AI models with the specialized expertise required for comprehensive hardware design reviews. The goal is to provide a structured, machine-readable, and human-readable set of resources that enable an AI to analyze and identify potential issues in hardware designs, including schematics and PCB layouts.
 
 The framework is built upon three core components:
 
@@ -74,7 +74,7 @@ This framework serves two types of users:
 If you just want to review your hardware design, you don't need to clone or run anything.
 
 1.  **Download `review_instructions.txt`** from this repository (it's pre-generated and always up-to-date).
-2.  **Go to [https://gemini.google.com/](https://gemini.google.com/)** (or another AI with file upload support).
+2.  **Open an AI assistant with file upload support** (e.g., Claude, ChatGPT).
 3.  **Upload two things:**
     -   The `review_instructions.txt` file
     -   Your design files (schematic images, PCB layout screenshots, etc.)
@@ -116,7 +116,7 @@ python validate_json.py
 
 #### **Step 1: Upload Files**
 
-1.  Open **[https://gemini.google.com/](https://gemini.google.com/)** (or Claude, ChatGPT, etc.).
+1.  Open an AI assistant with file upload support (e.g., Claude, ChatGPT).
 2.  Upload `review_instructions.txt` along with your design files (schematic images, PCB layout images).
 3.  Type: `Please begin the review.`
 
