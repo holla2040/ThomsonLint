@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThomsonLint Review � Pendant 2 I/O Board</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f5f6f8; color: #1a1a1a; line-height: 1.5; }
+.container { max-width: 960px; margin: 0 auto; padding: 16px; }
+header { background: #fff; border-bottom: 3px solid #2563eb; padding: 20px 24px; margin-bottom: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+header h1 { font-size: 1.4rem; color: #1e293b; }
+header .meta { font-size: .85rem; color: #64748b; margin-top: 4px; }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.stat { padding: 6px 14px; border-radius: 6px; font-size: .85rem; font-weight: 600; background: #f1f5f9; }
+.stat.critical { background: #fef2f2; color: #991b1b; }
+.stat.major { background: #fff7ed; color: #9a3412; }
+.stat.minor { background: #fefce8; color: #854d0e; }
+.stat.advisory { background: #eff6ff; color: #1e40af; }
+.toolbar { background: #fff; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.toolbar label { font-size: .8rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: .03em; }
+.toolbar select { padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .85rem; background: #fff; }
+.toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+.btn-sm { padding: 5px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; font-size: .8rem; cursor: pointer; font-weight: 500; }
+.btn-sm:hover { background: #f1f5f9; }
+.severity-group { margin-bottom: 20px; }
+.severity-group h2 { font-size: 1rem; padding: 8px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 8px; color: #334155; }
+.card { background: #fff; border-radius: 8px; padding: 14px 18px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.06); border-left: 4px solid #94a3b8; }
+.card.severity-Critical { border-left-color: #dc2626; }
+.card.severity-Major { border-left-color: #ea580c; }
+.card.severity-Minor { border-left-color: #ca8a04; }
+.card.severity-Advisory { border-left-color: #2563eb; }
+.card.status-Accept { opacity: .55; }
+.card.status-Ignore { opacity: .35; }
+.card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .75rem; font-weight: 700; text-transform: uppercase; color: #fff; }
+.badge.Critical { background: #dc2626; }
+.badge.Major { background: #ea580c; }
+.badge.Minor { background: #ca8a04; }
+.badge.Advisory { background: #2563eb; }
+.rule-id { font-family: monospace; font-size: .82rem; color: #475569; }
+.domain-tag { font-size: .72rem; background: #e2e8f0; color: #475569; padding: 1px 7px; border-radius: 3px; }
+.card-summary { margin-top: 6px; font-size: .92rem; }
+.card-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: .85rem; color: #475569; display: none; }
+.card-details.open { display: block; }
+.card-details dt { font-weight: 600; margin-top: 8px; color: #334155; }
+.card-details dd { margin-left: 12px; margin-top: 2px; }
+.card-details ul { margin-left: 24px; }
+.toggle-details { background: none; border: none; color: #2563eb; cursor: pointer; font-size: .8rem; margin-top: 4px; padding: 0; }
+.toggle-details:hover { text-decoration: underline; }
+.actions { display: flex; gap: 4px; margin-left: auto; }
+.actions button { padding: 3px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; font-size: .78rem; cursor: pointer; font-weight: 500; }
+.actions button:hover { background: #f1f5f9; }
+.actions button.active-Open { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+.actions button.active-Accept { background: #dcfce7; border-color: #86efac; color: #166534; }
+.actions button.active-Ignore { background: #f1f5f9; border-color: #94a3b8; color: #64748b; }
+.empty { text-align: center; padding: 40px; color: #94a3b8; font-size: .95rem; }
+.summary-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); font-size: .85rem; }
+.summary-table th { background: #f1f5f9; text-align: left; padding: 8px 12px; font-weight: 600; color: #334155; border-bottom: 2px solid #e2e8f0; }
+.summary-table td { padding: 6px 12px; border-bottom: 1px solid #e2e8f0; }
+.summary-table tr:last-child td { border-bottom: none; }
+.summary-table .sev-badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: .75rem; font-weight: 700; text-transform: uppercase; color: #fff; }
+.summary-table .sev-badge.Critical { background: #dc2626; }
+.summary-table .sev-badge.Major { background: #ea580c; }
+.summary-table .sev-badge.Minor { background: #ca8a04; }
+.summary-table .sev-badge.Advisory { background: #2563eb; }
+.summary-table .mono { font-family: monospace; font-size: .82rem; color: #475569; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>ThomsonLint Review � <span id="projectName"></span></h1>
+    <div class="meta">Review date: <span id="reviewDate"></span></div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <div id="summaryTable"></div>
+  <div class="toolbar">
+    <label>Domain</label>
+    <select id="filterDomain"><option value="">All</option></select>
+    <label>Severity</label>
+    <select id="filterSeverity"><option value="">All</option></select>
+    <label>Status</label>
+    <select id="filterStatus"><option value="">All</option><option>Open</option><option>Accept</option><option>Ignore</option></select>
+    <div class="toolbar-right">
+      <button class="btn-sm" id="btnReset">Reset All</button>
+      <button class="btn-sm" id="btnExport">Export Summary</button>
+    </div>
+  </div>
+  <div id="findings"></div>
+</div>
+<script>
+const FINDINGS_DATA = {"project_name": "Pendant 2 I/O Board", "review_date": "2026-03-18", "issues": [{"rule_id": "SCH_NET_001", "severity": "Critical", "domain": "Schematic", "component_id": ["U5"], "net_id": ["N$35", "GND"], "summary": "MAX3232 ground (pin 15) is not connected to the main GND net", "description": "The MAX3232 (U5) ground pin is on net N$35, which connects only to C9/pin2, C10/pin2, and C11/pin2. This net is NOT connected to the main GND net. The MAX3232 has a floating ground reference, which means the charge pump cannot function and the IC will not operate. This is almost certainly a schematic error — pin 15 (GND) of U5 must be tied to the board GND net.", "recommended_actions": ["Connect net N$35 to the main GND net, either by merging the nets or by adding a direct connection from U5 pin 15 to GND.", "Verify that C9, C10, and C11 negative terminals also connect to GND after the fix."], "kb_references": ["Section 1.3 Decoupling & Local Regulation", "Appendix H: Schematic Review Checks"]}, {"rule_id": "EMC_ESD_001", "severity": "Critical", "domain": "EMC", "component_id": ["J22"], "net_id": ["5V0", "GND"], "summary": "USB-C connector J22 missing CC pull-down resistors — will not be detected as a USB device", "description": "The USB-C connector J22 has only VBUS, GND, and SHIELD connected. The CC1 and CC2 pins have no 5.1k ohm pull-down resistors to GND as required by the USB Type-C specification. Without these resistors, a USB-C host will not detect the device and may not supply power at all. Additionally, no data lines (D+/D-) are connected, confirming this is power-only, but CC resistors are still mandatory for power delivery detection.", "recommended_actions": ["Add two 5.1k ohm (1% or better) pull-down resistors from CC1 and CC2 to GND.", "Each CC pin must have its own separate resistor — do not tie CC1 and CC2 together.", "Place the resistors as close to J22 as possible."], "kb_references": ["Section 1.7 EMC, ESD & Protection", "USB Type-C Specification: CC termination requirements"]}, {"rule_id": "SCH_IC_001", "severity": "Critical", "domain": "Schematic", "component_id": ["U6"], "net_id": ["3V3"], "summary": "RS-485 transceiver U6 has RE and DE both tied to 3V3 — receiver permanently disabled", "description": "The RS-485 transceiver U6 has both its RE (active-low receive enable, pin 2) and DE (transmit enable, pin 3) tied directly to 3V3. This permanently enables the transmitter and permanently disables the receiver. The device can only transmit, never receive. If bidirectional RS-485 communication is intended, this is a critical design error. If transmit-only is intentional, this should be documented.", "recommended_actions": ["If bidirectional communication is needed: connect RE and DE to a GPIO pin so the MCU can control transmit/receive direction.", "If half-duplex: tie RE and DE together and drive from a single GPIO.", "If transmit-only is intentional: add a schematic note documenting this design decision."], "kb_references": ["Section 1.5 High-Speed Interfaces", "Appendix H: Schematic Review Checks — IC application verification"]}, {"rule_id": "EMC_ESD_001", "severity": "Major", "domain": "EMC", "component_id": ["J13", "J14"], "net_id": ["N$40", "N$43", "N$44", "N$46", "N$45", "N$48"], "summary": "DB-9 RS-232 connectors J13/J14 have no ESD protection on data lines", "description": "The external-facing DB-9 connectors J13 (female) and J14 (male) carry RS-232 signals (TX/RX) but have no TVS diodes or ESD protection components on their signal pins. RS-232 lines are directly connected to the MAX3232 (U5) through jumper headers. While the MAX3232 has some inherent ESD robustness (±15kV HBM per datasheet), dedicated TVS diodes near the connectors would provide better protection for the rest of the circuit, especially given the long trace lengths (N$44: 183mm, N$46: 158mm).", "recommended_actions": ["Add TVS diode arrays (e.g., PESD5V0S2BT or similar) on the RS-232 signal lines at J13 and J14.", "Place TVS components as close to the DB-9 connectors as possible.", "Ensure low-impedance ground path from TVS to chassis/signal ground."], "kb_references": ["Section 1.7 EMC, ESD & Protection", "Section 2.5 EMC & EMI Layout"]}, {"rule_id": "EMC_ESD_001", "severity": "Major", "domain": "EMC", "component_id": ["J7", "U6"], "net_id": ["N$38", "N$39"], "summary": "RS-485 bus connector J7 has no ESD protection on differential lines", "description": "The RS-485 bus is connected to external connector J7 (JST 2-pin) with differential lines A and B going directly to U6. No TVS diodes or ESD protection is present on these lines. RS-485 buses are frequently exposed to ESD events and common-mode transients, especially in industrial environments where this pendant-style I/O board is likely to be used.", "recommended_actions": ["Add a bidirectional TVS array (e.g., PESD3V3L4UF or CDSOT23-SM712) across the A/B lines near J7.", "Ensure TVS ground has a short, low-impedance path to the GND plane."], "kb_references": ["Section 1.7 EMC, ESD & Protection", "Section 2.5 EMC & EMI Layout"]}, {"rule_id": "MS_I2C_001", "severity": "Major", "domain": "MixedSignal", "component_id": ["R8", "R9", "U2"], "net_id": ["SCL", "SDA"], "summary": "I2C bus pull-up resistors R8/R9 are DNP — bus has no pull-ups on this board", "description": "R8 and R9 are the I2C pull-up resistors for SCL and SDA, but both are marked DNP (Do Not Populate). Without pull-ups, the I2C bus cannot function as the open-drain outputs of U2 (PCF8574) have no path to pull the lines high. The I2C bus traces are approximately 97mm long (from board data), and the pull-ups must exist somewhere on the bus. If pull-ups are provided by an external master board connected via H1, this should be explicitly documented.", "recommended_actions": ["If this board is always used with an external I2C master that provides pull-ups, add a schematic note documenting this dependency.", "Otherwise, populate R8 and R9 with appropriate values (2.2k-4.7k ohm for 3.3V I2C at standard/fast mode).", "Consider adding test point access for I2C debug even if pull-ups are external."], "kb_references": ["Section 1.6 Analog & Mixed-Signal", "MS_I2C_001 rule: I2C bus pull-ups and test points"]}, {"rule_id": "PWR_BUCK_002", "severity": "Major", "domain": "Power", "component_id": ["U8", "C13"], "net_id": ["5V0"], "summary": "5V regulator U8 output capacitor C13 is 7.64mm away — should be closer", "description": "The Mornsun K7805-1000R3 (U8) output is decoupled by C13 (10uF@50V) at a pad-to-pad distance of 7.64mm. Best practice for voltage regulator output capacitors is placement within 3-5mm. The K7805-1000R3 datasheet does not mandate an external output cap for stability, but for transient response and noise, closer placement is preferred. For input voltages exceeding 30V, a 22uF/50V input cap is required — the 24V input is within the 8-36V range, but C12 (10uF@50V) at the input is adequate for this voltage.", "recommended_actions": ["Move C13 closer to U8 VOUT pin, ideally within 3-5mm pad-to-pad distance.", "Verify the Mornsun datasheet recommended capacitor values for your operating conditions."], "kb_references": ["Section 1.3 Decoupling & Local Regulation", "Section 2.2 Power Integrity & Decoupling"]}, {"rule_id": "SCH_FLOAT_001", "severity": "Major", "domain": "Schematic", "component_id": ["U2"], "net_id": ["3V3"], "summary": "No 3.3V regulator on board — 3V3 rail depends entirely on external connection via H1/H3", "description": "The 3V3 power rail supplies U2 (PCF8574), U5 (MAX3232), and U6 (RS-485 transceiver), but there is no 3.3V regulator on this board. Power is assumed to come from the JST connectors H1 and H3 (pin 1 = 3V3). If these connectors are unplugged, all 3.3V ICs lose power. There is no reverse polarity protection, current limiting, or bulk decoupling specifically for the 3V3 input.", "recommended_actions": ["Add a local 3.3V LDO regulator (e.g., AMS1117-3.3 or similar) powered from the 5V0 rail for self-contained operation.", "Alternatively, add a schematic note clearly documenting the external 3.3V dependency.", "Add a bulk decoupling capacitor (10-47uF) at the 3V3 entry point near H1/H3."], "kb_references": ["Section 1.3 Decoupling & Local Regulation"]}, {"rule_id": "SCH_FET_001", "severity": "Major", "domain": "Power", "component_id": ["Q3"], "net_id": ["N$51", "N$47", "24V0"], "summary": "P-channel FET Q3 gate startup state depends on R10 pull-down and D1 Zener clamp", "description": "Q3 (P-channel FET) is used as a power switch between the fuse output and the 24V0 rail. The gate (net N$51) is controlled by R10 (10k pull-down to GND) and D1 (VZ10, 10V Zener from gate to 24V0). At startup, before power is applied, the gate should be pulled toward the source to keep Q3 off. However, the topology should be verified: with R10 pulling the gate to GND and the source at 24V, VGS would be -24V which far exceeds most P-FET gate ratings. The 10V Zener D1 clamps VGS to approximately -10V. Verify that the chosen P-FET (LCSC C393520) has a VGS rating that accommodates this, and that the Zener clamp engages before the gate-source voltage exceeds the absolute maximum rating during transients.", "recommended_actions": ["Verify Q3 VGS(max) rating against the clamped gate voltage.", "Consider the transient behavior during power-up before the Zener clamps.", "Add a gate resistor in series to limit inrush to the gate capacitance if needed."], "kb_references": ["SCH_FET_001: FET gates must have defined state at startup", "Appendix H: Schematic Review Checks"]}, {"rule_id": "DFM_BOM_001", "severity": "Major", "domain": "DFT", "component_id": ["U4", "D1", "D6", "D7", "D8", "D9", "C1", "C2", "C3", "C7", "C8", "C9", "C10", "C11", "C15", "R3", "R4", "R5", "R6", "R10", "R12", "R13", "R14", "R15"], "net_id": [], "summary": "24 components missing LCSC/manufacturer part numbers — BOM is incomplete", "description": "Multiple components lack LCSC part numbers or manufacturer part numbers: U4 (MB10S bridge rectifier), D1 (VZ10 Zener), D6-D9 (diodes, no value or LCSC), 9 capacitors (C1-C3, C7-C11, C15 — all 0.1uF 0603 with no LCSC), and 8 resistors (R3-R6, R10, R12-R15 — all 10k 0603 with no LCSC). This will prevent automated BOM generation and PCBA ordering from JLCPCB/LCSC.", "recommended_actions": ["Add LCSC part numbers for all populated components.", "For 0.1uF 0603 caps, a common LCSC part is C14663 (Samsung CL10B104KB8NNNC).", "For 10k 0603 resistors, a common LCSC part is C25804 (Uniroyal 0603WAF1002T5E).", "Specify exact part numbers for D1, D6-D9 with voltage/current ratings."], "kb_references": ["DFM_BOM_001: Add manufacturer order codes to all parts"]}, {"rule_id": "HS_STACK_001", "severity": "Major", "domain": "HighSpeed", "component_id": [], "net_id": ["GND", "3V3"], "summary": "2-layer board has GND pour on top and 3V3 pour on bottom — return path discontinuity for signals crossing layers", "description": "The board uses a 2-layer stackup with GND copper pour on the top layer and 3V3 copper pour on the bottom layer. When signals transition between layers via vias (26 vias total across all nets), the reference plane changes from GND to 3V3. This creates return current discontinuities that can cause signal integrity issues and EMI. The I2C bus (SCL/SDA) each have 1 via, and several RS-232 signal nets have 1-2 vias, all of which will cross this plane boundary.", "recommended_actions": ["Place stitching capacitors (100nF) between GND and 3V3 near each signal via that transitions layers.", "Consider using GND pours on both layers with 3V3 as a routed trace/island if possible.", "For a future revision, consider a 4-layer stackup for improved signal integrity and EMC."], "kb_references": ["Section 2.3 High-Speed Routing", "HS_STACK_001: Each signal layer needs ground reference plane"]}, {"rule_id": "SCH_NET_002", "severity": "Minor", "domain": "Schematic", "component_id": [], "net_id": ["GND1", "3V1", "RX1", "TX1", "TX3", "N$27", "N$62", "N$63", "N$64", "N$65", "N$66", "N$67", "N$68", "N$69", "N$70", "N$71", "N$72", "N$73", "N$74", "N$75", "N$76"], "summary": "21 orphan nets with zero connections — schematic cleanup needed", "description": "There are 21 nets with no pin connections at all: GND1 (an orphan ground net), 3V1, RX1, TX1, TX3, and N$27, N$62-N$76. These likely represent deleted components whose nets were not cleaned up, or planned but unimplemented features. The named nets (3V1, RX1, TX1, TX3) suggest there may have been plans for additional serial ports or voltage rails that were never connected.", "recommended_actions": ["Run a DRC/ERC check to identify and remove all orphan nets.", "If these nets represent planned future features, document them; otherwise delete them.", "Renumber reference designators to close gaps (D5, F1, H2, J2, J4-J6, etc. are missing)."], "kb_references": ["DFT_DRC_001: Run DRC to identify unconnected nets and schematic errors"]}, {"rule_id": "SCH_VAL_001", "severity": "Minor", "domain": "Schematic", "component_id": ["H1", "H3"], "net_id": [], "summary": "Connectors H1/H3 have placeholder attribute BLT='blahblah' — test data left in design", "description": "Both JST 4-pin connectors H1 and H3 have an attribute 'BLT' with value 'blahblah'. This is clearly placeholder/test data that was never cleaned up. While it won't affect circuit operation, it will appear in BOM exports and suggests incomplete design cleanup.", "recommended_actions": ["Remove the 'BLT' attribute from H1 and H3.", "Review all component attributes for other placeholder data."], "kb_references": ["Appendix H: Schematic Review Checks"]}, {"rule_id": "SCH_VAL_001", "severity": "Minor", "domain": "Schematic", "component_id": ["TP1", "TP2", "TP3"], "net_id": [], "summary": "Test points TP1-TP3 are misclassified as type 'transformer' in the schematic", "description": "TP1, TP2, and TP3 use the TP0.5R package and are clearly test points, but their component type is set to 'transformer' in the export data. This misclassification could confuse automated BOM tools and design review scripts.", "recommended_actions": ["Correct the component type/device classification for TP1-TP3 to 'testpoint'.", "Verify the library symbol is correct."], "kb_references": ["Appendix H: Schematic Review Checks"]}, {"rule_id": "DFT_TP_001", "severity": "Minor", "domain": "DFT", "component_id": ["TP1", "TP2", "TP3"], "net_id": ["3V3"], "summary": "Test points TP1-TP3 are DNI and 3V3 rail has no dedicated test point", "description": "TP1, TP2, and TP3 are all marked DNI (Do Not Install). Additionally, while the 5V0, 24V0, GND, SCL, and SDA rails have through-hole test points, the 3V3 rail has no test point. The 3V3 rail powers three ICs (U2, U5, U6) and is a critical debug signal. The test points that do exist (5V0, 24V0, GND, SCL, SDA) are good coverage for the main power and I2C bus.", "recommended_actions": ["Add a test point for the 3V3 rail.", "Consider populating TP1-TP3 or replacing with through-hole test points for better probe access.", "Add test points for the RS-485 A/B lines and RS-232 TX/RX for debug."], "kb_references": ["Section 1.8 Design for Test & Bring-Up", "DFT_TP_001: Critical rails and signals need test points"]}, {"rule_id": "COMP_CAP_004", "severity": "Minor", "domain": "Component", "component_id": ["C4", "C12", "C13", "C14"], "net_id": ["24V0", "5V0"], "summary": "Electrolytic capacitors C4/C12/C13/C14 rated 50V on a 24V rail — verify ESR and ripple current", "description": "Four polarized electrolytic capacitors (10uF@50V, through-hole 5mm) are used on the 24V and 5V rails. The 50V rating provides adequate margin for the 24V rail. However, for the 5V output (C13), 50V is over-specified — a lower voltage rating would provide better ESR and volumetric efficiency. Additionally, the electrolytic type should be verified for adequate ripple current handling near the switching regulator U8.", "recommended_actions": ["Verify ripple current ratings of C12 and C13 against U8 operating conditions.", "Consider using a ceramic capacitor (10uF 0805 or 1206, X5R/X7R, 10V) for C13 output cap for better ESR.", "Verify polarity markings in the layout match the schematic."], "kb_references": ["COMP_CAP_004: Verify capacitor maximum voltage rating", "COMP_CAP_005: Check electrolytic ripple current and temperature", "Appendix I: Component Selection Guidelines"]}, {"rule_id": "PWR_FUSE_001", "severity": "Minor", "domain": "Power", "component_id": ["F2"], "net_id": ["N$50", "N$47"], "summary": "750mA PTC fuse F2 — verify rating against maximum load current", "description": "F2 is a 750mA PTC resettable fuse in the 24V input path. The total load includes: 4 relay coils (each typically 40-80mA for this size relay = 160-320mA total), the K7805-1000R3 regulator (up to 1A output at ~90% efficiency = ~230mA from 24V), plus other circuits. If all 4 relays are energized simultaneously while the 5V rail is at full load, the total could approach or exceed 750mA. PTC fuses also have a hold/trip characteristic that should be verified against worst-case operating current.", "recommended_actions": ["Calculate maximum steady-state current draw with all loads active.", "Verify F2 hold current exceeds maximum operating current with adequate margin.", "Verify F2 trip current is below the wiring/connector current rating for protection."], "kb_references": ["PWR_FUSE_001: Safety fuses for critical circuits"]}, {"rule_id": "EMC_STITCH_002", "severity": "Minor", "domain": "EMC", "component_id": [], "net_id": ["GND"], "summary": "GND copper pour has zero dedicated stitching vias — only 26 signal vias total on the board", "description": "The GND copper pour on the top layer has no dedicated ground stitching vias. The entire board has only 26 vias across all signal nets, and GND has zero vias (it relies entirely on the top-layer pour). Without stitching vias, the GND pour may have large unbroken areas but no connection to provide low-impedance returns for signals routed on the bottom layer through the 3V3 pour.", "recommended_actions": ["Add a grid of GND stitching vias across the board, especially near the board edges and around high-current or high-frequency areas.", "Add bypass capacitors between GND and 3V3 near signal vias to bridge the reference plane gap.", "Target approximately 1 stitching via per 10-15mm of board edge."], "kb_references": ["Section 2.5 EMC & EMI Layout", "EMC_STITCH_002: Ground stitching via grid required for copper pours"]}, {"rule_id": "DFT_POL_001", "severity": "Advisory", "domain": "DFT", "component_id": ["J1"], "net_id": ["24V0"], "summary": "24V power input connector J1 should have polarity marking on silkscreen", "description": "J1 is the main 24V power input (JST 2-pin). Pin 1 is 24V+, pin 2 is GND. The silkscreen should clearly mark polarity to prevent reverse connection. While Q3 (P-FET) and D1 (Zener) provide some reverse-polarity protection, clear marking prevents user error.", "recommended_actions": ["Add '+' and '-' or 'V+' and 'GND' polarity markings near J1 on the silkscreen.", "Consider adding polarity markings to all power connectors (J9, J11, battery J3)."], "kb_references": ["DFT_POL_001: Polarity marking on power connectors"]}]};
+
+const SEVERITY_ORDER = ["Critical", "Major", "Minor", "Advisory"];
+const storageKey = "thomsonlint-review-" + FINDINGS_DATA.project_name;
+
+function loadStatuses() {
+  try { return JSON.parse(localStorage.getItem(storageKey)) || {}; } catch(e) { return {}; }
+}
+function saveStatuses(s) { localStorage.setItem(storageKey, JSON.stringify(s)); }
+let statuses = loadStatuses();
+
+function findingKey(issue, idx) { return issue.rule_id + ":" + idx; }
+
+function init() {
+  document.getElementById("projectName").textContent = FINDINGS_DATA.project_name;
+  document.getElementById("reviewDate").textContent = FINDINGS_DATA.review_date || "N/A";
+
+  // Populate domain filter
+  const domains = [...new Set(FINDINGS_DATA.issues.map(i => i.domain))].sort();
+  const domainSel = document.getElementById("filterDomain");
+  domains.forEach(d => { const o = document.createElement("option"); o.value = d; o.textContent = d; domainSel.appendChild(o); });
+
+  // Populate severity filter
+  const sevSel = document.getElementById("filterSeverity");
+  SEVERITY_ORDER.forEach(s => { const o = document.createElement("option"); o.value = s; o.textContent = s; sevSel.appendChild(o); });
+
+  render();
+
+  domainSel.addEventListener("change", render);
+  sevSel.addEventListener("change", render);
+  document.getElementById("filterStatus").addEventListener("change", render);
+  document.getElementById("btnReset").addEventListener("click", () => { if(confirm("Reset all statuses to Open?")) { statuses = {}; saveStatuses(statuses); render(); } });
+  document.getElementById("btnExport").addEventListener("click", exportSummary);
+}
+
+function getStatus(key) { return statuses[key] || "Open"; }
+
+function render() {
+  const domainF = document.getElementById("filterDomain").value;
+  const sevF = document.getElementById("filterSeverity").value;
+  const statusF = document.getElementById("filterStatus").value;
+
+  const container = document.getElementById("findings");
+  container.innerHTML = "";
+
+  const counts = {total: 0, Critical: 0, Major: 0, Minor: 0, Advisory: 0, Open: 0, Accept: 0, Ignore: 0};
+
+  const grouped = {};
+  SEVERITY_ORDER.forEach(s => grouped[s] = []);
+
+  FINDINGS_DATA.issues.forEach((issue, idx) => {
+    const key = findingKey(issue, idx);
+    const st = getStatus(key);
+    counts.total++;
+    counts[issue.severity] = (counts[issue.severity] || 0) + 1;
+    counts[st]++;
+
+    if (domainF && issue.domain !== domainF) return;
+    if (sevF && issue.severity !== sevF) return;
+    if (statusF && st !== statusF) return;
+
+    grouped[issue.severity].push({issue, idx, key, status: st});
+  });
+
+  // Stats
+  const statsEl = document.getElementById("stats");
+  statsEl.innerHTML =
+    `<span class="stat">Total: ${counts.total}</span>` +
+    SEVERITY_ORDER.filter(s => counts[s]).map(s => `<span class="stat ${s.toLowerCase()}">${s}: ${counts[s]}</span>`).join("") +
+    `<span class="stat">Open: ${counts.Open}</span>` +
+    `<span class="stat">Accepted: ${counts.Accept}</span>` +
+    `<span class="stat">Ignored: ${counts.Ignore}</span>`;
+
+  // Summary table
+  const tableEl = document.getElementById("summaryTable");
+  let thtml = '<table class="summary-table"><thead><tr><th>#</th><th>Severity</th><th>Rule ID</th><th>Summary</th></tr></thead><tbody>';
+  let rowNum = 0;
+  SEVERITY_ORDER.forEach(sev => {
+    FINDINGS_DATA.issues.forEach((issue, idx) => {
+      if (issue.severity !== sev) return;
+      const key = findingKey(issue, idx);
+      const st = getStatus(key);
+      if (domainF && issue.domain !== domainF) return;
+      if (sevF && issue.severity !== sevF) return;
+      if (statusF && st !== statusF) return;
+      rowNum++;
+      thtml += `<tr><td>${rowNum}</td><td><span class="sev-badge ${issue.severity}">${issue.severity}</span></td><td class="mono">${esc(issue.rule_id)}</td><td>${esc(issue.summary)}</td></tr>`;
+    });
+  });
+  thtml += '</tbody></table>';
+  tableEl.innerHTML = rowNum ? thtml : '';
+
+  let anyVisible = false;
+  SEVERITY_ORDER.forEach(sev => {
+    const items = grouped[sev];
+    if (!items.length) return;
+    anyVisible = true;
+
+    const section = document.createElement("div");
+    section.className = "severity-group";
+    section.innerHTML = `<h2>${sev} (${items.length})</h2>`;
+
+    items.forEach(({issue, idx, key, status}) => {
+      const card = document.createElement("div");
+      card.className = `card severity-${issue.severity} status-${status}`;
+      card.innerHTML = buildCard(issue, key, status);
+      section.appendChild(card);
+
+      card.querySelector(".toggle-details").addEventListener("click", function() {
+        const det = card.querySelector(".card-details");
+        det.classList.toggle("open");
+        this.textContent = det.classList.contains("open") ? "Hide details" : "Show details";
+      });
+
+      card.querySelectorAll(".actions button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          statuses[key] = btn.dataset.status;
+          saveStatuses(statuses);
+          render();
+        });
+      });
+    });
+
+    container.appendChild(section);
+  });
+
+  if (!anyVisible) container.innerHTML = '<div class="empty">No findings match the current filters.</div>';
+}
+
+function buildCard(issue, key, status) {
+  let details = "";
+  if (issue.description) details += `<dt>Description</dt><dd>${esc(issue.description)}</dd>`;
+  if (issue.component_id && issue.component_id.length) details += `<dt>Components</dt><dd>${issue.component_id.map(esc).join(", ")}</dd>`;
+  if (issue.net_id && issue.net_id.length) details += `<dt>Nets</dt><dd>${issue.net_id.map(esc).join(", ")}</dd>`;
+  if (issue.recommended_actions && issue.recommended_actions.length) details += `<dt>Recommended Actions</dt><dd><ul>${issue.recommended_actions.map(a => "<li>" + esc(a) + "</li>").join("")}</ul></dd>`;
+  if (issue.kb_references && issue.kb_references.length) details += `<dt>KB References</dt><dd>${issue.kb_references.map(esc).join(", ")}</dd>`;
+
+  const hasDetails = details.length > 0;
+
+  return `<div class="card-header">
+    <span class="badge ${issue.severity}">${issue.severity}</span>
+    <span class="rule-id">${esc(issue.rule_id)}</span>
+    <span class="domain-tag">${esc(issue.domain)}</span>
+    <div class="actions">
+      <button data-status="Open" class="${status === 'Open' ? 'active-Open' : ''}">Open</button>
+      <button data-status="Accept" class="${status === 'Accept' ? 'active-Accept' : ''}">Accept</button>
+      <button data-status="Ignore" class="${status === 'Ignore' ? 'active-Ignore' : ''}">Ignore</button>
+    </div>
+  </div>
+  <div class="card-summary">${esc(issue.summary)}</div>
+  ${hasDetails ? '<button class="toggle-details">Show details</button>' : ''}
+  <dl class="card-details">${details}</dl>`;
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function exportSummary() {
+  let lines = [`ThomsonLint Review Summary � ${FINDINGS_DATA.project_name}`, `Date: ${FINDINGS_DATA.review_date || "N/A"}`, ""];
+  SEVERITY_ORDER.forEach(sev => {
+    const items = FINDINGS_DATA.issues.map((issue, idx) => ({issue, key: findingKey(issue, idx)})).filter(x => x.issue.severity === sev);
+    if (!items.length) return;
+    lines.push(`## ${sev}`);
+    items.forEach(({issue, key}) => {
+      const st = getStatus(key);
+      lines.push(`[${st}] ${issue.rule_id}: ${issue.summary}`);
+    });
+    lines.push("");
+  });
+  navigator.clipboard.writeText(lines.join("\n")).then(() => alert("Summary copied to clipboard."), () => alert("Failed to copy to clipboard."));
+}
+
+init();
+</script>
+</body>
+</html>
