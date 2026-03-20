@@ -23,3 +23,7 @@ conversation.txt
 # Fusion Electronics exports
 exports/*
 !exports/.gitkeep
+
+# KiCad local settings
+kicad/*
+.claude/settings.json
