@@ -7,9 +7,14 @@ git clone git@github.com:holla2040/ThomsonLint.git
 cd ThomsonLint
 ```
 
+**Fusion Electronics:**
 1. Open your circuit design in Fusion Electronics
 2. Run `tools/fusion-electronics-export.ulp` in both the schematic and board layout workspace
-3. Run Claude Code and enter this prompt:
+
+**KiCad 9:**
+1. Run `python tools/kicad-export.py path/to/MyProject.kicad_pro`
+
+**Then** run Claude Code and enter this prompt:
 
 **`Read the review instructions in review_instructions.txt, then review my design using the exported JSON files and datasheets in exports/. Please begin the review.`**
 
@@ -54,9 +59,11 @@ The repository is organized as follows:
 -   `ontology/ontology.json`: The core machine-readable ontology of hardware design rules.
 -   `examples/examples.json`: A set of example hardware design scenarios for training and testing.
 -   `docs/AI_Hardware_Design_Review_KnowledgeBase.md`: A detailed, human-readable knowledge base.
+-   `docs/KiCad_Review_Guide.md`: Usage guide for the KiCad 9 export workflow.
 -   `docs/Multi_Agent_Reasoning_Spec.md`: A specification for a conceptual multi-agent reasoning architecture.
 -   `tests/ontology_schema.json`: A JSON schema for validating `ontology/ontology.json`.
 -   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
+-   `tools/kicad-export.py`: Standalone Python script to export KiCad 9 designs for review.
 -   `validate_json.py`: A Python script for validating the JSON files against their schemas.
 -   `gen_context.sh`: A bash script to generate the review instructions file.
 -   `review_instructions.txt`: Pre-generated file containing the complete knowledge base and AI instructions. Ready to use immediately.
@@ -141,7 +148,7 @@ Claude Code can perform ThomsonLint reviews directly from the terminal, reading 
 
 - Claude Code CLI installed and authenticated
 - ThomsonLint repository cloned locally
-- Fusion Electronics design exported (see below)
+- Design exported from Fusion Electronics or KiCad 9 (see below)
 
 ### Step 1: Export Design Data from Fusion Electronics
 
@@ -179,6 +186,20 @@ RUN fusion-electronics-export.ulp -o C:\Users\me\Desktop\my-export.json
 If `-o` is used without a filename, the script will display an error dialog and exit.
 
 The schematic export contains components, nets, pin connectivity, and signal analysis. The board export contains placement coordinates, trace routing, board geometry, and layout analysis.
+
+### Step 1 (Alternative): Export Design Data from KiCad 9
+
+If your design is in KiCad 9, use the standalone Python exporter instead:
+
+```bash
+python tools/kicad-export.py path/to/MyProject.kicad_pro
+```
+
+This generates both `-thomson-export-sch.json` and `-thomson-export-brd.json` files in the `exports/` directory. Use `--output <dir>` to specify a different output directory.
+
+The script parses KiCad 9 S-expression files directly — no KiCad installation required, Python 3.6+ standard library only. It handles hierarchical multi-sheet schematics, reads net classes from the project file, and classifies signals (power, ground, clock, differential pairs with interface detection for USB, CAN, Ethernet, HDMI, LVDS, PCIe, SATA, MIPI).
+
+See [`docs/KiCad_Review_Guide.md`](docs/KiCad_Review_Guide.md) for full details on the KiCad export format.
 
 ### Step 2: Add Datasheets and Supporting Files
 
