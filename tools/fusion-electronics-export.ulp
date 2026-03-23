@@ -12,9 +12,10 @@ string Version = "1.0";
        "<b>Usage:</b>"
        "<blockquote>run fusion-electronics-export [-d]<br>"
        "run fusion-electronics-export -o filename<br>"
-       "<b>Flags:</b>"
-       "<blockquote>d: show a file dialog to specify the output file<br>"
-       "o: specify the output filename directly on the command line<br></blockquote>"
+       "<b>Flags:</b><br>"
+       "d: show a file dialog to specify the output file<br>"
+       "o: specify the output filename directly on the command line<br>"
+       "</blockquote>"
        "The output path and filename is automatically calculated if no options are specified:<br>"
        "Schematics: &lt;repo&gt;/exports/&lt;design_name&gt;-thomson-export-sch.json"
        "<br>"
@@ -28,13 +29,11 @@ string Version = "1.0";
 // Run from schematic editor for -sch.json, from board editor for -brd.json.
 // ============================================================================
 
-enum { false, true };
-enum {osWindows,osLinux,osMacintosh};
 int isSchematic = 0;
 int isBoard = 0;
 string FileName;
-int useFileDialog = false;
-int useProvidedFilename = false;
+int useFileDialog = 0;
+int useProvidedFilename = 0;
 
 if (schematic) isSchematic = 1;
 if (board) isBoard = 1;
@@ -45,22 +44,28 @@ if (!isSchematic && !isBoard) {
 }
 
 // parse command line arguments
-if (argc>1)
-{
-	string flag = argv[1];
-	if (flag[0] == '-')
-	{
-		if (strlen(flag) != 2) exit(1);
-    switch (flag[1])
-    {
-      case 'd' : // use default output path
-        useFileDialog = true; 
+if (argc > 1) {
+  string flag = argv[1];
+  if (flag[0] == '-') {
+    if (strlen(flag) != 2) {
+      dlgMessageBox("ERROR: Invalid flag: " + flag);
+      exit(1);
+    }
+    switch (flag[1]) {
+      case 'd' : // show file dialog
+        useFileDialog = 1;
         break;
       case 'o' : // use output filename provided as command line argument
-        if (argc < 3) exit(2);
+        if (argc < 3 || strlen(argv[2]) == 0) {
+          dlgMessageBox("ERROR: -o requires a non-empty filename argument.");
+          exit(2);
+        }
         FileName = argv[2];
-        useProvidedFilename = true;
+        useProvidedFilename = 1;
         break;
+      default:
+        dlgMessageBox("ERROR: Unknown flag: " + flag);
+        exit(1);
     }
   }
 }
@@ -134,8 +139,12 @@ if (useFileDialog) {
   if (FileName == "") {
     exit(0);
   }
-  FileName += FileSuffix;
-} else if (useProvidedFilename == false) {
+  // Only append suffix if the user didn't already include it
+  if (strlen(FileName) < strlen(FileSuffix) ||
+      strsub(FileName, strlen(FileName) - strlen(FileSuffix)) != FileSuffix) {
+    FileName += FileSuffix;
+  }
+} else if (useProvidedFilename == 0) {
   string FileSuffix = isSchematic ? "-thomson-export-sch.json" : "-thomson-export-brd.json";
   string ulpDir = extractDir(argv[0]);   // <clone>/tools
   string repoDir = extractDir(ulpDir);    // <clone>
@@ -158,6 +167,7 @@ if (useFileDialog) {
     }
   }
   
+  if (strlen(designName) == 0) designName = "unknown";
   FileName = exportDir + "/" + designName + FileSuffix;
 }
 
