@@ -332,6 +332,7 @@ Silkscreen provides visual reference for assembly and debugging. Poor silkscreen
 - Always mark pin 1 and component polarity.
 - Include reference designators near components.
 - Align text consistently across the board.
+- **Label every connector with its function** (`DFT_CONN_LABEL_001`): Reference designators like "J3" do not tell a technician what a connector is for. Add a descriptive label (e.g., "USB", "SWD", "CAN BUS", "PWR 12V") adjacent to each connector. This reduces assembly errors, speeds up debugging, and is essential for field service.
 
 ### G.6 Panelization
 
@@ -525,6 +526,27 @@ When behavior is uncertain, add options to tune circuit:
 - Optional parallel capacitor footprints
 - Jumper options for configuration selection
 - DNP positions for alternate component values
+
+### H.6 I2C Address Documentation
+
+I2C address conflicts are a common source of board bring-up failures. Because multiple devices share a two-wire bus, every device must have a unique slave address. Documenting addresses on the schematic makes conflicts visible during review rather than during debugging.
+
+**Address Annotation (`SCH_I2C_001`):**
+- Annotate the hex I2C address (e.g., `0x48`) near each I2C device symbol on the schematic
+- Document the state of address configuration pins (A0, A1, A2) that produce the annotated address
+- For fixed-address devices, note the address and reference the datasheet
+- Include both the 7-bit address and the read/write byte values if the design documentation uses 8-bit notation
+
+**Address Conflict Detection (`SCH_I2C_002`):**
+- Verify that no two devices on the same I2C bus share the same slave address
+- Common conflict scenarios:
+  - Two identical sensors (e.g., two TMP102 temperature sensors) with address pins in the same configuration
+  - A fixed-address device (e.g., EEPROM at `0x50`) conflicting with another device that defaults to the same address
+  - Forgetting that some devices occupy multiple addresses (e.g., 16-bit I/O expanders using two consecutive addresses)
+- Mitigation strategies:
+  - Use address configuration pins to assign unique addresses
+  - Use an I2C multiplexer (e.g., TCA9548A) to create separate bus segments
+  - Assign devices to different I2C bus instances on the MCU
 
 ---
 ## Appendix I: Component Selection Guidelines

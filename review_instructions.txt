@@ -831,6 +831,33 @@ Here is the knowledge base you must use for the review:
       ]
     },
     {
+      "id": "DFT_CONN_LABEL_001",
+      "name": "Connectors must have descriptive silkscreen labels",
+      "domain": ["DFT"],
+      "description": "Every connector on the PCB must have a descriptive silkscreen label indicating its function (e.g., 'USB', 'JTAG', 'MOTOR1', 'PWR IN') in addition to the standard reference designator (J1, J2, etc.). Reference designators alone do not convey purpose and slow down assembly, debugging, and field service.",
+      "applies_to": ["Connector"],
+      "conditions": {
+        "connector_functional_label_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "wrong_cable_connected",
+        "slow_debugging",
+        "assembly_errors",
+        "field_service_difficulty"
+      ],
+      "recommended_actions": [
+        "Add a descriptive silkscreen label near each connector indicating its function (e.g., 'USB', 'SWD', 'CAN', 'PWR 12V').",
+        "Place the label adjacent to the connector, readable without rotating the board.",
+        "Use consistent naming that matches the schematic net or interface name.",
+        "Ensure the label does not overlap pads or solder mask openings."
+      ],
+      "kb_references": [
+        "Section 2.5 DFT & DFM",
+        "Appendix G.5: Silkscreen Guidelines"
+      ]
+    },
+    {
       "id": "MS_RST_001",
       "name": "Output lines must have defined state during reset",
       "domain": ["MixedSignal"],
@@ -882,6 +909,59 @@ Here is the knowledge base you must use for the review:
       ],
       "kb_references": [
         "Section 1.8 Design for Test & Bring-Up"
+      ]
+    },
+    {
+      "id": "SCH_I2C_001",
+      "name": "I2C device address must be annotated on schematic",
+      "domain": ["Schematic", "MixedSignal"],
+      "description": "Every I2C slave device on the schematic should have its 7-bit (or 10-bit) address annotated as a text note near the component symbol, including the state of any address configuration pins (A0, A1, A2).",
+      "applies_to": ["I2C"],
+      "conditions": {
+        "i2c_device_present": true,
+        "i2c_address_annotation_missing": true
+      },
+      "default_severity": "Minor",
+      "failure_modes": [
+        "address_confusion_during_bringup",
+        "difficult_debugging",
+        "undocumented_address_pin_configuration",
+        "address_conflict_undetected"
+      ],
+      "recommended_actions": [
+        "Annotate the I2C slave address in hex (e.g., '0x48') near each I2C device on the schematic.",
+        "Document the address pin (A0/A1/A2) logic states that produce the annotated address.",
+        "If the device has a fixed address, note it and reference the datasheet.",
+        "For devices with configurable addresses, show which address is selected by the pin strapping."
+      ],
+      "kb_references": [
+        "Appendix H.6: I2C Address Documentation"
+      ]
+    },
+    {
+      "id": "SCH_I2C_002",
+      "name": "I2C bus must not have address conflicts",
+      "domain": ["Schematic", "MixedSignal"],
+      "description": "No two devices on the same I2C bus may share the same slave address. Address conflicts cause bus contention and communication failures that are difficult to diagnose.",
+      "applies_to": ["I2C"],
+      "conditions": {
+        "i2c_bus_has_duplicate_addresses": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "bus_contention",
+        "communication_failure",
+        "data_corruption",
+        "intermittent_operation"
+      ],
+      "recommended_actions": [
+        "Verify that every I2C device on each bus has a unique slave address.",
+        "Use address configuration pins (A0/A1/A2) to differentiate identical devices.",
+        "If more identical devices are needed than address pins allow, use an I2C multiplexer (e.g., TCA9548A).",
+        "Consider separating devices onto different I2C buses if address space is exhausted."
+      ],
+      "kb_references": [
+        "Appendix H.6: I2C Address Documentation"
       ]
     },
     {
@@ -4643,6 +4723,7 @@ Silkscreen provides visual reference for assembly and debugging. Poor silkscreen
 - Always mark pin 1 and component polarity.
 - Include reference designators near components.
 - Align text consistently across the board.
+- **Label every connector with its function** (`DFT_CONN_LABEL_001`): Reference designators like "J3" do not tell a technician what a connector is for. Add a descriptive label (e.g., "USB", "SWD", "CAN BUS", "PWR 12V") adjacent to each connector. This reduces assembly errors, speeds up debugging, and is essential for field service.
 
 ### G.6 Panelization
 
@@ -4836,6 +4917,27 @@ When behavior is uncertain, add options to tune circuit:
 - Optional parallel capacitor footprints
 - Jumper options for configuration selection
 - DNP positions for alternate component values
+
+### H.6 I2C Address Documentation
+
+I2C address conflicts are a common source of board bring-up failures. Because multiple devices share a two-wire bus, every device must have a unique slave address. Documenting addresses on the schematic makes conflicts visible during review rather than during debugging.
+
+**Address Annotation (`SCH_I2C_001`):**
+- Annotate the hex I2C address (e.g., `0x48`) near each I2C device symbol on the schematic
+- Document the state of address configuration pins (A0, A1, A2) that produce the annotated address
+- For fixed-address devices, note the address and reference the datasheet
+- Include both the 7-bit address and the read/write byte values if the design documentation uses 8-bit notation
+
+**Address Conflict Detection (`SCH_I2C_002`):**
+- Verify that no two devices on the same I2C bus share the same slave address
+- Common conflict scenarios:
+  - Two identical sensors (e.g., two TMP102 temperature sensors) with address pins in the same configuration
+  - A fixed-address device (e.g., EEPROM at `0x50`) conflicting with another device that defaults to the same address
+  - Forgetting that some devices occupy multiple addresses (e.g., 16-bit I/O expanders using two consecutive addresses)
+- Mitigation strategies:
+  - Use address configuration pins to assign unique addresses
+  - Use an I2C multiplexer (e.g., TCA9548A) to create separate bus segments
+  - Assign devices to different I2C bus instances on the MCU
 
 ---
 ## Appendix I: Component Selection Guidelines
