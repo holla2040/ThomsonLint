@@ -181,11 +181,10 @@ def is_power_net(name):
     upper = name.upper()
     # Substring patterns (matches inside larger names like VIN_RAW, +12V_OUT).
     for pat in ('VCC', 'VDD', 'VBUS', 'VIN', 'VOUT', 'VBAT', 'VSYS',
-                'VPLUS', 'VAUX', 'VPP', 'VANALOG', 'AVCC', 'AVDD', 'DVCC',
-                'DVDD',
-                '+3V', '+5V', '+12V', '+24V', '+14V', '+15V', '+28V',
+                'VPLUS', 'VAUX', 'VPP', 'VANALOG',
+                '+3V', '+5V', '+12V', '+24V', '+14V', '+15V', '+28V', '+48V',
                 '-5V', '-12V', '-15V',
-                '3V3', '5V0', '1V8', '1V2', '2V5', '14V0', 'PWR'):
+                '3V3', '5V0', '1V8', '1V2', '2V5', '14V0', '48V0', 'POE', 'PWR'):
         if pat in upper:
             return True
     return False
@@ -255,18 +254,19 @@ def guess_voltage(name):
     if '-5V' in upper: return "-5V"
     if '-12V' in upper: return "-12V"
     if '-15V' in upper: return "-15V"
-    # Numeric-encoded positive rails.
+    # Numeric-encoded positive rails. Higher voltages are tested before lower
+    # ones so that e.g. '+15V' isn't shadowed by the '5V' substring check.
+    if '48V' in upper or 'POE' in upper: return "48V"
+    if '28V' in upper: return "28V"   # aircraft 28V bus
+    if '24V' in upper: return "24V"
+    if '15V' in upper: return "15V"
+    if '14V' in upper: return "14V"   # aircraft / 12V-nominal automotive bus
+    if '12V' in upper: return "12V"
     if '3V3' in upper or '3.3' in upper or '+3V3' in upper: return "3.3V"
     if '5V0' in upper or '+5V' in upper or '5V' in upper: return "5V"
     if '1V8' in upper or '1.8' in upper: return "1.8V"
     if '1V2' in upper or '1.2' in upper: return "1.2V"
     if '2V5' in upper or '2.5' in upper: return "2.5V"
-    if '14V' in upper: return "14V"   # aircraft / 12V-nominal automotive bus
-    if '15V' in upper: return "15V"
-    if '28V' in upper: return "28V"   # aircraft 28V bus
-    if '12V' in upper: return "12V"
-    if '24V' in upper: return "24V"
-    if '48V' in upper or 'POE' in upper: return "48V"
     # Standardized USB / battery rails.
     if 'VBUS' in upper: return "5V"
     if 'VBAT' in upper: return "3.7V"
