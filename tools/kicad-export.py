@@ -527,13 +527,14 @@ def parse_board(pcb_path):
     if not isinstance(sexpr, list) or not sexpr:
         return None
 
+    nets, name_to_id = _extract_nets(sexpr)
     result = {
         'layers': _extract_layers(sexpr),
-        'nets': _extract_nets(sexpr),
-        'footprints': _extract_footprints(sexpr),
-        'segments': _extract_segments(sexpr),
-        'vias': _extract_vias(sexpr),
-        'zones': _extract_zones(sexpr),
+        'nets': nets,
+        'footprints': _extract_footprints(sexpr, name_to_id),
+        'segments': _extract_segments(sexpr, name_to_id),
+        'vias': _extract_vias(sexpr, name_to_id),
+        'zones': _extract_zones(sexpr, name_to_id),
         'board_outline': _extract_board_outline(sexpr),
         'properties': _extract_board_properties(sexpr),
     }
@@ -556,18 +557,80 @@ def _extract_layers(sexpr):
     return copper_layers
 
 
+def _resolve_net(net_node, name_to_id):
+    """Return (net_id, net_name) handling KiCad 9 and KiCad 10 formats.
+
+    KiCad 9: pads/tracks/vias/zones use (net N "Name") -- explicit integer
+        ID + name.
+    KiCad 10: same nodes use (net "Name") only -- the ID is no longer
+        carried inline, so we look it up in the synthesized name_to_id map
+        produced by _extract_nets.
+    """
+    if not net_node or len(net_node) < 2:
+        return 0, ""
+    # KiCad 9: 3 elements (net id "name") with int id and string name.
+    if len(net_node) >= 3 and isinstance(net_node[2], str):
+        net_id = _to_int(net_node[1])
+        if net_id is not None:
+            return net_id, net_node[2]
+    # KiCad 10: 2 elements (net "name").
+    if isinstance(net_node[1], str):
+        name = net_node[1]
+        return name_to_id.get(name, 0), name
+    return 0, ""
+
+
 def _extract_nets(sexpr):
-    """Extract net definitions: (net N "name")."""
+    """Extract net definitions.  Returns (nets_by_id, name_to_id).
+
+    KiCad 9 (.kicad_pcb up to v20231120): top-level (net N "name") blocks
+        give the canonical id<->name map.
+    KiCad 10 (v20260206 onward): no top-level (net N "name") -- net names
+        only appear inline as (net "name") inside pads/segments/vias/zones.
+        We synthesize sequential ids (starting at 1) by discovery order so
+        downstream code keeps working unchanged.
+    """
     nets = {}
+    name_to_id = {}
+
+    # KiCad 9 path -- look for top-level (net <int> "name").
     for child in sexpr:
-        if isinstance(child, list) and len(child) >= 3 and child[0] == 'net':
+        if (isinstance(child, list) and len(child) >= 3 and child[0] == 'net'
+                and isinstance(child[2], str)):
             net_id = _to_int(child[1])
-            net_name = child[2]
-            nets[net_id] = net_name
-    return nets
+            if net_id is not None:
+                net_name = child[2]
+                nets[net_id] = net_name
+                if net_name:
+                    name_to_id[net_name] = net_id
+
+    if nets:
+        return nets, name_to_id
+
+    # KiCad 10 path -- walk the tree for inline (net "name") refs.
+    next_id = [1]   # box for closure mutation
+
+    def _walk(node):
+        if not isinstance(node, list):
+            return
+        if (len(node) == 2 and node[0] == 'net' and isinstance(node[1], str)):
+            name = node[1]
+            if name and name not in name_to_id:
+                name_to_id[name] = next_id[0]
+                nets[next_id[0]] = name
+                next_id[0] += 1
+            return
+        for child in node:
+            _walk(child)
+
+    _walk(sexpr)
+    # Match KiCad's convention: id 0 is the unconnected/no-net.
+    if 0 not in nets:
+        nets[0] = ""
+    return nets, name_to_id
 
 
-def _extract_footprints(sexpr):
+def _extract_footprints(sexpr, name_to_id=None):
     """Extract footprint data including pad positions."""
     footprints = []
     for node in sexpr:
@@ -595,13 +658,9 @@ def _extract_footprints(sexpr):
 
             pad_x, pad_y, _ = get_at(pad_node)
 
-            # Get net assignment
+            # Get net assignment (handles both KiCad 9 and KiCad 10 formats).
             pad_net_node = find_one(pad_node, 'net')
-            pad_net_id = 0
-            pad_net_name = ""
-            if pad_net_node and len(pad_net_node) >= 3:
-                pad_net_id = _to_int(pad_net_node[1])
-                pad_net_name = pad_net_node[2]
+            pad_net_id, pad_net_name = _resolve_net(pad_net_node, name_to_id or {})
 
             # Get drill size for THT pads
             drill = 0.0
@@ -652,7 +711,7 @@ def _pad_absolute_position(fp_x, fp_y, fp_rot, fp_layer, pad_rx, pad_ry):
     return abs_x, abs_y
 
 
-def _extract_segments(sexpr):
+def _extract_segments(sexpr, name_to_id=None):
     """Extract trace segments."""
     segments = []
     for node in sexpr:
@@ -667,7 +726,7 @@ def _extract_segments(sexpr):
         layer_node = find_one(node, 'layer')
         layer = layer_node[1] if layer_node and len(layer_node) > 1 else ""
         net_node = find_one(node, 'net')
-        net_id = _to_int(net_node[1]) if net_node and len(net_node) > 1 else 0
+        net_id, _ = _resolve_net(net_node, name_to_id or {})
 
         length = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
 
@@ -682,7 +741,7 @@ def _extract_segments(sexpr):
     return segments
 
 
-def _extract_vias(sexpr):
+def _extract_vias(sexpr, name_to_id=None):
     """Extract vias."""
     vias = []
     for node in sexpr:
@@ -694,7 +753,7 @@ def _extract_vias(sexpr):
         drill_node = find_one(node, 'drill')
         drill = _to_float(drill_node[1]) if drill_node and len(drill_node) > 1 else 0.25
         net_node = find_one(node, 'net')
-        net_id = _to_int(net_node[1]) if net_node and len(net_node) > 1 else 0
+        net_id, _ = _resolve_net(net_node, name_to_id or {})
         layers_node = find_one(node, 'layers')
         layers = [layers_node[i] for i in range(1, len(layers_node))] if layers_node else []
 
@@ -709,16 +768,16 @@ def _extract_vias(sexpr):
     return vias
 
 
-def _extract_zones(sexpr):
+def _extract_zones(sexpr, name_to_id=None):
     """Extract copper zones/fills."""
     zones = []
     for node in sexpr:
         if not isinstance(node, list) or not node or node[0] != 'zone':
             continue
         net_node = find_one(node, 'net')
-        net_id = _to_int(net_node[1]) if net_node and len(net_node) > 1 else 0
+        net_id, resolved_name = _resolve_net(net_node, name_to_id or {})
         net_name_node = find_one(node, 'net_name')
-        net_name = net_name_node[1] if net_name_node and len(net_name_node) > 1 else ""
+        net_name = net_name_node[1] if net_name_node and len(net_name_node) > 1 else resolved_name
 
         # Layer(s) - can be single (layer "X") or multiple (layers "X" "Y" ...)
         layer_node = find_one(node, 'layer')
