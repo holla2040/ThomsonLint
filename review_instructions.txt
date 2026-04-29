@@ -4119,11 +4119,12 @@ Here is the knowledge base you must use for the review:
     },
     {
       "id": "AERO_VIB_001",
-      "name": "High-mass components in vibration environments need mechanical retention beyond solder fillet",
+      "name": "High-mass components in aerospace vibration environments need mechanical retention beyond solder fillet",
       "domain": ["Aerospace", "Mechanical"],
-      "description": "Components with mass above approximately 3 g (relays, radial electrolytics, large inductors, modules, crystals on tall lead frames) cannot be retained by their PCB lead solder fillets alone in aerobatic, rotorcraft, or other high-vibration environments. Sustained loading at +6/-3 G with 10-500 Hz random vibration per IEC 60068-2-6 will fatigue-crack the leads at the solder meniscus within hundreds of hours, leading to lead fracture, intermittent contact, and foreign-object debris. Retention can be RTV staking (most common), epoxy potting, mechanical clamps, or straps depending on component mass and serviceability.",
+      "description": "Components with mass above approximately 3 g (relays, radial electrolytics, large inductors, modules, crystals on tall lead frames) cannot be retained by their PCB lead solder fillets alone in aerobatic, rotorcraft, or other high-vibration aerospace environments. Sustained loading at +6/-3 G with 10-500 Hz random vibration per IEC 60068-2-6 will fatigue-crack the leads at the solder meniscus within hundreds of hours, leading to lead fracture, intermittent contact, and foreign-object debris. Retention can be RTV staking (most common), epoxy potting, mechanical clamps, or straps depending on component mass and serviceability. Tooling note: component mass and vibration profile are not currently emitted by tools/kicad-export.py and must be sourced from datasheets or supplied as user metadata; this rule is a checklist-for-human item rather than auto-detected. Automotive, rail, and industrial vibration profiles are out of scope here -- the aerospace_application gate prevents this rule from labeling those domains.",
       "applies_to": ["Capacitor", "Inductor", "Relay", "Crystal", "Module", "Connector"],
       "conditions": {
+        "aerospace_application": true,
         "vibration_environment": true,
         "component_mass_over_3g": true,
         "mechanical_retention_present": false
@@ -4144,14 +4145,14 @@ Here is the knowledge base you must use for the review:
         "Document retention specification in fab work instructions so the board is built consistently."
       ],
       "kb_references": [
-        "Appendix K: Aerospace & Aviation Design"
+        "Appendix K.1: Mechanical retention beyond solder fillet"
       ]
     },
     {
       "id": "AERO_SLD_001",
       "name": "Class 3 aerospace assemblies must use eutectic Sn63/Pb37 solder, not SAC305 lead-free",
       "domain": ["Aerospace", "Component"],
-      "description": "Lead-free SAC305 solder fails two requirements common to Class 3 aerospace and military assemblies: pure-tin surfaces grow conductive whiskers that bridge fine-pitch features over time (especially at low humidity / high mechanical stress), and SAC305 joints are significantly more brittle than Sn63/Pb37 under deep thermal cycling and at temperatures below -40 °C. IPC J-STD-001 Class 3 (and the Class 3 / Pb-bearing exemption) explicitly retains leaded solder for high-reliability applications. Component lead finishes should be matte tin per JESD201 Class 1A or hot-air-leveled tin-lead, not pure tin reflow. The Vishay 'E3' / 'M3' suffix and equivalent vendor designators meet the JESD201 whisker-test requirement.",
+      "description": "Lead-free SAC305 solder fails two requirements common to Class 3 aerospace and military assemblies: pure-tin surfaces grow conductive whiskers that bridge fine-pitch features over time (especially at low humidity / high mechanical stress), and SAC305 joints are significantly more brittle than Sn63/Pb37 under deep thermal cycling and at temperatures below -40 °C. IPC J-STD-001 Class 3 (and the Class 3 / Pb-bearing exemption) explicitly retains leaded solder for high-reliability applications. Component lead finishes should be matte tin per JESD201 Class 1A or hot-air-leveled tin-lead, not pure tin reflow. The Vishay 'E3' / 'M3' suffix and equivalent vendor designators meet the JESD201 whisker-test requirement. Tooling note: solder alloy, IPC class, and lead-finish whisker qualification are not extractable from tools/kicad-export.py -- these conditions must be sourced from the BOM, fab notes, and component datasheets, and are checklist-for-human items rather than auto-detected.",
       "applies_to": ["BOM", "Process"],
       "conditions": {
         "ipc_class_3": true,
@@ -4174,7 +4175,7 @@ Here is the knowledge base you must use for the review:
         "Hand-rework procedures must use leaded solder; mixed-alloy joints fail unpredictably."
       ],
       "kb_references": [
-        "Appendix K: Aerospace & Aviation Design"
+        "Appendix K.2: Leaded solder for Class 3"
       ]
     },
     {
@@ -4202,7 +4203,7 @@ Here is the knowledge base you must use for the review:
         "Verify the FET's Vds rating exceeds the worst-case input transient AFTER input TVS clamping (see AERO_TVS_001)."
       ],
       "kb_references": [
-        "Appendix K: Aerospace & Aviation Design"
+        "Appendix K.3: Reverse-polarity protection on aircraft DC bus"
       ]
     },
     {
@@ -4231,14 +4232,14 @@ Here is the knowledge base you must use for the review:
         "Reference: ISO 7637-2 pulse 5b (load dump); DO-160 §16-22 (lightning-induced transients); LM74700-Q1 datasheet figure 8-1 (typical application with TVS)."
       ],
       "kb_references": [
-        "Appendix K: Aerospace & Aviation Design"
+        "Appendix K.4: ISO 7637-2 / DO-160 input clamping"
       ]
     },
     {
       "id": "AERO_TERM_001",
       "name": "Field-serviceable terminals must be masked during conformal coating",
       "domain": ["Aerospace", "DFT"],
-      "description": "Conformal coatings (HumiSeal 1A33A, MG Chemicals 422C, etc.) are insulating polymers that prevent any subsequent solder or screw-clamp joint from making electrical contact. Aerospace boards routinely combine blanket-coated assemblies with field-serviceable terminals (turret posts, screw blocks, battery clips, harness connectors) that must remain bare. Failing to mask these terminals during the coat step produces a board that physically cannot be wired in the field — the ring-lug or screw clamp seats on insulating polymer instead of brass. Re-work requires localized solvent stripping or hot-air burn-through, which often damages adjacent passives. The mask must also cover NPTH mounting holes whose copper inner annulus contacts the chassis screw head metal-to-metal.",
+      "description": "Conformal coatings (HumiSeal 1A33A, MG Chemicals 422C, etc.) are insulating polymers that prevent any subsequent solder or screw-clamp joint from making electrical contact. Aerospace boards routinely combine blanket-coated assemblies with field-serviceable terminals (turret posts, screw blocks, battery clips, harness connectors) that must remain bare. Failing to mask these terminals during the coat step produces a board that physically cannot be wired in the field — the ring-lug or screw clamp seats on insulating polymer instead of brass. Re-work requires localized solvent stripping or hot-air burn-through, which often damages adjacent passives. The mask must also cover NPTH mounting holes whose copper inner annulus contacts the chassis screw head metal-to-metal. Tooling note: conformal-coating spec, masking documentation, and identification of user-serviceable terminals are process metadata not currently extractable from tools/kicad-export.py; these conditions must be supplied from the fab work order and assembly drawing, and are checklist-for-human items rather than auto-detected.",
       "applies_to": ["Connector", "Process"],
       "conditions": {
         "conformal_coating_specified": true,
@@ -4261,16 +4262,17 @@ Here is the knowledge base you must use for the review:
         "Confirm the masking specification with the assembly house in writing — many CMs default to blanket coat without masking unless explicitly told."
       ],
       "kb_references": [
-        "Appendix K: Aerospace & Aviation Design"
+        "Appendix K.5: Conformal-coat masking"
       ]
     },
     {
       "id": "AERO_GND_001",
-      "name": "Single-point chassis ground; NPTH mount holes need copper keepout on all layers",
+      "name": "Aircraft DC boards: single-point chassis ground; NPTH mount holes need copper keepout on all layers",
       "domain": ["Aerospace", "EMC"],
-      "description": "Aircraft DC systems are not earth-referenced like terrestrial AC equipment — chassis ground is a return path for the airframe DC negative bus only, and is intentionally separated from PCB signal ground except at one designated bonding point (typically the GND turret terminal). When PCB GND is also connected to the chassis through unkeepout copper around mounting holes, the mount screws become parallel ground returns. Each screw is then a low-quality intermittent contact (vibration loosens it, corrosion increases its impedance) carrying portions of the digital and motor return currents. The result is unpredictable ground potential differences across the board, EMI radiated from the loops formed by the multiple paths, and accelerated screw corrosion (galvanic action between the brass screw and the tin-plated PCB copper). The fix is a copper keepout zone around every NPTH mounting hole on every layer, sized larger than the screw head + lockwasher OD, so the chassis screw hardware never contacts board copper.",
+      "description": "Aircraft DC systems are not earth-referenced like terrestrial AC equipment — chassis ground is a return path for the airframe DC negative bus only, and is intentionally separated from PCB signal ground except at one designated bonding point (typically the GND turret terminal). When PCB GND is also connected to the chassis through unkeepout copper around mounting holes, the mount screws become parallel ground returns. Each screw is then a low-quality intermittent contact (vibration loosens it, corrosion increases its impedance) carrying portions of the digital and motor return currents. The result is unpredictable ground potential differences across the board, EMI radiated from the loops formed by the multiple paths, and accelerated screw corrosion (galvanic action between the brass screw and the tin-plated PCB copper). The fix is a copper keepout zone around every NPTH mounting hole on every layer, sized larger than the screw head + lockwasher OD, so the chassis screw hardware never contacts board copper. This rule is gated on aerospace_application -- terrestrial AC-grounded equipment (servers, industrial PLCs, automotive ECUs) intentionally bonds chassis to signal GND through mount holes for ESD return and is out of scope. Tooling note: aerospace context, chassis-mount style, and copper-keepout geometry around NPTH holes are not currently emitted by tools/kicad-export.py; these conditions are supplied as user metadata or visually inspected from the layout.",
       "applies_to": ["Board", "Mechanical"],
       "conditions": {
+        "aerospace_application": true,
         "metal_chassis_mount": true,
         "mount_hole_copper_keepout_present": false
       },
@@ -4290,7 +4292,7 @@ Here is the knowledge base you must use for the review:
         "Document the single-point bond requirement in the install drawing so a maintainer doesn't accidentally bond multiple mount points."
       ],
       "kb_references": [
-        "Appendix K: Aerospace & Aviation Design"
+        "Appendix K.6: Single-point chassis ground"
       ]
     }
   ]
@@ -4611,6 +4613,60 @@ Here is the knowledge base you must use for the review:
           "Specify HumiSeal MSK1500 latex peelable mask or Kapton dots cut to ~10 mm diameter for each turret.",
           "Photograph mask coverage on the first article before coat and after demask; retain for traceability.",
           "Verify post-coat that brass posts are bright and uncoated -- any visible film is a reject."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_004",
+      "title": "Class 3 environmental sensor built with SAC305 and pure-tin lead finishes",
+      "description": "A NASA Class 3 environmental sensor module is fabricated by a CM that defaults to lead-free SAC305 reflow. The BOM specifies Yageo RC0603 resistors with the standard 'F' (pure-tin) lead-finish suffix instead of the JESD201 Class 1A whisker-tested 'E3' suffix. Within ~18 months at +25 C / 5 % RH bench storage, conductive tin whiskers grow on the 0402 termination plating and bridge the adjacent 8 mil traces of an analog-front-end network, intermittently shorting the ADC reference. Because the failure is intermittent and humidity-dependent, it survives initial QA and ships. After deep thermal cycling in service, several SAC305 0805 cap joints also crack at the heel fillet, producing additional intermittent opens. Both failures trace back to the wrong solder alloy and lead-finish for a Class 3 aerospace assembly.",
+      "triggered_rules": ["AERO_SLD_001"],
+      "expected_issue": {
+        "rule_id": "AERO_SLD_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "Class 3 aerospace board built with SAC305 and pure-tin lead finishes; tin whiskers and SAC305 brittle fracture are predictable in-service failures.",
+        "recommended_actions": [
+          "Re-spec the fab order to Sn63/Pb37 eutectic solder, citing the IPC J-STD-001 Class 3 Pb-bearing exemption.",
+          "Replace pure-tin parts on the BOM with JESD201 Class 1A whisker-tested equivalents (Vishay -E3 / -M3, ON Semi -G3, etc.).",
+          "Reject any CM 'equivalent' substitution that re-introduces SAC305 or pure-tin finishes -- this is not a cost optimization decision for Class 3 service.",
+          "Confirm hand-rework procedures use leaded solder; mixed-alloy joints fail unpredictably and are non-conformant."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_005",
+      "title": "28V aircraft cabin-light controller with bare Schottky reverse-polarity protection",
+      "description": "A 28 V aircraft cabin-light controller uses a single SS54 Schottky in series with VIN_RAW as its only reverse-polarity protection. At 5 A continuous load the Schottky drops ~0.5 V (~2.5 W heat) and requires a 10 cm^2 copper pour plus a small heatsink to stay below 100 C in an engine-cowl install. After ~600 hours of service a maintenance crew jumps the aircraft from a battery cart with reversed alligator clips for ~30 seconds while diagnosing a separate fault. The Schottky open-fails (its die fuses internally) and the controller goes dark mid-flight on the next leg. Root cause is the choice of a passive Schottky -- with an open-failure mode and high steady-state dissipation -- where an ideal-diode controller plus low-Rds(on) N-FET would have survived the polarity event and dissipated <0.1 W in normal operation.",
+      "triggered_rules": ["AERO_RPP_001"],
+      "expected_issue": {
+        "rule_id": "AERO_RPP_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "28 V aircraft DC-bus board has only a bare SS54 Schottky for reverse-polarity protection; first reverse-jumper event open-fails the diode and disables the load.",
+        "recommended_actions": [
+          "Replace the SS54 with an ideal-diode controller (TI LM74700-Q1, AEC-Q100 grade 1) driving an external low-Rds(on) AEC-Q101 N-FET (e.g. IPB180N04S4-H0 D2PAK).",
+          "Tie the controller's EN pin to the ANODE per its datasheet typical-application figure for always-on operation; add a 10 kOhm gate-source resistor.",
+          "Verify the FET's Vds rating exceeds the worst-case 28 V bus transient AFTER input TVS clamping (see AERO_TVS_001).",
+          "Remove the heatsink and copper pour previously dedicated to the Schottky -- ideal-diode topology dissipates <0.1 W and frees board area."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_006",
+      "title": "Aerobatic-aircraft monitor with chassis-bonded NPTH mount holes",
+      "description": "A piston-aircraft auxiliary-power monitor is mounted to a stainless-steel chassis with four #8-32 screws through NPTH mounting holes. The board has no copper keepout around the mount holes -- the inner copper of every layer extends to within 1 mm of the hole barrel, contacting the screw head and lockwasher metal-to-metal. Each mount screw becomes a parallel ground return path between the airframe chassis and PCB GND, in addition to the dedicated GND turret terminal. After ~200 hours of +6/-3 G aerobatic vibration, two of the four screws develop intermittent contact (vibration backs them off relative to the lockwasher seating), and galvanic corrosion between the brass screws and tin-plated PCB copper accelerates impedance growth on a third. The unpredictable parallel ground paths cause ground-bounce that randomly resets the monitor's microcontroller and produces EMI radiating from the loops formed between mount points.",
+      "triggered_rules": ["AERO_GND_001"],
+      "expected_issue": {
+        "rule_id": "AERO_GND_001",
+        "severity": "Major",
+        "domain": "Aerospace",
+        "summary": "Aircraft DC-bus monitor has four chassis-bonded NPTH mount holes with no copper keepout; mount screws form intermittent parallel ground returns alongside the dedicated GND turret.",
+        "recommended_actions": [
+          "Add a 4 mm radius copper keepout zone around every NPTH mounting hole on every copper layer (F.Cu, In1.Cu, In2.Cu, B.Cu).",
+          "Confirm the dedicated GND turret terminal remains the single chassis-to-PCB-GND bonding point; document this in the install drawing so maintenance does not bond additional mount points.",
+          "Replace brass-on-tin hardware with stainless screws + stainless lockwashers + nylock nuts to remove the galvanic-corrosion path.",
+          "Specify mount-screw torque per FAA AC 43.13-1B Ch 11 Table 11-7 (#8-32 = 12 in-lb)."
         ]
       }
     }
