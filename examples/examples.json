@@ -257,6 +257,60 @@
           "Minimize trace length and loop area between the connector, ESD diode, and ground."
         ]
       }
+    },
+    {
+      "id": "EX_AERO_001",
+      "title": "Unstaked relays on aerobatic-aircraft board",
+      "description": "An RV-class aerobatic-aircraft auxiliary controller has two TE V23086 SPDT relays (~4 g each) and an 8 mm-diameter Nichicon polymer-hybrid bulk cap (~3 g). The components are reflowed normally but no RTV staking, mechanical clamp, or strap is specified in the work instructions. The board is rated for +6/-3 G aerobatic loading with 10-500 Hz random vibration per IEC 60068-2-6. Within ~200 flight hours, lead fatigue cracks the K1 coil leads at the solder meniscus. Detection: lead fatigue striations visible on cross-section; intermittent FILL operation in flight followed by complete relay failure.",
+      "triggered_rules": ["AERO_VIB_001"],
+      "expected_issue": {
+        "rule_id": "AERO_VIB_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "Relays K1, K2 (>3 g) and bulk cap C1 (>3 g) lack mechanical retention beyond solder fillet on a vibration-rated board.",
+        "recommended_actions": [
+          "Apply RTV silicone (MG Chemicals 4226A or Dow CV-2566) at two opposite leads of K1, K2, and at the C1 body-to-PCB joint, per AS-50881 Method 13.",
+          "Allow 24 hours ambient cure before any vibration testing or shipment.",
+          "Update the work-instruction document to call out staking with a photograph of the expected fillet size (>= 0.040 inch / ~1 mm bead).",
+          "Confirm RTV cure timing relative to conformal coating schedule -- coat AFTER stake is fully cured, never before."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_002",
+      "title": "LM74700-Q1 aircraft-bus controller without input TVS",
+      "description": "A 14 V aircraft-bus LED controller uses an LM74700-Q1 ideal-diode controller driving an N-FET for reverse-polarity protection. The schematic does not include any input-side transient-voltage suppressor on the VIN_RAW net before the LM74700 ANODE pin. The aircraft has a 60 A belt-driven alternator. On the first hard alternator-disconnect event (a contactor opens with the field still energized), VIN_RAW spikes to ~85 V for ~250 ms. The LM74700-Q1 ANODE absolute-max is 80 V; the IC is destroyed, taking the FET with it. The board is 100 % field-failure on the FIRST load-dump event, not a wear-out mode. The LM74700 datasheet figure 8-1 (typical application) shows the required input TVS but the designer treated it as optional.",
+      "triggered_rules": ["AERO_TVS_001"],
+      "expected_issue": {
+        "rule_id": "AERO_TVS_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "LM74700-Q1 ANODE pin (80 V abs-max) lacks ISO 7637-2 / DO-160 input TVS clamping; alternator field-decay will destroy the IC.",
+        "recommended_actions": [
+          "Add a Vishay SMCJ18CA-E3/57T (1500 W, 18 V working, 29.2 V clamp at 51.7 A) bidirectional TVS on VIN_RAW within 50 mm of the LM74700 ANODE pin.",
+          "Verify clamp voltage Vc(IPP) is below 80 V with at least 1.5x derating margin.",
+          "Stitch the TVS GND pad to the In1.Cu GND plane with at least 2 dedicated vias (single thermal-relief via adds inductance that lifts the clamp voltage during fast transients).",
+          "Reference: ISO 7637-2 pulse 5b (load dump); DO-160 section 16-22 (lightning-induced transients); LM74700-Q1 datasheet section 8.2.1 typical application figure."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_003",
+      "title": "Conformal-coated board with un-masked turret terminals",
+      "description": "An aircraft auxiliary controller is conformal-coated with HumiSeal 1A33A polyurethane per IPC-CC-830B Class 1 acceptance. The board has six Keystone 8191-X turret terminals for #8 ring-lug field wiring (VIN+, GND, FILL, SMOKE, OUT_A, OUT_B). The fab work-order specifies blanket coat with no masking instructions. After coating, every turret post is encapsulated in a thin polyurethane film that prevents the ring-lug clamp from making electrical contact when the installer torques the #8-32 nut down on the brass post. The board ships, the installer wires it, the smoke pump never runs because the FILL/SMOKE signals are insulated from the cockpit switches. Diagnosis takes a multimeter and visible-light inspection of the post. Field rework requires localized solvent stripping (acetone burn-through), which often damages adjacent components.",
+      "triggered_rules": ["AERO_TERM_001"],
+      "expected_issue": {
+        "rule_id": "AERO_TERM_001",
+        "severity": "Major",
+        "domain": "Aerospace",
+        "summary": "All six J* turret posts will be encapsulated by HumiSeal 1A33A during blanket coat; no masking specified in work order.",
+        "recommended_actions": [
+          "Add a 'MASK during coat' line item to the fab work-order listing every J* turret post and every NPTH mounting hole.",
+          "Specify HumiSeal MSK1500 latex peelable mask or Kapton dots cut to ~10 mm diameter for each turret.",
+          "Photograph mask coverage on the first article before coat and after demask; retain for traceability.",
+          "Verify post-coat that brass posts are bright and uncoated -- any visible film is a reject."
+        ]
+      }
     }
   ]
 }
