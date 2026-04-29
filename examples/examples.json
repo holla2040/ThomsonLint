@@ -257,6 +257,114 @@
           "Minimize trace length and loop area between the connector, ESD diode, and ground."
         ]
       }
+    },
+    {
+      "id": "EX_AERO_001",
+      "title": "Unstaked relays on aerobatic-aircraft board",
+      "description": "An RV-class aerobatic-aircraft auxiliary controller has two TE V23086 SPDT relays (~4 g each) and an 8 mm-diameter Nichicon polymer-hybrid bulk cap (~3 g). The components are reflowed normally but no RTV staking, mechanical clamp, or strap is specified in the work instructions. The board is rated for +6/-3 G aerobatic loading with 10-500 Hz random vibration per IEC 60068-2-6. Within ~200 flight hours, lead fatigue cracks the K1 coil leads at the solder meniscus. Detection: lead fatigue striations visible on cross-section; intermittent FILL operation in flight followed by complete relay failure.",
+      "triggered_rules": ["AERO_VIB_001"],
+      "expected_issue": {
+        "rule_id": "AERO_VIB_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "Relays K1, K2 (>3 g) and bulk cap C1 (>3 g) lack mechanical retention beyond solder fillet on a vibration-rated board.",
+        "recommended_actions": [
+          "Apply RTV silicone (MG Chemicals 4226A or Dow CV-2566) at two opposite leads of K1, K2, and at the C1 body-to-PCB joint, per AS-50881 Method 13.",
+          "Allow 24 hours ambient cure before any vibration testing or shipment.",
+          "Update the work-instruction document to call out staking with a photograph of the expected fillet size (>= 0.040 inch / ~1 mm bead).",
+          "Confirm RTV cure timing relative to conformal coating schedule -- coat AFTER stake is fully cured, never before."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_002",
+      "title": "LM74700-Q1 aircraft-bus controller without input TVS",
+      "description": "A 14 V aircraft-bus LED controller uses an LM74700-Q1 ideal-diode controller driving an N-FET for reverse-polarity protection. The schematic does not include any input-side transient-voltage suppressor on the VIN_RAW net before the LM74700 ANODE pin. The aircraft has a 60 A belt-driven alternator. On the first hard alternator-disconnect event (a contactor opens with the field still energized), VIN_RAW spikes to ~85 V for ~250 ms. The LM74700-Q1 ANODE absolute-max is 80 V; the IC is destroyed, taking the FET with it. The board is 100 % field-failure on the FIRST load-dump event, not a wear-out mode. The LM74700 datasheet figure 8-1 (typical application) shows the required input TVS but the designer treated it as optional.",
+      "triggered_rules": ["AERO_TVS_001"],
+      "expected_issue": {
+        "rule_id": "AERO_TVS_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "LM74700-Q1 ANODE pin (80 V abs-max) lacks ISO 7637-2 / DO-160 input TVS clamping; alternator field-decay will destroy the IC.",
+        "recommended_actions": [
+          "Add a Vishay SMCJ18CA-E3/57T (1500 W, 18 V working, 29.2 V clamp at 51.7 A) bidirectional TVS on VIN_RAW within 50 mm of the LM74700 ANODE pin.",
+          "Verify clamp voltage Vc(IPP) is below 80 V with at least 1.5x derating margin.",
+          "Stitch the TVS GND pad to the In1.Cu GND plane with at least 2 dedicated vias (single thermal-relief via adds inductance that lifts the clamp voltage during fast transients).",
+          "Reference: ISO 7637-2 pulse 5b (load dump); DO-160 section 16-22 (lightning-induced transients); LM74700-Q1 datasheet section 8.2.1 typical application figure."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_003",
+      "title": "Conformal-coated board with un-masked turret terminals",
+      "description": "An aircraft auxiliary controller is conformal-coated with HumiSeal 1A33A polyurethane per IPC-CC-830B Class 1 acceptance. The board has six Keystone 8191-X turret terminals for #8 ring-lug field wiring (VIN+, GND, FILL, SMOKE, OUT_A, OUT_B). The fab work-order specifies blanket coat with no masking instructions. After coating, every turret post is encapsulated in a thin polyurethane film that prevents the ring-lug clamp from making electrical contact when the installer torques the #8-32 nut down on the brass post. The board ships, the installer wires it, the smoke pump never runs because the FILL/SMOKE signals are insulated from the cockpit switches. Diagnosis takes a multimeter and visible-light inspection of the post. Field rework requires localized solvent stripping (acetone burn-through), which often damages adjacent components.",
+      "triggered_rules": ["AERO_TERM_001"],
+      "expected_issue": {
+        "rule_id": "AERO_TERM_001",
+        "severity": "Major",
+        "domain": "Aerospace",
+        "summary": "All six J* turret posts will be encapsulated by HumiSeal 1A33A during blanket coat; no masking specified in work order.",
+        "recommended_actions": [
+          "Add a 'MASK during coat' line item to the fab work-order listing every J* turret post and every NPTH mounting hole.",
+          "Specify HumiSeal MSK1500 latex peelable mask or Kapton dots cut to ~10 mm diameter for each turret.",
+          "Photograph mask coverage on the first article before coat and after demask; retain for traceability.",
+          "Verify post-coat that brass posts are bright and uncoated -- any visible film is a reject."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_004",
+      "title": "Class 3 environmental sensor built with SAC305 and pure-tin lead finishes",
+      "description": "A NASA Class 3 environmental sensor module is fabricated by a CM that defaults to lead-free SAC305 reflow. The BOM specifies Yageo RC0603 resistors with the standard 'F' (pure-tin) lead-finish suffix instead of the JESD201 Class 1A whisker-tested 'E3' suffix. Within ~18 months at +25 C / 5 % RH bench storage, conductive tin whiskers grow on the 0402 termination plating and bridge the adjacent 8 mil traces of an analog-front-end network, intermittently shorting the ADC reference. Because the failure is intermittent and humidity-dependent, it survives initial QA and ships. After deep thermal cycling in service, several SAC305 0805 cap joints also crack at the heel fillet, producing additional intermittent opens. Both failures trace back to the wrong solder alloy and lead-finish for a Class 3 aerospace assembly.",
+      "triggered_rules": ["AERO_SLD_001"],
+      "expected_issue": {
+        "rule_id": "AERO_SLD_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "Class 3 aerospace board built with SAC305 and pure-tin lead finishes; tin whiskers and SAC305 brittle fracture are predictable in-service failures.",
+        "recommended_actions": [
+          "Re-spec the fab order to Sn63/Pb37 eutectic solder, citing the IPC J-STD-001 Class 3 Pb-bearing exemption.",
+          "Replace pure-tin parts on the BOM with JESD201 Class 1A whisker-tested equivalents (Vishay -E3 / -M3, ON Semi -G3, etc.).",
+          "Reject any CM 'equivalent' substitution that re-introduces SAC305 or pure-tin finishes -- this is not a cost optimization decision for Class 3 service.",
+          "Confirm hand-rework procedures use leaded solder; mixed-alloy joints fail unpredictably and are non-conformant."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_005",
+      "title": "28V aircraft cabin-light controller with bare Schottky reverse-polarity protection",
+      "description": "A 28 V aircraft cabin-light controller uses a single SS54 Schottky in series with VIN_RAW as its only reverse-polarity protection. At 5 A continuous load the Schottky drops ~0.5 V (~2.5 W heat) and requires a 10 cm^2 copper pour plus a small heatsink to stay below 100 C in an engine-cowl install. After ~600 hours of service a maintenance crew jumps the aircraft from a battery cart with reversed alligator clips for ~30 seconds while diagnosing a separate fault. The Schottky open-fails (its die fuses internally) and the controller goes dark mid-flight on the next leg. Root cause is the choice of a passive Schottky -- with an open-failure mode and high steady-state dissipation -- where an ideal-diode controller plus low-Rds(on) N-FET would have survived the polarity event and dissipated <0.1 W in normal operation.",
+      "triggered_rules": ["AERO_RPP_001"],
+      "expected_issue": {
+        "rule_id": "AERO_RPP_001",
+        "severity": "Critical",
+        "domain": "Aerospace",
+        "summary": "28 V aircraft DC-bus board has only a bare SS54 Schottky for reverse-polarity protection; first reverse-jumper event open-fails the diode and disables the load.",
+        "recommended_actions": [
+          "Replace the SS54 with an ideal-diode controller (TI LM74700-Q1, AEC-Q100 grade 1) driving an external low-Rds(on) AEC-Q101 N-FET (e.g. IPB180N04S4-H0 D2PAK).",
+          "Tie the controller's EN pin to the ANODE per its datasheet typical-application figure for always-on operation; add a 10 kOhm gate-source resistor.",
+          "Verify the FET's Vds rating exceeds the worst-case 28 V bus transient AFTER input TVS clamping (see AERO_TVS_001).",
+          "Remove the heatsink and copper pour previously dedicated to the Schottky -- ideal-diode topology dissipates <0.1 W and frees board area."
+        ]
+      }
+    },
+    {
+      "id": "EX_AERO_006",
+      "title": "Aerobatic-aircraft monitor with chassis-bonded NPTH mount holes",
+      "description": "A piston-aircraft auxiliary-power monitor is mounted to a stainless-steel chassis with four #8-32 screws through NPTH mounting holes. The board has no copper keepout around the mount holes -- the inner copper of every layer extends to within 1 mm of the hole barrel, contacting the screw head and lockwasher metal-to-metal. Each mount screw becomes a parallel ground return path between the airframe chassis and PCB GND, in addition to the dedicated GND turret terminal. After ~200 hours of +6/-3 G aerobatic vibration, two of the four screws develop intermittent contact (vibration backs them off relative to the lockwasher seating), and galvanic corrosion between the brass screws and tin-plated PCB copper accelerates impedance growth on a third. The unpredictable parallel ground paths cause ground-bounce that randomly resets the monitor's microcontroller and produces EMI radiating from the loops formed between mount points.",
+      "triggered_rules": ["AERO_GND_001"],
+      "expected_issue": {
+        "rule_id": "AERO_GND_001",
+        "severity": "Major",
+        "domain": "Aerospace",
+        "summary": "Aircraft DC-bus monitor has four chassis-bonded NPTH mount holes with no copper keepout; mount screws form intermittent parallel ground returns alongside the dedicated GND turret.",
+        "recommended_actions": [
+          "Add a 4 mm radius copper keepout zone around every NPTH mounting hole on every copper layer (F.Cu, In1.Cu, In2.Cu, B.Cu).",
+          "Confirm the dedicated GND turret terminal remains the single chassis-to-PCB-GND bonding point; document this in the install drawing so maintenance does not bond additional mount points.",
+          "Replace brass-on-tin hardware with stainless screws + stainless lockwashers + nylock nuts to remove the galvanic-corrosion path.",
+          "Specify mount-screw torque per FAA AC 43.13-1B Ch 11 Table 11-7 (#8-32 = 12 in-lb)."
+        ]
+      }
     }
   ]
 }
