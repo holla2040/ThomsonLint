@@ -179,9 +179,12 @@ def _get_scalar(node, tag):
 
 def is_power_net(name):
     upper = name.upper()
+    # Substring patterns (matches inside larger names like VIN_RAW, +12V_OUT).
     for pat in ('VCC', 'VDD', 'VBUS', 'VIN', 'VOUT', 'VBAT', 'VSYS',
-                '+3V', '+5V', '+12V', '+24V', '3V3', '5V0', '1V8', '1V2',
-                '2V5', 'PWR'):
+                'VPLUS', 'VAUX', 'VPP', 'VANALOG',
+                '+3V', '+5V', '+12V', '+24V', '+14V', '+15V', '+28V', '+48V',
+                '-5V', '-12V', '-15V',
+                '3V3', '5V0', '1V8', '1V2', '2V5', '14V0', '48V0', 'POE', 'PWR'):
         if pat in upper:
             return True
     return False
@@ -238,14 +241,33 @@ def find_diff_partner(name):
 
 
 def guess_voltage(name):
+    """Best-effort voltage inference from net name.
+
+    Only encodes voltages whose value is unambiguous from the name itself.
+    Generic supply names (VCC, VDD, VPLUS, VIN_RAW, VAUX, etc.) intentionally
+    return "" because their voltage depends on board context that the
+    schematic doesn't carry -- callers should treat empty-string as
+    "voltage not inferrable from net name" rather than "not a power net."
+    """
     upper = name.upper()
+    # Negative rails first (so '-5V' isn't shadowed by '5V' substring later).
+    if '-5V' in upper: return "-5V"
+    if '-12V' in upper: return "-12V"
+    if '-15V' in upper: return "-15V"
+    # Numeric-encoded positive rails. Higher voltages are tested before lower
+    # ones so that e.g. '+15V' isn't shadowed by the '5V' substring check.
+    if '48V' in upper or 'POE' in upper: return "48V"
+    if '28V' in upper: return "28V"   # aircraft 28V bus
+    if '24V' in upper: return "24V"
+    if '15V' in upper: return "15V"
+    if '14V' in upper: return "14V"   # aircraft / 12V-nominal automotive bus
+    if '12V' in upper: return "12V"
     if '3V3' in upper or '3.3' in upper or '+3V3' in upper: return "3.3V"
     if '5V0' in upper or '+5V' in upper or '5V' in upper: return "5V"
     if '1V8' in upper or '1.8' in upper: return "1.8V"
     if '1V2' in upper or '1.2' in upper: return "1.2V"
     if '2V5' in upper or '2.5' in upper: return "2.5V"
-    if '12V' in upper: return "12V"
-    if '24V' in upper: return "24V"
+    # Standardized USB / battery rails.
     if 'VBUS' in upper: return "5V"
     if 'VBAT' in upper: return "3.7V"
     return ""
@@ -456,6 +478,10 @@ def parse_schematic(sch_path, project_dir=None, project_name=""):
                             'value': value,
                             'package': package,
                             'device': lib_id.split(':')[-1] if ':' in lib_id else lib_id,
+                            # Full library:symbol identifier so downstream
+                            # code can look up pin electrical types in
+                            # lib_pin_types (which is keyed by full lib_id).
+                            'lib_id': lib_id,
                             'description': description,
                             'populate': populate,
                             'type': comp_type,
@@ -1171,10 +1197,14 @@ def build_board_json(board_data):
 
 def build_net_pin_mapping(board_data, sch_components):
     """Build net_id -> [(ref, pad_name, lib_id)] from PCB footprint pads."""
-    # Map ref -> lib_id from schematic components
+    # Map ref -> full lib_id (e.g. "Local:TURRET") from schematic components
+    # so the pin_direction lookup in build_schematic_json -- which keys
+    # lib_pin_types by full lib_id -- actually hits.  Older builds passed
+    # comp['device'] (the short name), which never matched lib_pin_types
+    # and left every pin's direction stuck on UNK.
     ref_to_lib = {}
     for comp in sch_components:
-        ref_to_lib[comp['ref']] = comp['device']
+        ref_to_lib[comp['ref']] = comp.get('lib_id', comp.get('device', ''))
 
     net_pins = defaultdict(list)
     for fp in board_data['footprints']:
