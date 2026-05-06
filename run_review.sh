@@ -115,8 +115,7 @@ claude --print "${PROMPT}" \
     > exports/.claude.output
 
 # Generate a summary of findings on the console.
-cat exports/.claude.output | \
-    jq -r 'if .result then .result else (. | tostring) end'
+jq -r 'if .result then .result else (. | tostring) end' exports/.claude.output
 
 # Sometimes Claude doesn't generate the output! So do it ourselves from the raw output
 # Fix for:
