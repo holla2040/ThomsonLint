@@ -14,8 +14,8 @@
 #
 #  What the script does, in order:
 #
-#  1. gen_context.sh > review_instructions.txt — regenerates the knowledge base prompt (as required by CLAUDE.md pre-commit rule)
-#  2. Auto-detects project name from any exports/*-thomson-export-sch.json file
+#  1. Auto-detects project name from any exports/*-thomson-export-sch.json file
+#  2. gen_context.sh > review_instructions.txt — regenerates the knowledge base prompt (as required by CLAUDE.md pre-commit rule)
 #  3. claude --print in non-interactive mode, with:
 #    - --allowedTools Read,Write — Claude will read the schematic and board outputs, as well as write the findings into `exports/`.
 #    - --output-format json — structured JSON envelope for reliable parsing
@@ -23,9 +23,8 @@
 #    - --no-session-persistence — no session saved to disk (clean for automation)
 #    - --max-budget-usd 3 — hard spend cap per run
 #  4. jq -r '.result' — extracts Claude's response from the CLI JSON envelope
-#  5. Python one-liner — strips any accidental markdown fences, validates JSON parses, pretty-prints
-#  6. python3 validate_json.py — validates against schema
-#  7. python3 tools/gen_report.py — generates the HTML report
+#  5. python3 validate_json.py — validates against schema
+#  6. python3 tools/gen_report.py — generates the HTML report
 #
 #  Tunable via environment variables:
 #
