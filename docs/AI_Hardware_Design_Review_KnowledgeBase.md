@@ -915,3 +915,14 @@ A red/black supply pair, plus distinct colors on signal and motor pairs, makes w
 | **ISO 7637-2 pulse 5b** | Load-dump transient (automotive, applies to piston aircraft) | K.4 |
 | **DO-160 §16-22** | Lightning-induced transients | K.4 |
 | **AEC-Q100 / Q101 / Q200** | Automotive component qualification | underlies all AERO_RPP / AERO_TVS hardware choices |
+
+## Appendix L — Vendor Part Number Conventions
+
+This appendix documents conventions for identifying and looking up component part numbers from common distributors. The reviewer uses these to fetch datasheets and product details deterministically (see Step 3, "Self-Retrieve Missing Datasheets").
+
+### L.1 LCSC
+
+- **Format:** Prefix `C` followed by 4–8 digits (examples: `C84817`, `C52717`, `C49166832`).
+- **Lookup URL:** `https://www.lcsc.com/product-detail/<LCSC_PN>.html`
+- **Where they appear:** BOM exports, schematic component attributes, and `exports/*.pdf` datasheet filenames in this repo (e.g., `Boost - MT3608 - SOT23-6 - C84817.pdf`).
+- **Notes:** The LCSC product page links to the manufacturer datasheet PDF and shows package, parametric data, and stock. Fetch the product page first; follow the datasheet link only if parametric data on the page is insufficient.
