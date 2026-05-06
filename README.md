@@ -16,7 +16,7 @@ cd ThomsonLint
 
 **Then** run Claude Code from the repo root and enter this prompt:
 
-**`Read ontology/ontology.json, examples/examples.json, and docs/AI_Hardware_Design_Review_KnowledgeBase.md, then review my design using the exported JSON files and datasheets in exports/. Please begin the review.`**
+**`Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`**
 
 (A pre-generated `review_instructions.txt` bundle is also produced for single-file upload to web AIs like Gemini, but that workflow has not been tested — see §5 "Running a Review".)
 
@@ -91,7 +91,11 @@ This section is for the person reviewing a board. It lists the exact inputs the 
 
 ### Inputs
 
-Framework knowledge (read by the AI):
+Reviewer procedure (read by the AI):
+
+-   `docs/REVIEWER_INSTRUCTIONS.md` — the single source of truth for how a review is conducted. Step 1 of this file directs the AI to read the framework knowledge base.
+
+Framework knowledge (loaded by the AI per Step 1 of `REVIEWER_INSTRUCTIONS.md`):
 
 -   `ontology/ontology.json` — rule definitions
 -   `examples/examples.json` — worked examples mapped to rules
@@ -105,9 +109,9 @@ Design data (drop into `exports/`):
 
 ### Driver path (tested)
 
-**Claude Code (CLI, in this repo)** — read the source files directly. From the repo root run `claude` and enter:
+**Claude Code (CLI, in this repo)** — read the reviewer instructions directly. From the repo root run `claude` and enter:
 
-> `Read ontology/ontology.json, examples/examples.json, and docs/AI_Hardware_Design_Review_KnowledgeBase.md, then review my design using the exported JSON files and datasheets in exports/. Please begin the review.`
+> `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`
 
 See §7 "Using with Claude Code" for the full step-by-step.
 
@@ -272,14 +276,14 @@ claude
 
 Then prompt Claude to perform the review:
 
-**`Read ontology/ontology.json, examples/examples.json, and docs/AI_Hardware_Design_Review_KnowledgeBase.md, then review my design using the exported JSON files and datasheets in exports/. Please begin the review.`**
+**`Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`**
 
 Claude Code will:
-1. Read the ThomsonLint ontology, examples, and knowledge base directly from the source files
-2. Read both the `-sch.json` and `-brd.json` export files from `exports/`
+1. Read `docs/REVIEWER_INSTRUCTIONS.md` (the reviewer procedure) and, per its Step 1, the framework knowledge base — `ontology/ontology.json`, `examples/examples.json`, and `docs/AI_Hardware_Design_Review_KnowledgeBase.md`
+2. Read the `-sch.json` and `-brd.json` exports plus any datasheet PDFs from `exports/`
 3. Perform a pre-review assessment and ask for any missing information (datasheets, stackup details, etc.)
-4. Run through all applicable rules and report issues with specific `rule_id` citations
-5. Write findings to `exports/<project>-findings.json` and run `tools/gen_report.py` to produce `exports/<project>-review.html` (see §5 "Outputs")
+4. Run through all applicable rules and report issues with specific `rule_id` citations, recording datasheet verifications in `verified_checks[]` and design-wide analyses in `cross_checks[]`
+5. Write findings to `exports/<project>-findings.json`, run `tools/validate_findings.py` (mandatory coverage gate), and produce `exports/<project>-review.html` via `tools/gen_report.py` (see §5 "Outputs")
 
 It is also possible to run this whole process automatically on a UNIX or UNIX-Like operating system
 by running the `run_review.sh` script:

@@ -42,16 +42,16 @@ Takes a findings JSON file (see `tests/findings_schema.json` for the schema; `te
 
 ## Reviewer Paths
 
-Claude Code is the tested reviewer driver. A second path exists for single-file-upload web AIs but has not been validated.
+Claude Code is the tested reviewer driver. A second path exists for single-file-upload web AIs but has not been validated. Both paths consume one source of truth: `docs/REVIEWER_INSTRUCTIONS.md`.
 
-- **Claude Code (CLI, in this repo) — tested.** Read the source files directly:
+- **Claude Code (CLI, in this repo) — tested.** The user prompts the agent to read `docs/REVIEWER_INSTRUCTIONS.md` and follow it. Step 1 of that file then directs the agent to load the framework knowledge base from:
   - `ontology/ontology.json`
   - `examples/examples.json`
   - `docs/AI_Hardware_Design_Review_KnowledgeBase.md`
 
   Do **not** read `review_instructions.txt` from Claude Code. The bundle (~260KB / 5700 lines) is intended for single-file upload to a web AI and exceeds Claude Code's per-file `Read` limit. The source files are the truth; the bundle is a concatenation of them.
 
-- **Web AI with single-file upload (Gemini, Claude.ai, ChatGPT, etc.) — untested.** The `review_instructions.txt` bundle is produced by `gen_context.sh` from the same three source files. The maintainers have not validated this path; treat as experimental.
+- **Web AI with single-file upload (Gemini, Claude.ai, ChatGPT, etc.) — untested.** The `review_instructions.txt` bundle is produced by `gen_context.sh`, which concatenates `docs/REVIEWER_INSTRUCTIONS.md` with the three knowledge base files. The maintainers have not validated this path; treat as experimental.
 
 The reviewer-facing flow (inputs, outputs, prompts) is documented in README.md §5 "Running a Review".
 
