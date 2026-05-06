@@ -94,8 +94,18 @@ claude --print "${PROMPT}" \
     --max-budget-usd "${MAX_BUDGET}" \
     > exports/.claude.output
 
+# Generate a summary of findings on the console.
 cat exports/.claude.output | \
     jq -r 'if .result then .result else (. | tostring) end'
+
+# Sometimes Claude doesn't generate the output! So do it ourselves from the raw output
+# Fix for:
+# - HTML report: not generated (python tools/gen_report.py was blocked for approval;
+#                run it manually with `python tools/gen_report.py exports/<project_name>-findings.json --output exports/`)
+#       Findings : exports/Actuator_Controller-findings.json
+# Not sure why it's blocked, or how to unblock it :(.
+[ ! -e "${FINDINGS}" ] && \
+    jq -r '.structured_output' < exports/.claude.output > "${FINDINGS}"
 
 echo "      Findings : ${FINDINGS}"
 
@@ -104,14 +114,6 @@ echo "[4/5] Validate findings report..."
 python3 validate_json.py
 
 # ── 5. Generate HTML report ──────────────────────────────────────────────────
-# Sometimes Claude doesn't generate the output! So do it ourselves from the raw output
-[ ! -e "${FINDINGS}" ] && jq -r '.structured_output' < exports/.claude.output > "${FINDINGS}"
-
-# Fix for:
-# - HTML report: not generated (python tools/gen_report.py was blocked for approval;
-#                run it manually with `python tools/gen_report.py exports/<project_name>-findings.json --output exports/`)
-#       Findings : exports/Actuator_Controller-findings.json
-# Not sure why it's blocked, or how to unblock it :(.
 echo "[5/5] Generating HTML report..."
 python3 tools/gen_report.py "${FINDINGS}" --output exports/
 
