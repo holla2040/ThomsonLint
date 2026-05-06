@@ -73,7 +73,7 @@ fi
 # ── 1b. Make sure that required commands is in the path ─────────────────────
 missing_cmd=false
 for cmd in jq claude; do
-    if ! which -s "${cmd}"; then
+    if ! which "${cmd}" 2>&1 > /dev/null; then
 	echo "ERROR: Missing command '${cmd}'. Please install and try again."
 	missing_cmd=true
     fi
