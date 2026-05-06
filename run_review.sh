@@ -48,24 +48,31 @@ cd "${SCRIPT_DIR}"
 MODEL="${THOMSONLINT_MODEL:-claude-opus-4-7}"
 MAX_BUDGET="${THOMSONLINT_BUDGET:-3}"
 
-# ── 1. Regenerate review instructions ───────────────────────────────────────
-echo "[1/5] Regenerating review_instructions.txt..."
-./gen_context.sh > review_instructions.txt
-
-# ── 2. Detect project from exports/ ─────────────────────────────────────────
+# ── 1. Detect project from exports/ ─────────────────────────────────────────
 if [[ -n "${1:-}" ]]; then
     PROJECT="${1}"
     SCH="exports/${PROJECT}-thomson-export-sch.json"
     BRD="exports/${PROJECT}-thomson-export-brd.json"
 else
-    SCH="$(ls exports/*-thomson-export-sch.json 2>/dev/null | head -1 || true)"
-    [[ -z "${SCH:-}" ]] && { echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1; }
-    BRD="${SCH/%-sch.json/-brd.json}"
-    PROJECT=$(basename "${SCH}" -thomson-export-sch.json)
+    cnt="$(find exports/*-thomson-export-sch.json 2>/dev/null | wc -l)"
+    if [ "${cnt}" -ge 2 ]; then
+	echo "ERROR: More than one project was found in the exports directory."
+	echo "       Please provide the project name on the command line (first param)."
+	exit 1
+    else
+	SCH="$(ls exports/*-thomson-export-sch.json 2>/dev/null | head -1 || true)"
+	[[ -z "${SCH:-}" ]] && { echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1; }
+	BRD="${SCH/%-sch.json/-brd.json}"
+	PROJECT=$(basename "${SCH}" -thomson-export-sch.json)
+    fi
 fi
 
 [[ -f "${SCH}" ]] || { echo "ERROR: Schematic not found: ${SCH}"; exit 1; }
 [[ -f "${BRD}" ]] || { echo "ERROR: Board file not found: ${BRD}"; exit 1; }
+
+# ── 2. Regenerate review instructions and output base information ───────────
+echo "[1/5] Regenerating review_instructions.txt..."
+./gen_context.sh > review_instructions.txt
 
 REVIEW_DATE="$(date +%Y-%m-%d)"
 FINDINGS="exports/${PROJECT}-findings.json"
