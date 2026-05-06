@@ -41,7 +41,7 @@ If there are more than one project outputs in the directory, then specify it exp
    ./run_review.sh MySpecialProject
    ```
 
-It require the `jq` and `claude` shell commands. To install these on MacOS using `brew`: `brew install jq claude`.
+It require the `jq` and `claude` shell commands. To install these on MacOS using `brew`: `brew install jq claude-code`.
 
 ## 1. Project Overview
 
