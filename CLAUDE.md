@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ThomsonLint is a knowledge and rule framework for AI-assisted hardware design review. It provides structured, machine-readable resources that enable AI models (primarily Gemini) to analyze and identify potential issues in hardware designs (schematics and PCB layouts).
+ThomsonLint is a knowledge and rule framework for AI-assisted hardware design review. It provides structured, machine-readable resources that enable AI models to analyze and identify potential issues in hardware designs (schematics and PCB layouts). The tested driver is Claude Code; a single-file-upload bundle exists for web AIs (e.g., Gemini, Claude.ai, ChatGPT) but that workflow has not been validated.
 
 The framework is named after J.J. Thomson, discoverer of the electron, reflecting its goal of uncovering fundamental issues in hardware designs.
 
@@ -33,6 +33,21 @@ python validate_json.py
 python tools/gen_report.py exports/<project_name>-findings.json [--output exports/]
 ```
 Takes a findings JSON file (see `tests/findings_schema.json` for the schema) and generates a self-contained HTML report at `exports/<project_name>-review.html`. The report provides an interactive checklist where users can triage each finding as Open/Accept/Ignore, with statuses persisted in browser localStorage.
+
+## Reviewer Paths
+
+Claude Code is the tested reviewer driver. A second path exists for single-file-upload web AIs but has not been validated.
+
+- **Claude Code (CLI, in this repo) — tested.** Read the source files directly:
+  - `ontology/ontology.json`
+  - `examples/examples.json`
+  - `docs/AI_Hardware_Design_Review_KnowledgeBase.md`
+
+  Do **not** read `review_instructions.txt` from Claude Code. The bundle (~260KB / 5700 lines) is intended for single-file upload to a web AI and exceeds Claude Code's per-file `Read` limit. The source files are the truth; the bundle is a concatenation of them.
+
+- **Web AI with single-file upload (Gemini, Claude.ai, ChatGPT, etc.) — untested.** The `review_instructions.txt` bundle is produced by `gen_context.sh` from the same three source files. The maintainers have not validated this path; treat as experimental.
+
+The reviewer-facing flow (inputs, outputs, prompts) is documented in README.md §5 "Running a Review".
 
 ## Pre-Commit Requirement
 

@@ -9,7 +9,7 @@ Your task is to follow a multi-step process:
     *   Pinout or functional descriptions for all non-obvious connectors or signals.
 3.  **Self-Retrieve Missing Datasheets:** For any critical ICs or components identified in the design, you MUST first attempt to find and retrieve their datasheets yourself using web search. Search for the exact part number (e.g., "TPS54302 datasheet", "STM32F407 datasheet"). Only after you have exhausted your ability to find the datasheet should you ask the user to provide it. If a component carries an LCSC part number (prefix `C` followed by digits, e.g., `C84817`), fetch its product page directly at `https://www.lcsc.com/product-detail/<LCSC_PN>.html` instead of a generic web search — this is faster and more reliable than search, and the page links to the manufacturer datasheet. See KB Appendix L for vendor part-number conventions.
 4.  **Request Remaining Missing Information:** If critical information is still missing after your own research, ask the user to provide it. List the specific items you need to perform a high-quality review. Do not proceed until you receive this information.
-5.  **Comprehensive Review:** Once you have the necessary information, perform the comprehensive design review based on the final instructions at the end of this document.
+5.  **Comprehensive Review (run to completion):** Once you have the necessary information, perform the comprehensive design review based on the final instructions at the end of this document. Run all steps end-to-end — do NOT stop between steps to ask whether you should continue, dig into datasheets, or generate the report. The deliverable is the findings JSON plus the HTML report; the conversation is a thin wrapper around that deliverable, not the deliverable itself.
 
 ---
 ### KNOWLEDGE BASE START
@@ -5661,6 +5661,23 @@ Before making any recommendations, you MUST correlate and cross-reference ALL pr
 6.  For every potential issue you identify, describe the issue clearly and cite the specific `rule_id` it violates.
 
 7.  When citing issues, reference where the problem is visible (e.g., "visible in board layout image near U3" or "found in schematic source file at net VCC_3V3").
+
+#### Output Discipline (mandatory)
+
+The deliverable of this review is the findings JSON and the HTML report — NOT the chat transcript. Apply these rules throughout the review:
+
+1.  **Run to completion without mid-flow confirmation gates.** Do not pause between steps to ask the user "want me to dig into datasheets?", "want me to write findings.json?", or "should I continue?". Reading datasheets, computing the findings JSON, and generating the HTML report are required steps, not optional ones. The only acceptable mid-flow stop is when a critical input is genuinely unavailable (e.g., a datasheet does not exist online and was not provided by the user) — see Step 4.
+
+2.  **Every fact you extract belongs in the report, not in the chat.** When you read a datasheet to verify a rating, pin assignment, recommended layout, or to perform a calculation, the conclusion goes into the relevant finding's `description` field (or `recommended_actions`). Do NOT paste datasheet excerpts, parametric tables, application-circuit walkthroughs, or page-by-page summaries into the chat. The chat is not the report.
+
+3.  **Chat output during the review is limited to:**
+    *   One-line progress notes (e.g., "Reading 4 datasheets in parallel.")
+    *   The final summary table (severity, rule ID, one-line summary)
+    *   Paths to the generated findings JSON and HTML report
+
+    Do NOT present a triaged "Recommended next steps" / "Block 1 / Block 2 / Block 3" plan in the chat. The HTML report's interactive Open/Accept/Ignore checklist IS the triage tool.
+
+4.  **Findings must be exhaustive.** The goal is a complete report, not a curated shortlist. Include every issue identified — Critical, Major, Minor, and Advisory. If an ontology rule's conditions are met, write a finding. Severity drives the report's sort order and the user's triage; it does not gate inclusion.
 
 #### Structured Findings Output
 8.  After completing your review, you MUST save all findings to a JSON file and generate an HTML report. Follow these steps exactly:

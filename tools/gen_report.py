@@ -52,7 +52,7 @@ header .meta { font-size: .85rem; color: #64748b; margin-top: 4px; }
 .card-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: .85rem; color: #475569; display: none; }
 .card-details.open { display: block; }
 .card-details dt { font-weight: 600; margin-top: 8px; color: #334155; }
-.card-details dd { margin-left: 12px; margin-top: 2px; }
+.card-details dd { margin-left: 12px; margin-top: 2px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: .82rem; }
 .card-details ul { margin-left: 24px; }
 .toggle-details { background: none; border: none; color: #2563eb; cursor: pointer; font-size: .8rem; margin-top: 4px; padding: 0; }
 .toggle-details:hover { text-decoration: underline; }
