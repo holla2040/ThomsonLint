@@ -48,7 +48,7 @@ cd "${SCRIPT_DIR}"
 MODEL="${THOMSONLINT_MODEL:-claude-opus-4-7}"
 MAX_BUDGET="${THOMSONLINT_BUDGET:-3}"
 
-# ── 1. Detect project from exports/ ─────────────────────────────────────────
+# ── 1a. Detect project from exports/ ────────────────────────────────────────
 if [[ -n "${1:-}" ]]; then
     PROJECT="${1}"
     SCH="exports/${PROJECT}-thomson-export-sch.json"
@@ -69,6 +69,18 @@ fi
 
 [[ -f "${SCH}" ]] || { echo "ERROR: Schematic not found: ${SCH}"; exit 1; }
 [[ -f "${BRD}" ]] || { echo "ERROR: Board file not found: ${BRD}"; exit 1; }
+
+# ── 1b. Make sure that required commands is in the path ─────────────────────
+missing_cmd=false
+for cmd in jq claude; do
+    if ! which -s "${cmd}"; then
+	echo "ERROR: Missing command '${cmd}'. Please install and try again."
+	missing_cmd=true
+    fi
+done
+if "${missing_cmd}"; then
+    exit 1
+fi
 
 # ── 2. Regenerate review instructions and output base information ───────────
 echo "[1/5] Regenerating review_instructions.txt..."
