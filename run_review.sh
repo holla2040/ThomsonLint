@@ -54,17 +54,19 @@ if [[ -n "${1:-}" ]]; then
     SCH="exports/${PROJECT}-thomson-export-sch.json"
     BRD="exports/${PROJECT}-thomson-export-brd.json"
 else
-    cnt="$(find exports/*-thomson-export-sch.json 2>/dev/null | wc -l)"
-    if [ "${cnt}" -ge 2 ]; then
-	echo "ERROR: More than one project was found in the exports directory."
-	echo "       Please provide the project name on the command line (first param)."
-	exit 1
-    else
-	SCH="$(ls exports/*-thomson-export-sch.json 2>/dev/null | head -1 || true)"
-	[[ -z "${SCH:-}" ]] && { echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1; }
-	BRD="${SCH/%-sch.json/-brd.json}"
-	PROJECT=$(basename "${SCH}" -thomson-export-sch.json)
-    fi
+    shopt -s nullglob
+    sch_files=(exports/*-thomson-export-sch.json)
+    shopt -u nullglob
+
+    case ${#sch_files[@]} in
+	0) echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1 ;;
+	1) SCH="${sch_files[0]}" ;;
+	*) echo "ERROR: Multiple projects in exports/. Pass the project name as the first argument."; exit 1 ;;
+    esac
+
+    [[ -z "${SCH:-}" ]] && { echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1; }
+    BRD="${SCH/%-sch.json/-brd.json}"
+    PROJECT=$(basename "${SCH}" -thomson-export-sch.json)
 fi
 
 [[ -f "${SCH}" ]] || { echo "ERROR: Schematic not found: ${SCH}"; exit 1; }
