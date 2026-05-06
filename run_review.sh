@@ -58,9 +58,9 @@ else
     shopt -u nullglob
 
     case ${#sch_files[@]} in
-	0) echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1 ;;
-	1) SCH="${sch_files[0]}" ;;
-	*) echo "ERROR: Multiple projects in exports/. Pass the project name as the first argument."; exit 1 ;;
+        0) echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1 ;;
+        1) SCH="${sch_files[0]}" ;;
+        *) echo "ERROR: Multiple projects in exports/. Pass the project name as the first argument."; exit 1 ;;
     esac
 
     [[ -z "${SCH:-}" ]] && { echo "ERROR: No *-thomson-export-sch.json found in exports/"; exit 1; }
@@ -75,8 +75,8 @@ fi
 missing_cmd=false
 for cmd in jq claude; do
     if ! which "${cmd}" 2>&1 > /dev/null; then
-	echo "ERROR: Missing command '${cmd}'. Please install and try again."
-	missing_cmd=true
+        echo "ERROR: Missing command '${cmd}'. Please install and try again."
+        missing_cmd=true
     fi
 done
 if "${missing_cmd}"; then
