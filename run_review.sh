@@ -8,7 +8,7 @@
 #
 # Environment:
 #   THOMSONLINT_MODEL   Claude model to use (default: claude-opus-4-7)
-#   THOMSONLINT_BUDGET  Max spend in USD per run (default: 10)
+#   THOMSONLINT_BUDGET  Max spend in USD per run (default: 3 [dollars])
 #
 # Requirements: claude (Claude Code CLI), python3, jq
 #
@@ -21,7 +21,7 @@
 #    - --output-format json — structured JSON envelope for reliable parsing
 #    - --json-schema $(cat tests/findings_schema.json) — constrains output to exactly the findings schema
 #    - --no-session-persistence — no session saved to disk (clean for automation)
-#    - --max-budget-usd 10 — hard spend cap per run
+#    - --max-budget-usd 3 — hard spend cap per run
 #  4. jq -r '.result' — extracts Claude's response from the CLI JSON envelope
 #  5. Python one-liner — strips any accidental markdown fences, validates JSON parses, pretty-prints
 #  6. python3 validate_json.py — validates against schema
@@ -34,11 +34,11 @@
 #  ├────────────────────┼─────────────────┼────────────────────────────────────────┤
 #  │ THOMSONLINT_MODEL  │ claude-opus-4-7 │ Swap to sonnet for faster/cheaper runs │
 #  ├────────────────────┼─────────────────┼────────────────────────────────────────┤
-#  │ THOMSONLINT_BUDGET │ 10              │ Hard USD cap; run aborts if exceeded   │
+#  │ THOMSONLINT_BUDGET │ 3               │ Hard USD cap; run aborts if exceeded   │
 #  └────────────────────┴─────────────────┴────────────────────────────────────────┘
 #
 #  Example with overrides:
-#  THOMSONLINT_MODEL=claude-sonnet-4-6 THOMSONLINT_BUDGET=3 ./run_review.sh
+#  THOMSONLINT_MODEL=claude-sonnet-4-6 THOMSONLINT_BUDGET=10 ./run_review.sh
 
 set -euo pipefail
 
@@ -46,7 +46,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
 MODEL="${THOMSONLINT_MODEL:-claude-opus-4-7}"
-MAX_BUDGET="${THOMSONLINT_BUDGET:-10}"
+MAX_BUDGET="${THOMSONLINT_BUDGET:-3}"
 
 # ── 1. Regenerate review instructions ───────────────────────────────────────
 echo "[1/5] Regenerating review_instructions.txt..."
