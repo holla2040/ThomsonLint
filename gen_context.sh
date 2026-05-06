@@ -119,53 +119,75 @@ Before making any recommendations, you MUST correlate and cross-reference ALL pr
 
 The deliverable of this review is the findings JSON and the HTML report — NOT the chat transcript. Apply these rules throughout the review:
 
-1.  **Run to completion without mid-flow confirmation gates.** Do not pause between steps to ask the user "want me to dig into datasheets?", "want me to write findings.json?", or "should I continue?". Reading datasheets, computing the findings JSON, and generating the HTML report are required steps, not optional ones. The only acceptable mid-flow stop is when a critical input is genuinely unavailable (e.g., a datasheet does not exist online and was not provided by the user) — see Step 4.
+1.  **Run to completion without mid-flow confirmation gates.** Do not pause between steps to ask the user "want me to dig into datasheets?", "want me to write findings.json?", or "should I continue?". Reading datasheets, computing the findings JSON, validating coverage, and generating the HTML report are required steps, not optional ones. The only acceptable mid-flow stop is when a critical input is genuinely unavailable (e.g., a datasheet does not exist online and was not provided by the user) — see Step 4.
 
-2.  **Every fact you extract belongs in the report, not in the chat.** When you read a datasheet to verify a rating, pin assignment, recommended layout, or to perform a calculation, the conclusion goes into the relevant finding's `description` field (or `recommended_actions`). Do NOT paste datasheet excerpts, parametric tables, application-circuit walkthroughs, or page-by-page summaries into the chat. The chat is not the report.
+2.  **Every fact you extract belongs in the report, not in the chat.** When you read a datasheet to verify a rating, pin assignment, recommended layout, or to perform a calculation, the result goes into the findings JSON — into an \`evidence[]\` row of the relevant entry, with \`source\` set to the document name and page. Do NOT paste datasheet excerpts, parametric tables, application-circuit walkthroughs, or page-by-page summaries into the chat. The chat is not the report.
 
 3.  **Chat output during the review is limited to:**
     *   One-line progress notes (e.g., "Reading 4 datasheets in parallel.")
     *   The final summary table (severity, rule ID, one-line summary)
+    *   The validator's coverage report
     *   Paths to the generated findings JSON and HTML report
 
     Do NOT present a triaged "Recommended next steps" / "Block 1 / Block 2 / Block 3" plan in the chat. The HTML report's interactive Open/Accept/Ignore checklist IS the triage tool.
 
 4.  **Findings must be exhaustive.** The goal is a complete report, not a curated shortlist. Include every issue identified — Critical, Major, Minor, and Advisory. If an ontology rule's conditions are met, write a finding. Severity drives the report's sort order and the user's triage; it does not gate inclusion.
 
-#### Structured Findings Output
-8.  After completing your review, you MUST save all findings to a JSON file and generate an HTML report. Follow these steps exactly:
+#### What to Record Where
 
-    a.  **Build the findings JSON** matching this schema:
+The findings JSON has three peer arrays. Use them deliberately:
+
+*   **\`issues[]\`** — Problems requiring designer triage. Rule violation, missing protection, marginal rating, layout concern. Severity required.
+
+*   **\`verified_checks[]\`** — Analyses you performed where the result was OK. **Do not omit these because they aren't problems.** When you read a datasheet to confirm a rating, pin function, or recommended layout and the result is "fine" — write it as a \`verified_checks\` entry. The verification itself is a deliverable; the designer needs to see what was actually checked, not just what failed. Examples that belong here: "L2 saturation margin ≥1.6×", "MT3608 thermal ΔT 25 °C at 25 °C ambient", "FB divider math: Vout = 9.03 V".
+
+*   **\`cross_checks[]\`** — Design-wide analyses that span multiple ontology rules. Example: "MT3608 boost layout vs. datasheet recommendations" cross-checks PWR_BUCK_001/002/003/004 plus a thermal calc — too broad to attach to one rule. Set \`rule_id\` to an array of all the rules touched.
+
+Per-entry \`evidence[]\` rows carry the parametric tables and pin maps that used to be flattened into prose. Each row is either:
+
+*   A **parameter comparison**: \`{ "label": "VDS abs max", "datasheet": "30 V", "design": "≤9.5 V", "margin": "3.2×", "verdict": "ok", "source": "AON7544 ds p.2" }\`
+*   A **free-form note**: \`{ "note": "Clamped by D2 freewheel.", "source": "AON7544 ds p.2" }\`
+
+Every row must set \`source\`. The validator (see closing step) cross-references \`evidence[].source\` against every PDF / sch / brd JSON you consumed; uncited inputs cause review failure. \`source_documents[]\` at the top level should declare every input you read so coverage is explicit.
+
+**Never embed parameter tables in the \`description\` string.** They will not render correctly and the validator cannot count them. Use \`evidence[]\`.
+
+#### Structured Findings Output
+8.  After completing your review, you MUST write findings JSON, run the coverage validator, and generate the HTML report. Follow these steps exactly:
+
+    a.  **Build the findings JSON** matching \`tests/findings_schema.json\`. Top-level shape:
     \`\`\`json
     {
-      "project_name": "<project name — use only filename-safe characters, no slashes>",
+      "project_name": "<filename-safe project name>",
       "review_date": "<YYYY-MM-DD>",
-      "issues": [
-        {
-          "rule_id": "<ontology rule ID>",
-          "severity": "Critical|Major|Minor|Advisory",
-          "domain": "<design domain>",
-          "component_id": ["<ref designators>"],
-          "net_id": ["<net names>"],
-          "summary": "<one-line summary>",
-          "description": "<detailed description>",
-          "recommended_actions": ["<action 1>", "<action 2>"],
-          "kb_references": ["<section ref>"]
-        }
-      ]
+      "source_documents": [
+        { "path": "exports/<file>", "kind": "datasheet|schematic_export|board_export|stackup|other", "label": "<short label>" }
+      ],
+      "issues":          [ /* problems requiring triage */ ],
+      "verified_checks": [ /* analyses confirmed OK */ ],
+      "cross_checks":    [ /* design-wide multi-rule analyses */ ]
     }
     \`\`\`
-    Required per issue: \`rule_id\`, \`severity\`, \`domain\`, \`summary\`. Other fields are optional but recommended.
+    Each entry uses the same shape. Required per entry: \`domain\`, \`summary\`. Issues additionally require \`severity\`, \`description\`, and \`recommended_actions\`. Use \`evidence[]\` for typed rows. See \`tests/sample_findings.json\` for a worked example.
 
     b.  **Save** the JSON to \`exports/<project_name>-findings.json\` (replace spaces with underscores in the filename).
 
-    c.  **Generate the HTML report** by running:
+    c.  **Run the coverage validator** — this is a hard gate, not optional:
+    \`\`\`
+    python tools/validate_findings.py exports/<project_name>-findings.json
+    \`\`\`
+    The validator schema-checks the file, lists every PDF / schematic / board export in \`exports/\` that is not cited in any \`evidence[].source\`, and flags issues missing required fields. **If it exits non-zero, fix the gaps and re-run before proceeding.** Common fixes:
+    *   Uncited PDF → add a \`verified_checks\` entry citing the datasheet, OR add an Informational entry stating why the document is out of scope.
+    *   Issue missing evidence → add the parameter rows / pin map / calc that backs your claim.
+    *   Issue missing \`recommended_actions\` → say what the designer should do.
+
+    d.  **Generate the HTML report** by running:
     \`\`\`
     python tools/gen_report.py exports/<project_name>-findings.json --output exports/
     \`\`\`
-    This produces a self-contained HTML checklist at \`exports/<project_name>-review.html\` where users can triage each finding as Open/Accept/Ignore.
+    This produces a self-contained HTML checklist at \`exports/<project_name>-review.html\` where users can triage each issue as Open/Accept/Ignore. Verified checks and cross-checks render as read-only sections.
 
-    d.  **Present a summary table** to the user listing each finding with its severity, rule ID, and one-line summary, followed by the paths to the generated findings JSON and HTML report files.
+    e.  **Present a summary table** to the user listing each issue with severity, rule ID, and one-line summary; the validator coverage line ("N/N inputs cited, K rules covered"); and paths to the generated findings JSON and HTML report.
 
 If you have understood all these steps, acknowledge it and begin with the "Pre-Review Assessment" of the user's uploaded files.
 EOF

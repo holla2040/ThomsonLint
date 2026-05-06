@@ -28,11 +28,17 @@ python validate_json.py
 ./gen_context.sh > review_instructions.txt
 ```
 
+### Validate findings coverage (mandatory before report)
+```bash
+python tools/validate_findings.py exports/<project_name>-findings.json
+```
+Mechanical coverage gate. Schema-validates the findings file, lists every PDF / schematic / board export in the findings file's directory that is not cited in any `evidence[].source`, and reports issues missing required fields. Exit code is non-zero if uncited inputs or missing fields are present. **Run this before generating the HTML report.** This is the gate that prevents the agent from silently dropping datasheet analysis (every PDF the agent opens must end up in the findings file).
+
 ### Generate HTML review report
 ```bash
 python tools/gen_report.py exports/<project_name>-findings.json [--output exports/]
 ```
-Takes a findings JSON file (see `tests/findings_schema.json` for the schema) and generates a self-contained HTML report at `exports/<project_name>-review.html`. The report provides an interactive checklist where users can triage each finding as Open/Accept/Ignore, with statuses persisted in browser localStorage.
+Takes a findings JSON file (see `tests/findings_schema.json` for the schema; `tests/sample_findings.json` for a worked example) and generates a self-contained HTML report at `exports/<project_name>-review.html`. The report renders three sections: `issues` (interactive Open/Accept/Ignore triage with localStorage persistence), `verified_checks` (read-only — analyses confirmed OK), and `cross_checks` (read-only — design-wide multi-rule analyses).
 
 ## Reviewer Paths
 
@@ -81,11 +87,20 @@ Each rule includes: `id`, `name`, `domain`, `description`, `applies_to`, `condit
 ### Example Structure
 Each example includes: `id`, `title`, `description`, `triggered_rules`, `expected_issue`
 
+### Findings File Structure (output of a review)
+Top-level fields: `project_name`, `review_date`, `source_documents`, `issues`, `verified_checks`, `cross_checks`. The three findings arrays share one entry shape — see `tests/findings_schema.json` and `tests/sample_findings.json`.
+
+- **`issues[]`** — problems requiring designer triage. Severity, description, recommended_actions all required.
+- **`verified_checks[]`** — analyses the agent performed where the result was OK. Read-only in the report. Crucial: do NOT omit a verification because nothing was wrong; the verification itself is a deliverable.
+- **`cross_checks[]`** — design-wide analyses spanning multiple ontology rules (e.g., MT3608 layout cross-check covering PWR_BUCK_001/002/003/004 plus thermal). `rule_id` may be an array.
+- **Per-entry `evidence[]`** — typed rows. Either parameter comparisons (`label/datasheet/design/margin/verdict/source`) or free-form notes (`note/source`). Every row must cite a `source`. The validator cross-references these against design inputs in the findings directory.
+
 ## JSON Schemas
 
 - `tests/ontology_schema.json` - Schema for validating ontology.json
 - `tests/examples_schema.json` - Schema for validating examples.json
 - `tests/findings_schema.json` - Schema for validating findings JSON files
+- `tests/sample_findings.json` - Worked example showing all three sections plus evidence rows
 
 ## Hardware Domain Coverage
 
