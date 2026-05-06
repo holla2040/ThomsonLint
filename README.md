@@ -28,6 +28,21 @@ cd ThomsonLint
   pip install jsonschema
   ```
 
+### Automated run script
+
+On UNIX and UNIX-like operating systems (Linux, *BSD, MacOS etc), you can run the
+`run_review.sh` script from the shell with auto-detection of the project name from the `exports/` directory:
+   ```bash
+   ./run_review.sh
+   ```
+
+If there are more than one project outputs in the directory, then specify it explicitly on the command line:
+   ```bash
+   ./run_review.sh MySpecialProject
+   ```
+
+It require the `jq` and `claude` shell commands. To install these on MacOS using `brew`: `brew install jq claude-code`.
+
 ## 1. Project Overview
 
 This repository hosts a knowledge and rule framework designed to empower AI models with the specialized expertise required for comprehensive hardware design reviews. The goal is to provide a structured, machine-readable, and human-readable set of resources that enable an AI to analyze and identify potential issues in hardware designs, including schematics and PCB layouts.
@@ -234,6 +249,14 @@ Claude Code will:
 2. Read both the `-sch.json` and `-brd.json` export files from `exports/`
 3. Perform a pre-review assessment and ask for any missing information (datasheets, stackup details, etc.)
 4. Run through all applicable rules and report issues with specific `rule_id` citations
+
+It is also possible to run this whole process automatically on a UNIX or UNIX-Like operating system
+by running the `run_review.sh` script:
+
+```bash
+cd ThomsonLint
+run_review.sh
+```
 
 ### Step 4: Provide Additional Context (if asked)
 
