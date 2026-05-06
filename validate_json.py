@@ -58,8 +58,12 @@ if __name__ == "__main__":
         all_valid = False
     print("-" * 30)
 
-    # Validate findings JSON files (from exports/ or command-line arguments)
+    # Validate findings JSON files (from exports/, the schema sample, and any
+    # extra paths passed on the command line)
     findings_files = find_findings_files()
+    sample = 'tests/sample_findings.json'
+    if os.path.isfile(sample):
+        findings_files.append(sample)
     extra_args = [a for a in sys.argv[1:] if a.endswith('.json')]
     findings_files.extend(extra_args)
 
