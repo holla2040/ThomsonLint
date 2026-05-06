@@ -17,7 +17,7 @@
 #  1. gen_context.sh > review_instructions.txt — regenerates the knowledge base prompt (as required by CLAUDE.md pre-commit rule)
 #  2. Auto-detects project name from any exports/*-thomson-export-sch.json file
 #  3. claude --print in non-interactive mode, with:
-#    - --allowedTools Read — Claude only reads files, no side effects
+#    - --allowedTools Read,Write — Claude will read the schematic and board outputs, as well as write the findings into `exports/`.
 #    - --output-format json — structured JSON envelope for reliable parsing
 #    - --json-schema $(cat tests/findings_schema.json) — constrains output to exactly the findings schema
 #    - --no-session-persistence — no session saved to disk (clean for automation)
