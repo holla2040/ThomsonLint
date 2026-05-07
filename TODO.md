@@ -222,3 +222,51 @@ Follow this procedure:
 -   When something looks good, commit it and iterate.
 
 ---
+
+## 7. Sprint: Reviewer-Run Accuracy
+
+Friction points observed during a real review run (Comet board, May 2026). Each item is a root-cause fix, not a workaround — the goal is for the next reviewer invocation to "run smooth" without manual scaffolding.
+
+### 7.1 Read tool can't load PDF datasheets
+
+-   `[ ]` Investigate why Claude Code's `Read` tool reports `pdftoppm is not installed` even when `/usr/bin/pdftoppm` is on PATH (poppler-utils 22.02.0 installed). A session restart may be sufficient; if not, the harness is checking a hardcoded path or a different PATH context.
+-   **Why it matters:** without PDF rendering, the reviewer falls back to `pdftotext`, which loses datasheet figures — package pinout drawings, application circuits, recommended layouts. Pin-assignment and recommended-layout checks degrade to guessing from manufacturer convention.
+-   **Acceptance:** `Read` on `exports/Boost - MT3608 - SOT23-6 - C84817.pdf` with `pages: "1-3"` returns rendered images.
+
+### 7.2 review_instructions.txt exceeds Read 256KB limit
+
+-   `[x]` `gen_context.sh` produces a 260KB / 5700-line bundle that the `Read` tool can no longer ingest in one call.
+-   **Fix options (pick one):**
+    -   **(A) Source-first review path:** document that reviewers should consume `ontology/ontology.json`, `examples/examples.json`, and `docs/AI_Hardware_Design_Review_KnowledgeBase.md` directly. The bundled `review_instructions.txt` becomes a Gemini-only artifact (Gemini takes the whole file as a single upload).
+    -   **(B) Split the bundle:** `gen_context.sh` emits `review_instructions_part1.txt` … `partN.txt`, each <200KB.
+-   **Recommended:** option A. The bundle is a concatenation; the source files are the truth.
+-   **Acceptance:** project README / CLAUDE.md tells a Claude-Code-driven reviewer to read source files, not the bundle.
+
+### 7.3 Schematic-pin-name → board-pad-number mapping is missing from exports
+
+-   `[ ]` Schematic export gives pin names like `"VCAP"`, `"PC4(HS)/TIM1_CH4/CLK_CCO/AIN2"`. Board export gives numeric pads `1..N`. Nothing in either file links the two, so proximity rules (e.g., "VCAP cap within 2 mm of VCAP pin") have to infer the mapping from manufacturer datasheet pinouts.
+-   **Fix:** in `fusion-electronics-export.ulp`, emit one of:
+    -   A `pin_map` per component in the schematic export: `{"ref":"U1", "pin_map":{"VCAP":"8","VDD":"9","VSS":"7", ...}}`, OR
+    -   Extend each entry in the schematic `pins` array with the geometric pad number that matches the board export.
+-   **Acceptance:** the analyzer can answer "is C5 within X mm of U1's VCAP pad" using only the JSON exports — no datasheet lookup required.
+
+### 7.4 False-positive floating-input on regulator FB pins
+
+-   `[ ]` Schematic export's `analysis.floating_inputs` flags `U2 pin FB` even though FB is a closed feedback divider (R3/R4) with C-to-GND. The check appears to be "pin direction = IN and net has no driver."
+-   **Fix in the analyzer (ULP):** suppress the floating-input flag when ANY of these are true:
+    -   Net contains ≥2 passive components forming a divider to GND/VOUT.
+    -   Pin name matches `FB`, `COMP`, `VFB`, `FBP`, `FBN`.
+    -   Component `device` matches `VREG-*`, `*BUCK*`, `*BOOST*`, `*LDO*`.
+-   **Acceptance:** Comet export's `floating_inputs` is empty (or contains only genuinely floating pins).
+
+### 7.5 Layer stackup is ambiguous in board export
+
+-   `[ ]` Board export reports `"layer_count": 3` while `layers_used` lists Top, GND (#2), POWER (#303), Bottom (#304). Polygons exist on layers 1 and 2 only. A reviewer cannot tell whether GND is a dedicated inner plane or just a top-side pour, which changes return-path and hot-loop verdicts on every SMPS.
+-   **Fix:** add a `stackup` block to the board export — an ordered list of physical layers with `{name, role: "signal"|"plane", net (if plane), thickness_mm, copper_oz}`. Drop the implicit `layer_count` field or align it with the stackup.
+-   **Acceptance:** the analyzer can deterministically answer "does signal X route over a continuous reference plane" from the JSON alone.
+
+### 7.6 Document the "review-only" workflow alongside the contributor workflow
+
+-   `[x]` Today CLAUDE.md mixes two audiences: people extending the framework and people running a review with it. Once 7.1–7.5 land, add a short "Running a review" section to README.md that lists the exact inputs (ontology + examples + KB MD + ThomsonLint JSON exports + datasheets) and the exact outputs (`exports/<project>-findings.json` + HTML report).
+
+---

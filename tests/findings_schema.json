@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ThomsonLint Findings",
-  "description": "Schema for ThomsonLint design review findings JSON files.",
+  "description": "Schema for ThomsonLint design review findings JSON files. A complete review writes three peer arrays: issues (problems requiring triage), verified_checks (analyses the agent performed where the result was OK), and cross_checks (design-wide analyses that span multiple ontology rules — e.g., an SMPS layout check that touches PWR_BUCK_001/002/003/004 plus a thermal calc).",
   "type": "object",
   "required": ["project_name", "issues"],
   "properties": {
@@ -14,58 +14,104 @@
       "description": "Date the review was performed (YYYY-MM-DD).",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
-    "issues": {
+    "source_documents": {
       "type": "array",
-      "description": "List of findings from the design review.",
+      "description": "Every PDF, schematic export, or board export the reviewer consumed. Each entry must be cited in at least one finding's evidence[].source so coverage can be verified mechanically.",
       "items": {
         "type": "object",
-        "required": ["rule_id", "severity", "domain", "summary"],
+        "required": ["path", "kind"],
         "properties": {
-          "rule_id": {
-            "type": "string",
-            "description": "The ontology rule ID that was triggered."
-          },
-          "severity": {
-            "type": "string",
-            "enum": ["Critical", "Major", "Minor", "Advisory"],
-            "description": "Severity level of the finding."
-          },
-          "domain": {
-            "type": "string",
-            "description": "Design domain (e.g., Power, HighSpeed, Analog, EMC, Thermal, DFM)."
-          },
-          "component_id": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Component reference designators involved."
-          },
-          "net_id": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Net names involved."
-          },
-          "summary": {
-            "type": "string",
-            "description": "Brief one-line summary of the finding."
-          },
-          "description": {
-            "type": "string",
-            "description": "Detailed description of the finding."
-          },
-          "recommended_actions": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of recommended corrective actions."
-          },
-          "kb_references": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "References to knowledge base sections."
-          }
+          "path": { "type": "string", "description": "Path relative to repo root, e.g., exports/Boost - MT3608 - SOT23-6 - C84817.pdf" },
+          "kind": { "type": "string", "enum": ["datasheet", "schematic_export", "board_export", "stackup", "other"] },
+          "label": { "type": "string", "description": "Short label for citation, e.g., 'MT3608 datasheet'." }
         },
         "additionalProperties": false
       }
-    }
+    },
+    "issues":          { "$ref": "#/definitions/findingArray", "description": "Problems requiring designer triage." },
+    "verified_checks": { "$ref": "#/definitions/findingArray", "description": "Analyses the agent performed where the result was OK. These are first-class deliverables — every datasheet read or calculation that produced no problem still belongs here so the designer can see what was checked." },
+    "cross_checks":    { "$ref": "#/definitions/findingArray", "description": "Design-wide analyses spanning multiple ontology rules — e.g., layout-vs-datasheet recommendations for an IC, thermal accounting for a converter." }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+
+  "definitions": {
+    "findingArray": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["domain", "summary"],
+      "properties": {
+        "rule_id": {
+          "oneOf": [
+            { "type": "string", "description": "Single ontology rule ID this finding cites." },
+            { "type": "array", "items": { "type": "string" }, "description": "Multiple ontology rule IDs (used by cross_checks that span rules)." }
+          ],
+          "description": "Ontology rule(s) this entry cites. Optional for verified_checks and cross_checks where the analysis does not map to a single rule (e.g., a thermal calculation)."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["Critical", "Major", "Minor", "Advisory", "Informational"],
+          "description": "Required for issues. For verified_checks and cross_checks, omit or set to 'Informational'."
+        },
+        "domain": {
+          "type": "string",
+          "description": "Design domain (Power, HighSpeed, Analog, EMC, Thermal, DFM, etc.)."
+        },
+        "component_id": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Component reference designators involved."
+        },
+        "net_id": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Net names involved."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief one-line summary."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed prose. Do NOT embed parameter tables here — use evidence[] so renderers can format them as real tables."
+        },
+        "evidence": {
+          "type": "array",
+          "description": "Typed evidence rows. Each row is either a parameter comparison (datasheet vs. design with margin/verdict) or a free-form note. Every row must cite a source.",
+          "items": { "$ref": "#/definitions/evidenceRow" }
+        },
+        "recommended_actions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Corrective actions. Required for issues; omit for verified_checks."
+        },
+        "kb_references": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Knowledge base section references."
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceRow": {
+      "type": "object",
+      "required": ["source"],
+      "anyOf": [
+        { "required": ["label"] },
+        { "required": ["note"] }
+      ],
+      "properties": {
+        "label":     { "type": "string", "description": "What is being measured/compared (e.g., 'VDS abs max', 'Pin 4 function', 'Thermal ΔT'). Set for parameter rows; may be omitted for free-form note rows." },
+        "datasheet": { "type": "string", "description": "Datasheet/spec value. Set for parameter rows." },
+        "design":    { "type": "string", "description": "Observed/computed value in this design. Set for parameter rows." },
+        "margin":    { "type": "string", "description": "Derived comparison, e.g., '3.2×', '+15 °C headroom'." },
+        "verdict":   { "type": "string", "enum": ["ok", "marginal", "fail", "n/a", "unverified"] },
+        "note":      { "type": "string", "description": "Free-form qualifier or fact (e.g., 'Clamped by D2 freewheel'). Use this for non-tabular evidence." },
+        "source":    { "type": "string", "description": "Where this came from. Must match a source_documents[].path or otherwise identify the origin (e.g., 'AON7544 ds p.2 Fig.1', 'comet_sch-thomson-export-sch.json'). Required so coverage can be verified." }
+      },
+      "additionalProperties": false
+    }
+  }
 }

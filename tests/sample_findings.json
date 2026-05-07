@@ -1,0 +1,70 @@
+{
+  "project_name": "sample",
+  "review_date": "2026-05-06",
+  "source_documents": [
+    { "path": "exports/sample_sch-thomson-export-sch.json", "kind": "schematic_export" },
+    { "path": "exports/sample_brd-thomson-export-brd.json", "kind": "board_export" },
+    { "path": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf", "kind": "datasheet", "label": "MT3608 datasheet" },
+    { "path": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf", "kind": "datasheet", "label": "AON7544 datasheet" }
+  ],
+  "issues": [
+    {
+      "rule_id": "DFM_LIB_002",
+      "severity": "Major",
+      "domain": "DFM",
+      "component_id": ["Q3"],
+      "net_id": ["GND", "M-"],
+      "summary": "AON7544 schematic symbol has 3 pins; footprint has 8 pads + EP — verify multi-pad bonding in layout.",
+      "description": "The schematic uses a generic FET-NCH symbol (D/S/G only). The board export lists pads 1-8 plus EP. If the symbol-to-footprint pin map is wrong, only one source pad and one drain pad will be netted. RDS(on) and θJA degrade 4-5×.",
+      "evidence": [
+        { "label": "Pins 1, 2, 3", "datasheet": "Source", "design": "tied to GND polygon — verify in layout", "verdict": "unverified", "source": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf p.1" },
+        { "label": "Pin 4",          "datasheet": "Gate",   "design": "GATE_Q3 net",                          "verdict": "ok",         "source": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf p.1" },
+        { "label": "Pins 5, 6, 7, 8","datasheet": "Drain",  "design": "tied to M- polygon — verify in layout","verdict": "unverified", "source": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf p.1" },
+        { "label": "Exposed pad",    "datasheet": "Drain (must be soldered + thermal vias)", "design": "EP split into pads 9/9_1/9_2 in board export", "verdict": "unverified", "source": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf p.1" },
+        { "label": "VDS abs max",    "datasheet": "30 V",   "design": "≤9.5 V (clamped by D2 freewheel)", "margin": "3.2×", "verdict": "ok", "source": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf p.2" },
+        { "note": "Gate-source pulldown R9 = 22 k present (SCH_FET_001 satisfied).", "source": "exports/sample_sch-thomson-export-sch.json" }
+      ],
+      "recommended_actions": [
+        "Open the layout and confirm pads 1/2/3 all sit on the GND polygon.",
+        "Confirm pads 5/6/7/8 and the EP all sit on the M- polygon with thermal vias to inner copper.",
+        "If the footprint pin map is wrong, regenerate from a verified library before fab."
+      ],
+      "kb_references": ["Appendix C — FET footprint conventions"]
+    }
+  ],
+  "verified_checks": [
+    {
+      "rule_id": "PWR_BUCK_004",
+      "domain": "Power",
+      "component_id": ["L2", "U2"],
+      "summary": "L2 saturation margin ≥1.6× against MT3608 4 A switch limit.",
+      "description": "Sunltech SLO0630H220MTT spec confirms Isat 3.2 A (20 % L drop) and Idc 3.0 A (40 °C rise). Realistic peak inductor current at 5 V→9 V for sub-1 A motor load is 1-2 A.",
+      "evidence": [
+        { "label": "Inductance",       "datasheet": "22 µH (±20 %)", "design": "22 µH",     "verdict": "ok", "source": "Sunltech SLO0630H datasheet p.2" },
+        { "label": "Saturation Isat",  "datasheet": "3.2 A typ",     "design": "1-2 A peak","margin": "1.6-3×", "verdict": "ok", "source": "Sunltech SLO0630H datasheet p.2" },
+        { "label": "Heat-rating Idc",  "datasheet": "3.0 A typ",     "design": "<1 A avg",  "margin": ">3×",    "verdict": "ok", "source": "Sunltech SLO0630H datasheet p.2" },
+        { "label": "MT3608 switch lim","datasheet": "4 A internal",  "design": "headroom against L2 Isat", "verdict": "ok", "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.3" }
+      ]
+    }
+  ],
+  "cross_checks": [
+    {
+      "rule_id": ["PWR_BUCK_001", "PWR_BUCK_002", "PWR_BUCK_003", "PWR_BUCK_004"],
+      "domain": "Power",
+      "component_id": ["U2", "C2", "C4", "L2", "D3"],
+      "summary": "MT3608 boost layout vs. datasheet recommendations — mostly conforms.",
+      "description": "Cross-checks the boost converter layout against the MT3608 datasheet's recommended layout (page 6, Figure 3) and stress against absolute-max ratings (pages 2-3).",
+      "evidence": [
+        { "label": "Cin near VIN pin",          "datasheet": "Required", "design": "C2 at 1.67 mm from pad 5", "verdict": "ok",       "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.6" },
+        { "label": "Cout near diode cathode",   "datasheet": "Required", "design": "C4 at ~2.5 mm from D3 cathode", "verdict": "ok", "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.6" },
+        { "label": "SW node small",             "datasheet": "Required", "design": "PS_SW polygon length 3.88 mm", "verdict": "ok",  "source": "exports/sample_brd-thomson-export-brd.json" },
+        { "label": "FB components close to IC", "datasheet": "Required", "design": "R3 at 3.8 mm from FB pad",     "verdict": "marginal", "note": "Routed near 9V0 — minor noise risk", "source": "exports/sample_brd-thomson-export-brd.json" },
+        { "label": "VIN abs max",               "datasheet": "26 V",     "design": "5 V",         "margin": "5.2×", "verdict": "ok", "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.2" },
+        { "label": "FB abs max",                "datasheet": "6 V",      "design": "0.6 V",       "margin": "10×",  "verdict": "ok", "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.2" },
+        { "label": "SW abs max",                "datasheet": "30 V",     "design": "~9.5 V",      "margin": "3.2×", "verdict": "ok", "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.2" },
+        { "label": "U2 thermal ΔT",             "datasheet": "θJA 250 °C/W, P_D max 0.6 W", "design": "P_dissipated ≈ 100 mW → ΔT 25 °C", "verdict": "ok", "source": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf p.3 (calc)" },
+        { "label": "FB divider math",           "datasheet": "VFB = 0.6 V typ", "design": "Vout = 0.6 × (1 + 309 k / 22 k) = 9.03 V", "verdict": "ok", "source": "exports/sample_sch-thomson-export-sch.json (calc)" }
+      ]
+    }
+  ]
+}
