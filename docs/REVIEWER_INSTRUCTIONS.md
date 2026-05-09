@@ -28,6 +28,24 @@ Follow this multi-step process:
 
 3.  **Self-Retrieve Missing Datasheets.** For any critical ICs or components identified in the design, you MUST first attempt to find and retrieve their datasheets yourself using web search. Search for the exact part number (e.g., "TPS54302 datasheet", "STM32F407 datasheet"). Only after you have exhausted your ability to find the datasheet should you ask the user to provide it. If a component carries an LCSC part number (prefix `C` followed by digits, e.g., `C84817`), fetch its product page directly at `https://www.lcsc.com/product-detail/<LCSC_PN>.html` instead of a generic web search — this is faster and more reliable than search, and the page links to the manufacturer datasheet. See KB Appendix L for vendor part-number conventions.
 
+    **Persist every fetched datasheet to `exports/`.** Do not rely on session-cached content — the validator gates citations against files on disk, and future re-reviews need the same source material. Download the manufacturer's PDF (not the LCSC HTML page) using `curl` or `wget` and save it with this canonical filename pattern:
+
+    ```
+    <DeviceType> - <PartNumber> - <Package> - <LCSC_PN>.pdf
+    ```
+
+    The first field, `<DeviceType>`, is YOUR classification of the part's function — pick the closest descriptive term: `Zener`, `TVS`, `Schottky`, `Diode`, `LED`, `FET-N`, `FET-P`, `BJT-NPN`, `BJT-PNP`, `MOSFET-Array`, `LDO`, `Buck`, `Boost`, `SEPIC`, `Charger`, `MCU`, `ADC`, `DAC`, `Op-Amp`, `Comparator`, `Voltage-Ref`, `Logic-Gate`, `Level-Shifter`, `Transceiver`, `Resistor`, `Capacitor`, `Inductor <value>` (e.g., `Inductor 22uH`), `Ferrite-Bead`, `Crystal`, `Oscillator`, `Connector`, `Switch`, `Relay`, `Sensor`, `Transformer`. Match the style of existing files in `exports/`. Examples:
+
+    ```
+    exports/Zener - BZT52C5V1 - SOD-123 - C7545016.pdf
+    exports/FET-N - AON7544 - DFN3x3 - C315567.pdf
+    exports/Boost - MT3608 - SOT23-6 - C84817.pdf
+    exports/MCU - STM8S003F3P6 - TSSOP20 - C52717.pdf
+    exports/Schottky - SS34 - SOD-123 - C5380710.pdf
+    ```
+
+    After saving, cite the local filename (not the URL) in `evidence[].source`. The local PDF is the durable artifact; the URL is just how you found it.
+
 4.  **Request Remaining Missing Information.** If critical information is still missing after your own research, ask the user to provide it. List the specific items you need to perform a high-quality review. Do not proceed until you receive this information.
 
 5.  **Comprehensive Review (run to completion).** Once you have the necessary information, perform the comprehensive design review using the instructions below. Run all steps end-to-end — do NOT stop between steps to ask whether you should continue, dig into datasheets, or generate the report. The deliverable is the findings JSON plus the HTML report; the conversation is a thin wrapper around that deliverable, not the deliverable itself.
