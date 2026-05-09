@@ -37,13 +37,30 @@ if (!schematic && !board) {
   exit(1);
 }
 
+// Extract the directory of this wrapper from argv[0] so the chained RUN
+// commands resolve sibling ULPs in tools/ regardless of EAGLE's configured
+// ULP search path. Without this, "RUN fusion-electronics-images.ulp" only
+// works if tools/ is in the user's ULP path; with this it works wherever
+// the wrapper itself was loaded from.
+string extractDir(string fullpath) {
+  int lastSep = -1;
+  int i;
+  for (i = 0; i < strlen(fullpath); i++) {
+    if (fullpath[i] == '/' || fullpath[i] == '\\') lastSep = i;
+  }
+  if (lastSep >= 0) return strsub(fullpath, 0, lastSep);
+  return ".";
+}
+
+string ulpDir = extractDir(argv[0]);
+
 if (schematic) {
-  exit("RUN fusion-electronics-export.ulp;\n"
-       "RUN fusion-electronics-images.ulp;\n");
+  exit("RUN '" + ulpDir + "/fusion-electronics-export.ulp';\n"
+       "RUN '" + ulpDir + "/fusion-electronics-images.ulp';\n");
 }
 
 if (board) {
-  exit("RUN fusion-electronics-export.ulp;\n"
-       "RUN fusion-electronics-stackup.ulp;\n"
-       "RUN fusion-electronics-images.ulp;\n");
+  exit("RUN '" + ulpDir + "/fusion-electronics-export.ulp';\n"
+       "RUN '" + ulpDir + "/fusion-electronics-stackup.ulp';\n"
+       "RUN '" + ulpDir + "/fusion-electronics-images.ulp';\n");
 }
