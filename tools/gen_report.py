@@ -340,7 +340,14 @@ function ruleIdStr(rid) {
 function imageHrefFromSource(s) {
   if (!s) return null;
   const m = String(s).match(/(\S+\.(?:png|jpe?g|svg))/i);
-  return m ? m[1] : null;
+  if (!m) return null;
+  let href = m[1];
+  // The HTML report is generated alongside the PNGs in exports/, so paths
+  // written as "exports/foo.png" (per the schema's repo-root convention)
+  // need their leading "exports/" segment stripped to resolve correctly
+  // against the report's own location.
+  if (href.indexOf("exports/") === 0) href = href.substring("exports/".length);
+  return href;
 }
 
 function renderImageThumb(href, alt) {
