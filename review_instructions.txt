@@ -77,11 +77,18 @@ In addition to the schematic and board JSON exports, ThomsonLint produces a stac
 *   **`<project>-img-silk-top.png`, `<project>-img-silk-bot.png`** — silkscreen renders. Cite for legibility, ref-des placement, fiducial presence, polarity/orientation marker, or component-courtyard-overlap claims.
 *   **`<project>-img-cu-L<num>-<name>.png`** — one PNG per used copper layer with traces, filled pours (RATSNEST applied), unrouted airwires, restrict zones, component outlines, and pad/via locations. Cite for decoupling proximity, pour integrity, plane splits, trace-width-vs-current, return-path discontinuities, and clearance-zone claims.
 
-Generate these alongside the JSON exports:
+Generate these alongside the JSON exports. The recommended path is the wrapper ULP — one command per editor:
 
 ```
-RUN fusion-electronics-stackup.ulp                 # board editor → -thomson-export-stack.json
-RUN fusion-electronics-images.ulp                  # run twice: once from schematic editor, once from board editor
+RUN fusion-electronics-all.ulp                     # one command per editor — runs all of the children below
+```
+
+Or, for granular control:
+
+```
+RUN fusion-electronics-export.ulp                  # connectivity / placement JSON (each editor)
+RUN fusion-electronics-stackup.ulp                 # layer-stack JSON (board editor only)
+RUN fusion-electronics-images.ulp                  # PNG renders (each editor; must be last in any chain — it terminates via exit())
 ```
 
 Cite image evidence by filename in `evidence[].source`. The renderer auto-detects the `.png` extension and embeds a clickable thumbnail in the HTML report. Free-form locator text after the filename is allowed and recommended:

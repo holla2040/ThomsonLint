@@ -8,12 +8,12 @@ cd ThomsonLint
 ```
 
 **Fusion Electronics:**
-1. Open your circuit design in Fusion Electronics
+1. Open your circuit design in Fusion Electronics.
 2. From **both** the schematic editor and the board editor, run:
-   - `tools/fusion-electronics-export.ulp` — connectivity / placement JSON
-   - `tools/fusion-electronics-images.ulp` — high-resolution PNG renders (per schematic sheet, top/bottom silk, per copper layer)
-3. From the **board editor only**, also run:
-   - `tools/fusion-electronics-stackup.ulp` — layer stack JSON (copper ordering, used-vs-unused layers)
+   ```
+   RUN fusion-electronics-all.ulp
+   ```
+   One command per editor produces the JSON connectivity export, layer stackup JSON (board only), and high-resolution image renders. To customise output paths or DPI, run the three underlying ULPs (`fusion-electronics-export.ulp`, `fusion-electronics-stackup.ulp`, `fusion-electronics-images.ulp`) directly — see §7.
 
 **KiCad 9:**
 1. Run `python tools/kicad-export.py path/to/MyProject.kicad_pro`
@@ -87,6 +87,7 @@ The repository is organized as follows:
 -   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
 -   `tests/findings_schema.json`: A JSON schema for validating findings JSON files produced by a review.
 -   `tests/sample_findings.json`: A worked example demonstrating issues, verified_checks, cross_checks, and image / stackup evidence rows.
+-   `tools/fusion-electronics-all.ulp`: Wrapper ULP — recommended entry point. Chains the three exporters below in the right order based on the current editor, so the user runs only one command per editor.
 -   `tools/fusion-electronics-export.ulp`: ULP that exports schematic and board connectivity/placement to JSON. Run from each editor.
 -   `tools/fusion-electronics-stackup.ulp`: ULP that exports the layer stack (copper ordering, used-vs-unused layers) to JSON. Run from the board editor.
 -   `tools/fusion-electronics-images.ulp`: ULP that renders the schematic sheets and per-layer board images as high-resolution PNGs (300 DPI schematic / 1200 DPI board defaults). Run from each editor.
@@ -219,27 +220,27 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 ### Step 1: Export Design Data from Fusion Electronics
 
-Three ULPs produce the inputs the reviewer consumes. All three live under `tools/` and write to `<repo>/exports/` automatically (path derived from `argv[0]`).
+The simplest path is the wrapper ULP — one command per editor, no flags:
 
 1.  **Open your design in Fusion Electronics.**
 2.  **From the Schematic Editor**, run:
     ```
-    RUN fusion-electronics-export.ulp           # → <design>-thomson-export-sch.json
-    RUN fusion-electronics-images.ulp           # → <design>-img-sch-p<N>.png   (one per sheet, 300 DPI)
+    RUN fusion-electronics-all.ulp
     ```
-3.  **Switch to the Board Editor** (PCB) and run:
+    This chains: `fusion-electronics-export.ulp` → `fusion-electronics-images.ulp`. Produces `<design>-thomson-export-sch.json` and one `<design>-img-sch-p<N>.png` per sheet (300 DPI).
+3.  **Switch to the Board Editor** (PCB) and run the same command:
     ```
-    RUN fusion-electronics-export.ulp           # → <design>-thomson-export-brd.json
-    RUN fusion-electronics-stackup.ulp          # → <design>-thomson-export-stack.json
-    RUN fusion-electronics-images.ulp           # → <design>-img-silk-top.png, -img-silk-bot.png,
-                                                #   -img-cu-L<num>-<name>.png  (one per used copper layer, 1200 DPI)
+    RUN fusion-electronics-all.ulp
     ```
+    This chains: `fusion-electronics-export.ulp` → `fusion-electronics-stackup.ulp` → `fusion-electronics-images.ulp`. Produces `<design>-thomson-export-brd.json`, `<design>-thomson-export-stack.json`, `<design>-img-silk-top.png`, `<design>-img-silk-bot.png`, and one `<design>-img-cu-L<num>-<name>.png` per used copper layer (1200 DPI).
 
-Each ULP auto-detects which editor it's running in and produces the appropriate artifacts. Run order doesn't matter; what matters is that all three are run from the right editor (images and JSON-export run twice, stackup runs once from the board editor).
+The wrapper detects which editor it's in and runs the right chain. All four ULPs (wrapper plus three children) live under `tools/` and write to `<repo>/exports/` automatically (path derived from `argv[0]`). The wrapper uses each child ULP's default output path and DPI; for granular control, run the children directly — see "Individual ULPs" below.
 
-#### Output File Options
+The schematic JSON export contains components, nets, pin connectivity, and signal analysis. The board JSON contains placement coordinates, trace routing, board geometry, and layout analysis. The stackup JSON contains the physical copper-layer ordering plus the full layer table. The image PNGs are visual evidence — qualitative inputs only; never derive distances or trace widths from them (the reviewer instructions enforce this rule).
 
-All three ULPs share the same flags:
+#### Individual ULPs (advanced)
+
+If you need to override the output path, use a file-save dialog, or change the image DPI, run the children directly. Each child shares the same flag set:
 
 | Flag | Description |
 |------|-------------|
@@ -254,7 +255,20 @@ RUN fusion-electronics-export.ulp -o C:\Users\me\Desktop\my-export.json
 RUN fusion-electronics-images.ulp -r 600          # smaller board PNGs
 ```
 
-The schematic JSON export contains components, nets, pin connectivity, and signal analysis. The board JSON contains placement coordinates, trace routing, board geometry, and layout analysis. The stackup JSON contains the physical copper-layer ordering plus the full layer table. The image PNGs are visual evidence — qualitative inputs only; never derive distances or trace widths from them (the reviewer instructions enforce this rule).
+To replicate what `fusion-electronics-all.ulp` does manually, run from the schematic editor:
+
+```
+RUN fusion-electronics-export.ulp                 # connectivity / placement JSON
+RUN fusion-electronics-images.ulp                 # PNG renders
+```
+
+…and from the board editor:
+
+```
+RUN fusion-electronics-export.ulp                 # connectivity / placement JSON
+RUN fusion-electronics-stackup.ulp                # layer stack JSON
+RUN fusion-electronics-images.ulp                 # PNG renders (run last — it terminates the chain)
+```
 
 ### Step 1 (Alternative): Export Design Data from KiCad 9
 
