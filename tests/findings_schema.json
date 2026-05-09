@@ -16,13 +16,13 @@
     },
     "source_documents": {
       "type": "array",
-      "description": "Every PDF, schematic export, or board export the reviewer consumed. Each entry must be cited in at least one finding's evidence[].source so coverage can be verified mechanically.",
+      "description": "Every input the reviewer consumed: PDFs, schematic/board/stackup JSON exports, and per-layer / silkscreen / schematic-sheet image PNGs. Each entry must be cited in at least one finding's evidence[].source so coverage can be verified mechanically.",
       "items": {
         "type": "object",
         "required": ["path", "kind"],
         "properties": {
           "path": { "type": "string", "description": "Path relative to repo root, e.g., exports/Boost - MT3608 - SOT23-6 - C84817.pdf" },
-          "kind": { "type": "string", "enum": ["datasheet", "schematic_export", "board_export", "stackup", "other"] },
+          "kind": { "type": "string", "enum": ["datasheet", "schematic_export", "board_export", "stackup", "image", "other"] },
           "label": { "type": "string", "description": "Short label for citation, e.g., 'MT3608 datasheet'." }
         },
         "additionalProperties": false
@@ -109,7 +109,7 @@
         "margin":    { "type": "string", "description": "Derived comparison, e.g., '3.2×', '+15 °C headroom'." },
         "verdict":   { "type": "string", "enum": ["ok", "marginal", "fail", "n/a", "unverified"] },
         "note":      { "type": "string", "description": "Free-form qualifier or fact (e.g., 'Clamped by D2 freewheel'). Use this for non-tabular evidence." },
-        "source":    { "type": "string", "description": "Where this came from. Must match a source_documents[].path or otherwise identify the origin (e.g., 'AON7544 ds p.2 Fig.1', 'comet_sch-thomson-export-sch.json'). Required so coverage can be verified." }
+        "source":    { "type": "string", "description": "Where this came from. Must match a source_documents[].path or otherwise identify the origin (e.g., 'AON7544 ds p.2 Fig.1', 'comet_sch-thomson-export-sch.json'). For image evidence, give the PNG filename optionally followed by a free-form locator (e.g., 'comet_brd-img-cu-L2-GND.png — pour gap visible near C12') — the renderer auto-detects the image extension and embeds a thumbnail. Required so coverage can be verified." }
       },
       "additionalProperties": false
     }

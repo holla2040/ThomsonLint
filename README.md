@@ -9,7 +9,11 @@ cd ThomsonLint
 
 **Fusion Electronics:**
 1. Open your circuit design in Fusion Electronics
-2. Run `tools/fusion-electronics-export.ulp` in both the schematic and board layout workspace
+2. From **both** the schematic editor and the board editor, run:
+   - `tools/fusion-electronics-export.ulp` — connectivity / placement JSON
+   - `tools/fusion-electronics-images.ulp` — high-resolution PNG renders (per schematic sheet, top/bottom silk, per copper layer)
+3. From the **board editor only**, also run:
+   - `tools/fusion-electronics-stackup.ulp` — layer stack JSON (copper ordering, used-vs-unused layers)
 
 **KiCad 9:**
 1. Run `python tools/kicad-export.py path/to/MyProject.kicad_pro`
@@ -75,12 +79,20 @@ The repository is organized as follows:
 -   `TODO.md`: The completed task list for the initial development phase.
 -   `ontology/ontology.json`: The core machine-readable ontology of hardware design rules.
 -   `examples/examples.json`: A set of example hardware design scenarios for training and testing.
+-   `docs/REVIEWER_INSTRUCTIONS.md`: The single source of truth for how a review is conducted; consumed by both Claude Code and the bundled web-AI workflow.
 -   `docs/AI_Hardware_Design_Review_KnowledgeBase.md`: A detailed, human-readable knowledge base.
 -   `docs/KiCad_Review_Guide.md`: Usage guide for the KiCad 9 export workflow.
 -   `docs/Multi_Agent_Reasoning_Spec.md`: A specification for a conceptual multi-agent reasoning architecture.
 -   `tests/ontology_schema.json`: A JSON schema for validating `ontology/ontology.json`.
 -   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
+-   `tests/findings_schema.json`: A JSON schema for validating findings JSON files produced by a review.
+-   `tests/sample_findings.json`: A worked example demonstrating issues, verified_checks, cross_checks, and image / stackup evidence rows.
+-   `tools/fusion-electronics-export.ulp`: ULP that exports schematic and board connectivity/placement to JSON. Run from each editor.
+-   `tools/fusion-electronics-stackup.ulp`: ULP that exports the layer stack (copper ordering, used-vs-unused layers) to JSON. Run from the board editor.
+-   `tools/fusion-electronics-images.ulp`: ULP that renders the schematic sheets and per-layer board images as high-resolution PNGs (300 DPI schematic / 1200 DPI board defaults). Run from each editor.
 -   `tools/kicad-export.py`: Standalone Python script to export KiCad 9 designs for review.
+-   `tools/validate_findings.py`: Coverage validator — schema-checks the findings JSON, lists every input in `exports/` not cited in any `evidence[].source`, and flags missing required fields. Mandatory gate before generating the HTML report.
+-   `tools/gen_report.py`: Generates the self-contained HTML review report from findings JSON; embeds image evidence as inline thumbnails.
 -   `validate_json.py`: A Python script for validating the JSON files against their schemas.
 -   `gen_context.sh`: A bash script to generate the review instructions file.
 -   `review_instructions.txt`: Pre-generated file containing the complete knowledge base and AI instructions. Ready to use immediately.
@@ -105,7 +117,13 @@ Design data (drop into `exports/`):
 
 -   `<project>-thomson-export-sch.json` — schematic export (Fusion Electronics ULP or `tools/kicad-export.py`)
 -   `<project>-thomson-export-brd.json` — board export (same source as above)
--   `*.pdf` — datasheets for critical ICs (power converters, MCUs, transceivers), plus any stackup or pinout PDFs
+-   `<project>-thomson-export-stack.json` — layer stack (Fusion `fusion-electronics-stackup.ulp`); copper ordering + used-vs-unused layers
+-   `<project>-img-sch-p<N>.png` — one PNG per schematic sheet at 300 DPI (Fusion `fusion-electronics-images.ulp`)
+-   `<project>-img-silk-top.png`, `<project>-img-silk-bot.png` — silkscreen renders at 1200 DPI
+-   `<project>-img-cu-L<num>-<name>.png` — per-copper-layer renders at 1200 DPI (traces + filled pours + airwires + restrict zones)
+-   `*.pdf` / `*.PDF` — datasheets for critical ICs (power converters, MCUs, transceivers), plus any stackup or pinout PDFs
+
+Every input above is hard-gated by `tools/validate_findings.py`: any file present but not cited in some `evidence[].source` causes review failure. The case-insensitive match also catches uppercase `.PDF` / `.PNG`.
 
 ### Driver path (tested)
 
@@ -201,40 +219,42 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 ### Step 1: Export Design Data from Fusion Electronics
 
-The ULP exporter runs inside Fusion Electronics and must be run **twice** — once from each editor context:
+Three ULPs produce the inputs the reviewer consumes. All three live under `tools/` and write to `<repo>/exports/` automatically (path derived from `argv[0]`).
 
-1. **Open your design in Fusion Electronics**
-2. **From the Schematic Editor**, run the ULP:
-   ```
-   RUN fusion-electronics-export.ulp
-   ```
-   This writes `<design_name>-thomson-export-sch.json` to the `exports/` directory.
-3. **Switch to the Board Editor** (PCB), run the same ULP:
-   ```
-   RUN fusion-electronics-export.ulp
-   ```
-   This writes `<design_name>-thomson-export-brd.json` to the `exports/` directory.
+1.  **Open your design in Fusion Electronics.**
+2.  **From the Schematic Editor**, run:
+    ```
+    RUN fusion-electronics-export.ulp           # → <design>-thomson-export-sch.json
+    RUN fusion-electronics-images.ulp           # → <design>-img-sch-p<N>.png   (one per sheet, 300 DPI)
+    ```
+3.  **Switch to the Board Editor** (PCB) and run:
+    ```
+    RUN fusion-electronics-export.ulp           # → <design>-thomson-export-brd.json
+    RUN fusion-electronics-stackup.ulp          # → <design>-thomson-export-stack.json
+    RUN fusion-electronics-images.ulp           # → <design>-img-silk-top.png, -img-silk-bot.png,
+                                                #   -img-cu-L<num>-<name>.png  (one per used copper layer, 1200 DPI)
+    ```
 
-The ULP auto-detects which editor you're in and exports the appropriate data. The output path is derived automatically from the ULP's own location (`argv[0]`): since the script lives at `<repo>/tools/fusion-electronics-export.ulp`, it walks up one directory to find the repo root and writes to `<repo>/exports/`. No hardcoded paths or configuration needed — it works wherever the repo is cloned.
+Each ULP auto-detects which editor it's running in and produces the appropriate artifacts. Run order doesn't matter; what matters is that all three are run from the right editor (images and JSON-export run twice, stackup runs once from the board editor).
 
 #### Output File Options
 
-By default the ULP calculates the output path automatically. Two optional flags allow you to override this:
+All three ULPs share the same flags:
 
 | Flag | Description |
 |------|-------------|
 | `-d` | Opens a file-save dialog so you can choose the output location interactively |
-| `-o <filename>` | Writes the export to the specified filename directly |
+| `-o <prefix>` | Writes the output(s) using the specified prefix directly |
+| `-r <dpi>` | Image ULP only: override per-mode DPI (50–2400). Default is 300 (schematic) / 1200 (board). Use e.g. `-r 600` if you want smaller board PNGs for a coarse-pitch design. |
 
 Examples:
 ```
 RUN fusion-electronics-export.ulp -d
 RUN fusion-electronics-export.ulp -o C:\Users\me\Desktop\my-export.json
+RUN fusion-electronics-images.ulp -r 600          # smaller board PNGs
 ```
 
-If `-o` is used without a filename, the script will display an error dialog and exit.
-
-The schematic export contains components, nets, pin connectivity, and signal analysis. The board export contains placement coordinates, trace routing, board geometry, and layout analysis.
+The schematic JSON export contains components, nets, pin connectivity, and signal analysis. The board JSON contains placement coordinates, trace routing, board geometry, and layout analysis. The stackup JSON contains the physical copper-layer ordering plus the full layer table. The image PNGs are visual evidence — qualitative inputs only; never derive distances or trace widths from them (the reviewer instructions enforce this rule).
 
 ### Step 1 (Alternative): Export Design Data from KiCad 9
 
@@ -252,18 +272,25 @@ See [`docs/KiCad_Review_Guide.md`](docs/KiCad_Review_Guide.md) for full details 
 
 ### Step 2: Add Datasheets and Supporting Files
 
-Place any datasheets, stackup specs, or other reference documents into the same `exports/` directory:
+Place any datasheets or other reference documents into the same `exports/` directory alongside the ULP-generated artifacts:
 
 ```
 exports/
   Pendant_2_I_O_Schematic-thomson-export-sch.json
   Pendant_2_I_O_Board-thomson-export-brd.json
+  Pendant_2_I_O_Board-thomson-export-stack.json
+  Pendant_2_I_O_Schematic-img-sch-p1.png
+  Pendant_2_I_O_Board-img-silk-top.png
+  Pendant_2_I_O_Board-img-silk-bot.png
+  Pendant_2_I_O_Board-img-cu-L1-Top.png
+  Pendant_2_I_O_Board-img-cu-L2-GND.png
+  Pendant_2_I_O_Board-img-cu-L303-POWER.png
+  Pendant_2_I_O_Board-img-cu-L304-Bottom.png
   TPS54302_datasheet.pdf
-  stackup_4layer.pdf
   connector_pinout.pdf
 ```
 
-Claude Code can read PDFs directly. Providing datasheets for critical ICs (power converters, MCUs, transceivers) up front saves back-and-forth and produces a more thorough review.
+Claude Code can read PDFs and PNGs directly. Providing datasheets for critical ICs (power converters, MCUs, transceivers) up front saves back-and-forth and produces a more thorough review. The stackup JSON and per-layer PNGs let the reviewer make layer-aware claims (return-path adjacency, plane-split crossing, pour integrity) without having to ask you for stackup specs.
 
 ### Step 3: Start a Claude Code Review Session
 
@@ -280,7 +307,7 @@ Then prompt Claude to perform the review:
 
 Claude Code will:
 1. Read `docs/REVIEWER_INSTRUCTIONS.md` (the reviewer procedure) and, per its Step 1, the framework knowledge base — `ontology/ontology.json`, `examples/examples.json`, and `docs/AI_Hardware_Design_Review_KnowledgeBase.md`
-2. Read the `-sch.json` and `-brd.json` exports plus any datasheet PDFs from `exports/`
+2. Read the `-sch.json`, `-brd.json`, and `-stack.json` exports, the layer/silk/schematic PNGs, plus any datasheet PDFs from `exports/`
 3. Perform a pre-review assessment and ask for any missing information (datasheets, stackup details, etc.)
 4. Run through all applicable rules and report issues with specific `rule_id` citations, recording datasheet verifications in `verified_checks[]` and design-wide analyses in `cross_checks[]`
 5. Write findings to `exports/<project>-findings.json`, run `tools/validate_findings.py` (mandatory coverage gate), and produce `exports/<project>-review.html` via `tools/gen_report.py` (see §5 "Outputs")
