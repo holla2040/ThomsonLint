@@ -1,0 +1,280 @@
+#require 6.0200
+
+string Version = "1.0";
+
+#usage "en: <b>ThomsonLint Stackup Export</b>\n"
+       "<p>"
+       "Exports the board's layer stack (used copper layers in physical order, "
+       "all defined layers, and design-rule values that govern stackup like "
+       "mtCopper / mtIsolate / mdLayer) as a structured JSON file for "
+       "AI-assisted hardware design review with ThomsonLint."
+       "<p>"
+       "Run from the board editor."
+       "<p>"
+       "<b>Usage:</b>"
+       "<blockquote>run fusion-electronics-stackup [-d]<br>"
+       "run fusion-electronics-stackup -o filename</blockquote>"
+       "<b>Flags:</b>"
+       "<blockquote>"
+       "d: show a file dialog to specify the output file<br>"
+       "o: specify the output filename directly</blockquote>"
+       "Default output path:<br>"
+       "&lt;repo&gt;/exports/&lt;design_name&gt;-thomson-export-stack.json"
+       "<p>"
+       "<author>Author: ThomsonLint project</author>"
+
+// ============================================================================
+// Exports the PCB stackup: ordered copper layers, all defined layers, and
+// raw design rules (mtCopper / mtIsolate / etc. carry per-layer copper and
+// dielectric thicknesses if the design has them set). Run from the board
+// editor only.
+// ============================================================================
+
+enum { false, true };
+
+int isBoard = 0;
+int useFileDialog = false;
+int useProvidedFilename = false;
+string FileName;
+
+if (board) isBoard = 1;
+
+if (!isBoard) {
+  dlgMessageBox("ERROR: This ULP must be run from the board editor.");
+  exit(1);
+}
+
+// parse command line arguments
+if (argc > 1) {
+  string flag = argv[1];
+  if (flag[0] == '-') {
+    if (strlen(flag) != 2) {
+      dlgMessageBox("Error: Invalid flag '" + flag + "'. Use -d or -o.");
+      exit(1);
+    }
+    switch (flag[1]) {
+      case 'd':
+        useFileDialog = true;
+        break;
+      case 'o':
+        if (argc < 3) {
+          dlgMessageBox("Error: -o flag requires an output filename.\n\nUsage: run fusion-electronics-stackup -o filename");
+          exit(2);
+        }
+        FileName = argv[2];
+        useProvidedFilename = true;
+        break;
+    }
+  }
+}
+
+string extractBaseName(string fullpath) {
+  int lastSep = -1;
+  int i;
+  for (i = 0; i < strlen(fullpath); i++) {
+    if (fullpath[i] == '/' || fullpath[i] == '\\') lastSep = i;
+  }
+  string base;
+  if (lastSep >= 0) base = strsub(fullpath, lastSep + 1);
+  else              base = fullpath;
+  int dotPos = -1;
+  int j;
+  for (j = strlen(base) - 1; j >= 0; j--) {
+    if (base[j] == '.') { dotPos = j; break; }
+  }
+  if (dotPos > 0) base = strsub(base, 0, dotPos);
+  int len = strlen(base);
+  int vPos = -1;
+  for (j = len - 1; j >= 0; j--) {
+    if (base[j] == 'v' && j > 0 && base[j - 1] == ' ') {
+      int allDigits = 1;
+      int k;
+      for (k = j + 1; k < len; k++) {
+        if (base[k] < '0' || base[k] > '9') { allDigits = 0; break; }
+      }
+      if (allDigits && (j + 1) < len) { vPos = j - 1; break; }
+    }
+  }
+  if (vPos > 0) base = strsub(base, 0, vPos);
+  string result = "";
+  for (j = 0; j < strlen(base); j++) {
+    if (base[j] == ' ') {
+      result += "_";
+    } else {
+      string ch;
+      sprintf(ch, "%c", base[j]);
+      result += ch;
+    }
+  }
+  return result;
+}
+
+string extractDir(string fullpath) {
+  int lastSep = -1;
+  int i;
+  for (i = 0; i < strlen(fullpath); i++) {
+    if (fullpath[i] == '/' || fullpath[i] == '\\') lastSep = i;
+  }
+  if (lastSep >= 0) return strsub(fullpath, 0, lastSep);
+  return "";
+}
+
+string jsonEscape(string s) {
+  string result = "";
+  for (int i = 0; i < strlen(s); i++) {
+    if (s[i] == '"')       result += "\\\"";
+    else if (s[i] == '\\') result += "\\\\";
+    else if (s[i] == '\n') result += "\\n";
+    else if (s[i] == '\r') result += "\\r";
+    else if (s[i] == '\t') result += "\\t";
+    else {
+      string c;
+      sprintf(c, "%c", s[i]);
+      result += c;
+    }
+  }
+  return result;
+}
+
+// Detect copper layer across EAGLE classic and Fusion Electronics conventions.
+// Classic EAGLE: 1=Top, 16=Bottom, 2-15=inner (16 copper layers max).
+// Fusion Electronics: 1=Top, 304=Bottom, 257..303=inner copper (default named
+//   "Route17".."Route63", commonly user-renamed e.g. "POWER", "GND_INNER").
+//   Range observed in real 4-layer Fusion board (comet_brd, 2026-05-09).
+int IsCopperLayer(int layerNum, string layerName) {
+  string upper = strupr(layerName);
+  if (layerNum >= 1 && layerNum <= 16) return 1;           // EAGLE classic
+  if (layerNum >= 257 && layerNum <= 304) return 1;        // Fusion extended copper
+  if (layerNum == 63 || layerNum == 64) return 1;          // legacy / variant
+  if (upper == "TOP" || upper == "BOTTOM") return 1;
+  if (strstr(upper, "ROUTE") != -1) return 1;
+  if (strstr(upper, "INNER") != -1) return 1;
+  return 0;
+}
+
+// Physical-order rank for copper layer numbers (top=lowest, bottom=highest).
+// Fusion stacks: 1 (Top) → 2..15 (classic inner, if used) → 257..303 (Fusion
+// inner, ascending = closer to bottom) → 16 (classic bottom) / 304 (Fusion bottom).
+int CopperRank(int layerNum) {
+  if (layerNum == 1)                       return 0;                       // top
+  if (layerNum >= 2 && layerNum <= 15)     return layerNum;                // EAGLE inner 2..15
+  if (layerNum == 16)                      return 200;                      // EAGLE bottom (classic only)
+  if (layerNum == 63)                      return 100;                      // legacy guess
+  if (layerNum == 64)                      return 101;                      // legacy guess
+  if (layerNum >= 257 && layerNum <= 303)  return 250 + (layerNum - 257);   // Fusion inner copper
+  if (layerNum == 304)                     return 400;                      // Fusion bottom
+  return 50 + layerNum;                                                     // unknown: middle
+}
+
+// Determine output filename
+if (useFileDialog) {
+  FileName = dlgFileSave("Save Stackup JSON File", "", "-thomson-export-stack.json");
+  if (FileName == "") exit(0);
+  FileName += "-thomson-export-stack.json";
+} else if (!useProvidedFilename) {
+  string ulpDir = extractDir(argv[0]);
+  string repoDir = extractDir(ulpDir);
+  string exportDir = repoDir + "/exports";
+  string designName = "";
+  board(B) designName = extractBaseName(B.name);
+  FileName = exportDir + "/" + designName + "-thomson-export-stack.json";
+}
+
+status("ThomsonLint Stackup Export: collecting data...");
+
+output(FileName, "wt") {
+  printf("{\n");
+  printf("  \"thomsonlint_version\": \"%s\",\n", Version);
+  printf("  \"export_date\": \"%s\",\n", jsonEscape(t2string(time())));
+  printf("  \"mode\": \"stackup\",\n");
+
+  // ========== PROJECT INFO ==========
+  string projectName = "";
+  string variantName = "";
+  board(B) {
+    projectName = B.name;
+    variantName = variant();
+  }
+  printf("  \"project\": {\n");
+  printf("    \"name\": \"%s\",\n", jsonEscape(projectName));
+  printf("    \"variant\": \"%s\"\n", jsonEscape(variantName));
+  printf("  },\n");
+
+  // ========== ALL LAYERS (defined, including unused) ==========
+  printf("  \"all_layers\": [\n");
+  int allCount = 0;
+  board(B) {
+    B.layers(L) {
+      if (allCount > 0) printf(",\n");
+      printf("    { \"number\": %d, \"name\": \"%s\", \"used\": %s, \"is_copper\": %s, \"visible\": %s }",
+             L.number, jsonEscape(L.name),
+             L.used ? "true" : "false",
+             IsCopperLayer(L.number, L.name) ? "true" : "false",
+             L.visible ? "true" : "false");
+      allCount++;
+    }
+  }
+  if (allCount > 0) printf("\n");
+  printf("  ],\n");
+
+  // ========== COPPER STACK (used copper layers in physical order) ==========
+  int numCopper = 0;
+  int copperNums[];
+  string copperNames[];
+  int copperRanks[];
+
+  board(B) {
+    B.layers(L) {
+      if (!L.used) continue;
+      if (!IsCopperLayer(L.number, L.name)) continue;
+      copperNums[numCopper]  = L.number;
+      copperNames[numCopper] = L.name;
+      copperRanks[numCopper] = CopperRank(L.number);
+      numCopper++;
+    }
+  }
+
+  // Sort by rank (small N — bubble sort is fine).
+  for (int si = 0; si < numCopper; si++) {
+    for (int sj = si + 1; sj < numCopper; sj++) {
+      if (copperRanks[sj] < copperRanks[si]) {
+        int tn = copperNums[si];  copperNums[si]  = copperNums[sj];  copperNums[sj]  = tn;
+        string ts = copperNames[si]; copperNames[si] = copperNames[sj]; copperNames[sj] = ts;
+        int tr = copperRanks[si]; copperRanks[si] = copperRanks[sj]; copperRanks[sj] = tr;
+      }
+    }
+  }
+
+  printf("  \"copper_stack\": [\n");
+  for (int ci = 0; ci < numCopper; ci++) {
+    if (ci > 0) printf(",\n");
+    string position;
+    if (ci == 0)                  position = "top";
+    else if (ci == numCopper - 1) position = "bottom";
+    else                          position = "inner";
+    printf("    { \"index\": %d, \"position\": \"%s\", \"layer_number\": %d, \"layer_name\": \"%s\" }",
+           ci, position, copperNums[ci], jsonEscape(copperNames[ci]));
+  }
+  if (numCopper > 0) printf("\n");
+  printf("  ],\n");
+
+  printf("  \"copper_layer_count\": %d,\n", numCopper);
+
+  // ========== BOARD DESCRIPTION ==========
+  // Free-text description set in the board editor — sometimes used to record
+  // the intended stackup ("4-layer 1.6mm FR4, 1oz outer / 0.5oz inner", etc.).
+  string boardDesc = "";
+  board(B) boardDesc = B.description;
+  printf("  \"board_description\": \"%s\",\n", jsonEscape(boardDesc));
+
+  // ========== STACKUP NOTES ==========
+  // Per-layer copper thickness, dielectric thickness, and material live in the
+  // design rules (.dru) file referenced by the board. The EAGLE/Fusion ULP API
+  // has no iterator for design rules, so this ULP cannot read mtCopper /
+  // mtIsolate / mdLayer values. Export the .dru separately, or read it as text.
+  printf("  \"design_rule_note\": \"Per-layer thickness/material lives in the .dru file; not accessible from ULP. Export the .dru alongside this JSON.\"\n");
+
+  printf("}\n");
+}
+
+status("ThomsonLint Stackup Export: done! → " + FileName);

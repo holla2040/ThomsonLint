@@ -1,0 +1,66 @@
+#require 6.0200
+
+string Version = "1.0";
+
+#usage "en: <b>ThomsonLint Run All</b>\n"
+       "<p>"
+       "Runs the full ThomsonLint export pipeline for the current editor in "
+       "a single command — JSON connectivity export, stackup JSON (board only), "
+       "and high-resolution image renders."
+       "<p>"
+       "Run once from the schematic editor and once from the board editor."
+       "<p>"
+       "<b>Usage:</b><blockquote>run fusion-electronics-all</blockquote>"
+       "<b>Chain:</b>"
+       "<blockquote>"
+       "Schematic editor: export.ulp &rarr; images.ulp<br>"
+       "Board editor: export.ulp &rarr; stackup.ulp &rarr; images.ulp"
+       "</blockquote>"
+       "<p>"
+       "All defaults are used. To customise output paths (-o), use a file "
+       "dialog (-d), or override image DPI (-r), run the individual ULPs "
+       "directly."
+       "<p>"
+       "<author>Author: ThomsonLint project</author>"
+
+// ============================================================================
+// Thin wrapper that chains the three ThomsonLint exporters via EAGLE/Fusion's
+// script dispatch. Each child ULP is RUN in turn; each waits for the previous
+// to finish. images.ulp is intentionally LAST in every chain because it
+// terminates with exit("EXPORT IMAGE ...") which would otherwise truncate any
+// later RUN commands. ULPs cannot import / call each other as functions —
+// chaining via exit("RUN x.ulp; RUN y.ulp;") is the only mechanism available.
+// ============================================================================
+
+if (!schematic && !board) {
+  dlgMessageBox("ERROR: This ULP must be run from the schematic or board editor.");
+  exit(1);
+}
+
+// Extract the directory of this wrapper from argv[0] so the chained RUN
+// commands resolve sibling ULPs in tools/ regardless of EAGLE's configured
+// ULP search path. Without this, "RUN fusion-electronics-images.ulp" only
+// works if tools/ is in the user's ULP path; with this it works wherever
+// the wrapper itself was loaded from.
+string extractDir(string fullpath) {
+  int lastSep = -1;
+  int i;
+  for (i = 0; i < strlen(fullpath); i++) {
+    if (fullpath[i] == '/' || fullpath[i] == '\\') lastSep = i;
+  }
+  if (lastSep >= 0) return strsub(fullpath, 0, lastSep);
+  return ".";
+}
+
+string ulpDir = extractDir(argv[0]);
+
+if (schematic) {
+  exit("RUN '" + ulpDir + "/fusion-electronics-export.ulp';\n"
+       "RUN '" + ulpDir + "/fusion-electronics-images.ulp';\n");
+}
+
+if (board) {
+  exit("RUN '" + ulpDir + "/fusion-electronics-export.ulp';\n"
+       "RUN '" + ulpDir + "/fusion-electronics-stackup.ulp';\n"
+       "RUN '" + ulpDir + "/fusion-electronics-images.ulp';\n");
+}

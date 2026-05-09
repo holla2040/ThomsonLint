@@ -2,10 +2,13 @@
   "project_name": "sample",
   "review_date": "2026-05-06",
   "source_documents": [
-    { "path": "exports/sample_sch-thomson-export-sch.json", "kind": "schematic_export" },
-    { "path": "exports/sample_brd-thomson-export-brd.json", "kind": "board_export" },
-    { "path": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf", "kind": "datasheet", "label": "MT3608 datasheet" },
-    { "path": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf", "kind": "datasheet", "label": "AON7544 datasheet" }
+    { "path": "exports/sample_sch-thomson-export-sch.json",     "kind": "schematic_export" },
+    { "path": "exports/sample_brd-thomson-export-brd.json",     "kind": "board_export" },
+    { "path": "exports/sample_brd-thomson-export-stack.json",   "kind": "stackup",        "label": "4-layer stackup (Top / GND / POWER / Bottom)" },
+    { "path": "exports/sample_brd-img-cu-L1-Top.png",           "kind": "image",          "label": "L1 Top copper" },
+    { "path": "exports/sample_brd-img-cu-L2-GND.png",           "kind": "image",          "label": "L2 GND plane" },
+    { "path": "exports/Boost - MT3608 - SOT23-6 - C84817.pdf",  "kind": "datasheet",      "label": "MT3608 datasheet" },
+    { "path": "exports/FET-N - AON7544 - DFN3x3 - C315567.pdf", "kind": "datasheet",      "label": "AON7544 datasheet" }
   ],
   "issues": [
     {
@@ -30,6 +33,25 @@
         "If the footprint pin map is wrong, regenerate from a verified library before fab."
       ],
       "kb_references": ["Appendix C — FET footprint conventions"]
+    },
+    {
+      "rule_id": "EMC_PATH_001",
+      "severity": "Minor",
+      "domain": "EMC",
+      "component_id": ["U2"],
+      "net_id": ["PS_SW", "GND"],
+      "summary": "PS_SW trace on L1 crosses a keepout in the L2 GND reference plane — return-path discontinuity.",
+      "description": "The PS_SW net is routed on L1 Top. Stackup confirms L2 GND is the adjacent reference plane (copper_stack[1], position 'inner'). A 1.2 mm restrict zone on L2 directly under the SW trace forces the return current to detour around the keepout, increasing loop area and broadband emissions.",
+      "evidence": [
+        { "label": "Adjacent reference plane to L1 Top", "datasheet": "Continuous return required (EMC_PATH_001)", "design": "L2 GND (copper_stack[1])", "verdict": "ok",   "source": "exports/sample_brd-thomson-export-stack.json" },
+        { "label": "Keepout under SW trace",             "datasheet": "No discontinuities in return path",       "design": "1.2 mm restrict zone breaks pour", "verdict": "fail", "source": "exports/sample_brd-img-cu-L2-GND.png — keepout visible 4 mm SW of U2 pad 1" },
+        { "note": "PS_SW trace path on L1 confirmed visually.", "source": "exports/sample_brd-img-cu-L1-Top.png" }
+      ],
+      "recommended_actions": [
+        "Reroute the PS_SW net to avoid the L2 keepout, or remove the keepout if its purpose no longer applies.",
+        "If the keepout is intentional (e.g., antenna clearance), move PS_SW to a layer with an unbroken reference plane."
+      ],
+      "kb_references": ["EMC §3 return paths"]
     }
   ],
   "verified_checks": [

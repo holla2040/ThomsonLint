@@ -88,6 +88,8 @@ header .meta { font-size: .85rem; color: #64748b; margin-top: 4px; }
 .evidence-notes { margin-top: 6px; }
 .evidence-notes li { margin-left: 18px; font-size: .82rem; }
 .evidence-notes .source { color: #64748b; font-size: .76rem; font-family: monospace; }
+.evidence-thumb { max-width: 200px; max-height: 160px; display: block; margin: 4px 0; border: 1px solid #cbd5e1; border-radius: 3px; cursor: zoom-in; }
+.source-docs .evidence-thumb { max-width: 80px; max-height: 60px; display: inline-block; margin: 2px 6px -4px 0; vertical-align: middle; }
 .toggle-details { background: none; border: none; color: #2563eb; cursor: pointer; font-size: .8rem; margin-top: 4px; padding: 0; }
 .toggle-details:hover { text-decoration: underline; }
 .actions { display: flex; gap: 4px; margin-left: auto; }
@@ -164,7 +166,11 @@ function init() {
   // Source documents block
   if (SOURCES.length) {
     const html = '<div class="source-docs"><h3>Source documents (' + SOURCES.length + ')</h3><ul>' +
-      SOURCES.map(s => '<li><span class="kind">' + esc(s.kind || "—") + '</span>' + esc(s.path) + (s.label ? ' — ' + esc(s.label) : '') + '</li>').join("") +
+      SOURCES.map(s => {
+        const href = imageHrefFromSource(s.path);
+        const thumb = href ? renderImageThumb(href, s.label || s.path) : '';
+        return '<li><span class="kind">' + esc(s.kind || "—") + '</span>' + thumb + esc(s.path) + (s.label ? ' — ' + esc(s.label) : '') + '</li>';
+      }).join("") +
       '</ul></div>';
     document.getElementById("sourceDocs").innerHTML = html;
   }
@@ -331,6 +337,29 @@ function ruleIdStr(rid) {
   return rid;
 }
 
+function imageHrefFromSource(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\S+\.(?:png|jpe?g|svg))/i);
+  if (!m) return null;
+  let href = m[1];
+  // The HTML report is generated alongside the PNGs in exports/, so paths
+  // written as "exports/foo.png" (per the schema's repo-root convention)
+  // need their leading "exports/" segment stripped to resolve correctly
+  // against the report's own location.
+  if (href.indexOf("exports/") === 0) href = href.substring("exports/".length);
+  return href;
+}
+
+function renderImageThumb(href, alt) {
+  return `<a href="${esc(href)}" target="_blank"><img src="${esc(href)}" class="evidence-thumb" loading="lazy" alt="${esc(alt || href)}"></a>`;
+}
+
+function renderSourceCell(s) {
+  const href = imageHrefFromSource(s);
+  if (!href) return esc(s || "");
+  return `${renderImageThumb(href, s)}<div class="source">${esc(s)}</div>`;
+}
+
 function buildEvidenceHtml(evidence) {
   if (!evidence || !evidence.length) return "";
   const paramRows = evidence.filter(e => e.label && (e.datasheet || e.design || e.margin || e.verdict));
@@ -343,7 +372,7 @@ function buildEvidenceHtml(evidence) {
       const verdictKey = (r.verdict || "").replace("/", "");
       const verdictHtml = r.verdict ? `<span class="verdict verdict-${verdictKey}">${esc(r.verdict)}</span>` : "";
       const labelCell = esc(r.label) + (r.note ? `<br><span class="source">${esc(r.note)}</span>` : "");
-      html += `<tr><td>${labelCell}</td><td>${esc(r.datasheet || "")}</td><td>${esc(r.design || "")}</td><td>${esc(r.margin || "")}</td><td>${verdictHtml}</td><td class="source">${esc(r.source || "")}</td></tr>`;
+      html += `<tr><td>${labelCell}</td><td>${esc(r.datasheet || "")}</td><td>${esc(r.design || "")}</td><td>${esc(r.margin || "")}</td><td>${verdictHtml}</td><td class="source">${renderSourceCell(r.source)}</td></tr>`;
     });
     html += '</tbody></table>';
   }
@@ -351,7 +380,10 @@ function buildEvidenceHtml(evidence) {
     html += '<ul class="evidence-notes">';
     noteRows.forEach(r => {
       const txt = r.note || r.label || "";
-      html += `<li>${esc(txt)} <span class="source">[${esc(r.source || "")}]</span></li>`;
+      const srcStr = r.source || "";
+      const href = imageHrefFromSource(srcStr);
+      const thumbHtml = href ? renderImageThumb(href, srcStr) : "";
+      html += `<li>${esc(txt)} <span class="source">[${esc(srcStr)}]</span>${thumbHtml}</li>`;
     });
     html += '</ul>';
   }

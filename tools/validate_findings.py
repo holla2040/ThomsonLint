@@ -8,9 +8,10 @@ input the reviewer consumed is cited in the findings.
 Checks performed:
 
 1. Schema validation against tests/findings_schema.json.
-2. Source-document coverage: every PDF, schematic export, and board export in
-   the findings file's directory must be cited in at least one finding's
-   evidence[].source. Uncited inputs are reported as gaps.
+2. Source-document coverage: every PDF, schematic/board/stackup JSON export, and
+   layer-image / silkscreen / schematic-sheet PNG (or JPG) in the findings
+   file's directory must be cited in at least one finding's evidence[].source.
+   Uncited inputs are reported as gaps.
 3. source_documents[] consistency: every declared source_documents entry must
    appear in some evidence.source; every evidence.source that names a file
    should appear in source_documents (warning, not hard failure).
@@ -36,8 +37,12 @@ ONTOLOGY_PATH = REPO_ROOT / "ontology" / "ontology.json"
 
 DESIGN_INPUT_SUFFIXES = (
     ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
     "-thomson-export-sch.json",
     "-thomson-export-brd.json",
+    "-thomson-export-stack.json",
 )
 
 
@@ -86,7 +91,7 @@ def list_design_inputs(findings_dir: Path):
         if not child.is_file():
             continue
         name = child.name
-        if any(name.endswith(suf) for suf in DESIGN_INPUT_SUFFIXES):
+        if any(name.lower().endswith(suf) for suf in DESIGN_INPUT_SUFFIXES):
             inputs.append(child)
     return inputs
 
@@ -95,7 +100,7 @@ def check_input_coverage(findings, findings_dir: Path, hard_errors, warnings):
     """Every PDF / sch / brd export in findings_dir must be cited."""
     inputs = list_design_inputs(findings_dir)
     if not inputs:
-        warnings.append(f"No design inputs (PDF/sch/brd JSON) found in {findings_dir} — nothing to cross-reference.")
+        warnings.append(f"No design inputs (PDF / sch+brd+stack JSON / layer images) found in {findings_dir} — nothing to cross-reference.")
         return [], []
 
     sources = collect_evidence_sources(findings)
