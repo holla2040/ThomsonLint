@@ -18,9 +18,11 @@ cd ThomsonLint
 **KiCad 9:**
 1. Run `python tools/kicad-export.py path/to/MyProject.kicad_pro`
 
-**Then** run Claude Code from the repo root and enter this prompt:
+**Then** run Claude Code from the repo root and type `/design-review` at the prompt:
 
-**`Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`**
+**`/design-review`**
+
+(Fallback if the skill is unavailable: `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`)
 
 (A pre-generated `review_instructions.txt` bundle is also produced for single-file upload to web AIs like Gemini, but that workflow has not been tested — see §5 "Running a Review".)
 
@@ -128,9 +130,11 @@ Every input above is hard-gated by `tools/validate_findings.py`: any file presen
 
 ### Driver path (tested)
 
-**Claude Code (CLI, in this repo)** — read the reviewer instructions directly. From the repo root run `claude` and enter:
+**Claude Code (CLI, in this repo)** — read the reviewer instructions directly. From the repo root run `claude` and type:
 
-> `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`
+> `/design-review`
+
+(Fallback: `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`)
 
 See §7 "Using with Claude Code" for the full step-by-step.
 
@@ -315,9 +319,11 @@ cd ThomsonLint
 claude
 ```
 
-Then prompt Claude to perform the review:
+Then start the review using the project skill:
 
-**`Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`**
+**`/design-review`**
+
+(Fallback if the skill is unavailable: `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`)
 
 Claude Code will:
 1. Read `docs/REVIEWER_INSTRUCTIONS.md` (the reviewer procedure) and, per its Step 1, the framework knowledge base — `ontology/ontology.json`, `examples/examples.json`, and `docs/AI_Hardware_Design_Review_KnowledgeBase.md`

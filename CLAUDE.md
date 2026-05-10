@@ -49,6 +49,8 @@ Claude Code is the tested reviewer driver. A second path exists for single-file-
   - `examples/examples.json`
   - `docs/AI_Hardware_Design_Review_KnowledgeBase.md`
 
+  The project ships a `/design-review` skill at `.claude/commands/design-review.md` — type `/design-review` at the Claude Code prompt instead of pasting the full prompt manually.
+
   Do **not** read `review_instructions.txt` from Claude Code. The bundle (~260KB / 5700 lines) is intended for single-file upload to a web AI and exceeds Claude Code's per-file `Read` limit. The source files are the truth; the bundle is a concatenation of them.
 
 - **Web AI with single-file upload (Gemini, Claude.ai, ChatGPT, etc.) — untested.** The `review_instructions.txt` bundle is produced by `gen_context.sh`, which concatenates `docs/REVIEWER_INSTRUCTIONS.md` with the three knowledge base files. The maintainers have not validated this path; treat as experimental.
