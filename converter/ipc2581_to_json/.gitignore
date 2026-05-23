@@ -1,0 +1,7 @@
+
+# Generated converter outputs
+examples/post_conversion/
+examples.zip
+__pycache__/
+tests/__pycache__/
+*.pyc
