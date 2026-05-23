@@ -105,6 +105,7 @@ Current framework shape to confirm at runtime:
 8. Include `verified_checks` if the framework supports them.
 9. Include `cross_checks` if the framework supports them.
 10. Limit `issues[]` to at most 15 high-signal issues unless the user explicitly requests otherwise. Use `verified_checks[]` and `cross_checks[]` for checked-good analyses and broad multi-rule reviews.
+11. If the converter is run with a project name other than `example`, use that same project prefix for findings and report artifacts. For example, `--project-name my_board` should produce `exports/my_board-findings.json` and the corresponding generated report.
 
 ## Workflow 6: Validate Findings
 
