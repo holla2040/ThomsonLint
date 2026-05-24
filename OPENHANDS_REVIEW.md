@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This repo contains ThomsonLint and an integrated converter. An OpenHands or other coding agent must first run the converter, then run the ThomsonLint review workflow exactly as defined by this repository.
+This repo contains ThomsonLint and an integrated converter. An OpenHands or other coding agent must follow this order: prepare inputs, run setup/tool preflight, run the converter, inspect the framework, then continue the review workflow exactly as defined by this repository.
 
 Do not invent a new review process, findings schema, ontology, or report format. Follow the existing ThomsonLint framework: `ontology/ontology.json`, `examples/examples.json`, `tests/findings_schema.json`, `tests/sample_findings.json`, `tools/validate_findings.py`, `tools/gen_report.py`, and `docs/REVIEWER_INSTRUCTIONS.md` when present.
 
@@ -173,12 +173,22 @@ Before reviewing evidence, inspect the repo framework files:
     - do not loop indefinitely; use bounded attempts
 18. Mandatory checkpoint A (manifest coverage): every BOM line item has a manifest row or clearly grouped equivalent row. This checkpoint must pass before evidence review continues.
 19. Mandatory checkpoint B (retrieved evidence): all `found` datasheets are saved locally under `exports/datasheets/`.
-20. Missing/ambiguous datasheets do not block review unless user explicitly sets datasheets as a hard gate; report them as evidence limitations.
-21. Cite only local saved datasheet filenames in findings.
-22. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
-23. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
+20. A datasheet URL alone does not satisfy status `found`. Status `found` requires a local saved datasheet file under `exports/datasheets/`.
+21. Missing/ambiguous datasheets do not block review unless user explicitly sets datasheets as a hard gate; report them as evidence limitations.
+22. Cite only local saved datasheet filenames in findings.
+23. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
+24. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
 
-## Workflow 6: Review Schematic Evidence FULL
+## Workflow 6: Enforce Image Review Gate
+
+1. This is a required normal numbered workflow for deep-review runs when PDFs are present.
+2. Verify schematic PNGs exist when schematic PDFs are present.
+3. Verify layout/Gerber/PCB PNGs exist when layout/Gerber/PCB PDFs are present.
+4. If PDFs are present but PNGs are missing, stop and report an image-rendering blocker.
+5. No silent JSON-only fallback is allowed.
+6. Fallback is allowed only if the user explicitly approves it.
+
+## Workflow 7: Review Schematic Evidence FULL
 
 1. Inspect generated schematic JSON.
 2. Review components, refdes coverage, net names, power nets, external interfaces, connector nets, single-pin/unusual connections, and schematic-level evidence limitations.
@@ -186,7 +196,7 @@ Before reviewing evidence, inspect the repo framework files:
 4. Use schematic PNGs only for visual/context confirmation, not quantitative claims.
 5. Record checked-good items for `verified_checks` when useful.
 
-## Workflow 7: Full Board/Layout JSON Evaluation
+## Workflow 8: Full Board/Layout JSON Evaluation
 
 1. Inspect the full logical content of `exports/<project>-thomson-export-brd.json`.
 2. Full board JSON evaluation is required; summary-only extraction/review is forbidden.
@@ -221,10 +231,11 @@ Before reviewing evidence, inspect the repo framework files:
    - required categories inspected or explicitly marked unavailable
    - board evidence inventory created
    - no findings written before board evidence inventory exists
+   - if `exports/<project>-board-evidence-inventory.json` is not created, the agent must stop before candidate finding development
 8. Board JSON is exported geometry/routing evidence, not true DRC.
 9. Do not claim exact clearance, net-short proof, annular-ring validation, soldermask validation, impedance verification, or manufacturing signoff unless explicit tool evidence supports it.
 
-## Workflow 8: Review Stackup and Manufacturing Evidence
+## Workflow 9: Review Stackup and Manufacturing Evidence
 
 1. Inspect generated stack JSON.
 2. Explicitly inspect candidate stackup sources: generated stack JSON, `input/stackup.csv`, `input/stackup.json`, fabrication drawing PDFs, ODB++ archive/folder if present, IPC-2581 stackup/cross-section content if present, and EDA-specific stackup reports if present.
@@ -243,14 +254,14 @@ Before reviewing evidence, inspect the repo framework files:
 11. Optional `impedance_rules.csv` schema: `rule_name`, `net_class`, `target_ohms`, `tolerance_ohms`, `layer`, `width_mil`, `spacing_mil`, `reference_plane`, `notes`.
 12. Final response must include: stackup source used, stackup completeness status, missing stackup fields, whether impedance evidence was available, and stackup limitations.
 
-## Workflow 9: Review BOM and Component Evidence FULL
+## Workflow 10: Review BOM and Component Evidence FULL
 
 1. Inspect generated BOM JSON.
 2. Review component list, refdes coverage, manufacturer/MPN/LCSC fields, quantity consistency, missing metadata, package information, and BOM/schematic/board consistency candidates.
 3. Identify components that need datasheet evidence.
 4. Do not infer datasheet parameters from vendor names or package names alone.
 
-## Workflow 10: Review Image Evidence FULL
+## Workflow 11: Review Image Evidence FULL
 
 1. This workflow is required for deep-review runs when PDFs are present.
 2. Inspect generated schematic PNGs.
@@ -264,7 +275,7 @@ Before reviewing evidence, inspect the repo framework files:
    - layout/Gerber/PCB PDFs present require layout/Gerber/PCB PNGs
    - no silent JSON-only fallback
 
-## Workflow 11: Review Datasheet Evidence FULL
+## Workflow 12: Review Datasheet Evidence FULL
 
 1. Inspect local/retrieved datasheets actually available.
 2. Use only local saved datasheet files as evidence.
@@ -272,7 +283,7 @@ Before reviewing evidence, inspect the repo framework files:
 4. Record missing/ambiguous datasheets from the manifest as evidence limitations.
 5. Do not use web snippets or search-result text as evidence.
 
-## Workflow 12: Cross-Source Consistency Review
+## Workflow 13: Cross-Source Consistency Review
 
 1. Cross-check evidence across:
    - schematic JSON
@@ -292,7 +303,7 @@ Before reviewing evidence, inspect the repo framework files:
    - conversion warnings vs evidence reliability
 3. Use `verified_checks` and `cross_checks` for checked-good or broad analyses.
 
-## Workflow 13: Create Candidate Findings
+## Workflow 14: Create Candidate Findings
 
 1. Create candidate findings before writing final JSON.
 2. Reject unsupported claims.
@@ -301,7 +312,7 @@ Before reviewing evidence, inspect the repo framework files:
 5. Require concrete evidence before promoting a candidate to an issue.
 6. Use examples/sample findings as style references only, not evidence.
 
-## Workflow 14: Create Findings JSON
+## Workflow 15: Create Findings JSON
 
 1. Write `exports/example-findings.json` or the matching project-prefixed findings file.
 2. Use only schema-allowed fields.
@@ -311,7 +322,7 @@ Before reviewing evidence, inspect the repo framework files:
 6. Include `verified_checks` and `cross_checks` if supported.
 7. Limit `issues[]` to at most 15 high-signal issues unless the user explicitly requests otherwise.
 
-## Workflow 15: Validate Findings
+## Workflow 16: Validate Findings
 
 1. Run:
 
@@ -327,7 +338,7 @@ Before reviewing evidence, inspect the repo framework files:
 3. Do not bypass the validator.
 4. Do not generate the report until validation passes.
 
-## Workflow 16: Generate Report
+## Workflow 17: Generate Report
 
 1. Run:
 
@@ -401,18 +412,16 @@ When finished, report:
 - Board JSON sections inspected.
 - Board JSON sections unavailable or unsupported.
 - Whether any board findings were limited by missing data.
-- Datasheets found count.
-- Datasheets missing/ambiguous count.
-- Datasheet manifest path if created.
 - Total BOM line items.
 - Datasheet manifest rows count.
 - Local datasheets reused count.
 - Retrieved datasheets count.
-- Ambiguous count.
-- Missing count.
+- Ambiguous datasheet count.
+- Missing datasheet count.
 - not_applicable_generic count.
-- Datasheets used as evidence.
-- Candidate URL/download failures summary if any.
+- Datasheet manifest path.
+- Datasheets cited in findings.
+- Candidate URL/download failure summary.
 - Stackup source used.
 - Stackup completeness status.
 - Missing stackup fields.
