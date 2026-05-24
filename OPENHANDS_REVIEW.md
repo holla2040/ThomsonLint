@@ -59,7 +59,7 @@ Place raw review inputs under `input/`:
 10. Cite only local saved datasheet filenames in findings.
 11. If a datasheet cannot be confidently identified, record it as missing evidence rather than guessing.
 12. Do not block the review on missing datasheets unless the user explicitly makes datasheets a hard gate.
-13. Do not print or store the API key in any repo file, findings file, report, manifest, or logs.
+13. Do not print or store the SEARXNG_URL in any repo file, findings file, report, manifest, or logs.
 
 ## Workflow 2: Run Integrated Converter
 
