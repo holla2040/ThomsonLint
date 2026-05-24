@@ -5,6 +5,20 @@ Create a linear, deep, and checkpointed ThomsonLint execution plan that follows 
 This plan enforces a strict order: inspect inputs first, then setup/tool preflight, then converter execution, then framework inspection, then datasheet retrieval as a normal numbered phase, followed by separate evidence-class reviews (schematic, board/layout, stackup, BOM, images, datasheets), then cross-source consistency, candidate development, findings JSON, validation, report generation, and final summary.
 
 3. APPROACH OVERVIEW
+
+Artifact-Based Phase Completion Rule:
+A phase may not be marked complete based only on narrative text. If the phase defines a required artifact or validation JSON, that artifact must exist on disk, parse successfully if JSON, and contain the required pass field set to true before the phase can be marked complete. Verbal claims such as "phase complete", "gate passed", or "reviewed" are invalid unless backed by the required artifact.
+Universal phase checkpoint artifact: `exports/<project>-phase-checkpoints.jsonl`. Every phase must append exactly one JSONL checkpoint row before moving to the next phase, and each row must include `phase_number`, `phase_name`, `started_at_utc`, `completed_at_utc`, `required_artifacts`, `artifacts_verified`, `validation_artifacts`, `validation_passed`, `blockers`, `phase_passed`. A phase is not complete unless its checkpoint row exists and `phase_passed=true`. If a phase has no separate artifact, the checkpoint row itself is the required artifact. Narrative text is not a checkpoint.
+`exports/<project>-phase-checkpoints.jsonl` must record the phase-local gate result for each phase. The checkpoint row must include `failed_phase_number` and `repair_required=true` when a phase-local gate fails.
+
+Phase-Local Gate Enforcement Rule:
+Each phase owns its own gate. A phase must not be marked complete until its required artifacts exist, parse successfully if JSON, and pass that phase’s validation criteria.
+If a phase-local gate fails: stay in the same phase; repair only that phase artifact/work product; re-run that phase validation; repeat until pass or blocker; do not advance; do not defer failure to Phase 15, Phase 20, or final audit.
+
+No Phase Consolidation:
+Phases must be executed one at a time. Phases 8 through 14 must not be consolidated. Phases 16 and 17 must not be consolidated. Each phase must print its phase name, produce its required checkpoint artifacts, verify those artifacts, and only then proceed to the next phase.
+Checkpoint-row enforcement: phases 8 through 14 must each append a distinct row in `exports/<project>-phase-checkpoints.jsonl`; phases 16 and 17 must each append a distinct row; one shared row must not mark multiple phases complete.
+
 Phase 1 — Ingest ThomsonLint Workflow
 Phase 2 — Inspect Inputs and Datasheets
 Phase 3 — Setup and Tool Preflight
@@ -45,13 +59,17 @@ Phase 20 — Final Summary
 ## Phase 3 — Setup and Tool Preflight
 - **Purpose**: Ensure required local tools are available before any converter execution.
 - **Files/tools to inspect/use**: `python3`, `pdftoppm`, `pdfinfo`, Ubuntu/Debian package `poppler-utils`.
-- **Expected evidence/output**: Tool availability results and installation attempt status.
+- **Expected evidence/output**: Tool availability results and installation attempt status, plus `exports/tool-preflight-status.json`.
 - **Validation/checkpoint before moving to next phase**:
   - Check `which python3`, `which pdftoppm`, `which pdfinfo`.
   - If `pdftoppm` or `pdfinfo` missing, attempt `apt-get update && apt-get install -y poppler-utils`.
   - If `sudo` is required and available, attempt `sudo apt-get update && sudo apt-get install -y poppler-utils`.
   - Verify post-install with `which pdftoppm`, `which pdfinfo`, `pdftoppm -v`, `pdfinfo -v`.
   - If install fails or tools remain unavailable when PDFs are present, stop and report blocker; no silent JSON-only fallback unless user explicitly approves fallback.
+- **Required artifact fields**: `python3_available`, `pdftoppm_available`, `pdfinfo_available`, `install_attempted`, `install_command`, `install_succeeded`, `pdfs_present`, `fallback_used`, `user_approved_fallback`, `approval_source`, `overall_pass`.
+- **Required artifact fields**: include `json_only_review_approved` and `json_only_approval_source`.
+- **Pass logic**: If PDFs are present, pass only when (`pdftoppm_available=true` and `pdfinfo_available=true`) or (image-render fallback is used and `user_approved_fallback=true`) or (JSON-only fallback is explicitly approved with `json_only_review_approved=true`). Do not treat image-render fallback approval as JSON-only approval.
+- **Phase-local failure loop**: If `exports/tool-preflight-status.json` is missing or `overall_pass=false`, remain in Setup and Tool Preflight. Do not run the converter. Repair tool installation or stop for explicit user approval.
 - **Risks or ways the agent could go wrong**: Running converter before tool preflight, skipping install attempt, or proceeding after failed preflight.
 
 ## Phase 4 — Run Integrated Converter
@@ -69,6 +87,9 @@ Phase 20 — Final Summary
 - **Risks or ways the agent could go wrong**: Using invalid severities/domains/rule IDs, missing required fields, or inventing schema fields.
 
 ## Phase 6 — Full BOM Datasheet Retrieval
+- **BOM line item definition**: Every raw BOM CSV row is a BOM line item, including labels, documents, generic passives, connectors, test points, mechanical rows, rows without MPN, and rows with MPN=`?`.
+- **Coverage rule**: Every raw BOM row must produce exactly one manifest row unless a grouped row explicitly lists all included raw BOM row indexes. Coverage is invalid if manifest row count plus grouped covered row indexes does not cover all raw BOM row indexes.
+- **Representation rule**: Rows lacking an applicable unique datasheet must still be represented (typically `not_applicable_generic` with reason).
 - **Purpose**: Build a datasheet manifest for every BOM line item and attempt full BOM datasheet coverage.
 - **Files/tools to inspect/use**: `exports/<project>-bom.json`, schematic/component exports for context, local `datasheets/`, SearXNG MCP (if available), `exports/datasheets/`.
 - **Expected evidence/output**: `exports/datasheets/datasheet_manifest.jsonl` with one manifest row for every BOM line item (or clearly grouped equivalent row), plus locally saved datasheets for `local`/`found` items.
@@ -102,16 +123,21 @@ Phase 20 — Final Summary
   - verify failed candidate URLs are recorded when download attempts fail
   - fail if any status=found row lacks a local file
 - **Required artifact**: `exports/datasheets/datasheet_manifest_validation.json` with:
-  `total_bom_line_items`, `manifest_rows`, `local_count`, `found_count`, `ambiguous_count`, `missing_count`, `not_applicable_generic_count`, `status_found_missing_local_file_count`, `missing_local_files`, `coverage_pass`, `local_file_validation_pass`, `overall_pass`.
+  `bom_csv_path`, `bom_raw_row_count`, `manifest_path`, `manifest_row_count`, `covered_bom_row_indexes`, `uncovered_bom_row_indexes`, `status_counts`, `found_rows_missing_local_files`, `local_file_validation_pass`, `coverage_pass`, `overall_pass`.
 - **Pass criteria**: Full BOM Datasheet Retrieval passes only if `coverage_pass=true`, `local_file_validation_pass=true`, and `overall_pass=true`.
+- **Phase-local failure loop**: If `exports/datasheets/datasheet_manifest_validation.json` is missing or `overall_pass=false`, remain in Full BOM Datasheet Retrieval. Repair manifest and/or datasheet files, regenerate the validation artifact, and do not proceed to image gate or evidence review until Phase 6 passes.
 - **Blocker**: If manifest validation fails, stop and repair manifest and/or downloads before Review Datasheet Evidence, Cross-Source Consistency Review, Candidate Finding Development, or Findings JSON.
 - **Coverage strictness**: Full BOM retrieval means every BOM line item is represented. It is not complete if only ICs/easy URLs are covered, if generic parts are omitted instead of `not_applicable_generic`, or if test points/connectors/mechanical parts are omitted instead of classified.
 
 ## Phase 7 — Enforce Image Review Gate
 - **Purpose**: Enforce PNG evidence readiness for deep review runs.
 - **Files/tools to inspect/use**: `exports/` PNG artifacts; `pdftoppm`/`pdfinfo` when relevant.
-- **Expected evidence/output**: Verified schematic and layout/Gerber/PCB PNG presence when PDFs are present.
-- **Validation/checkpoint before moving to next phase**: If PDFs exist but PNGs are missing, stop unless user explicitly approves JSON-only fallback.
+- **Expected evidence/output**: Verified schematic and layout/Gerber/PCB PNG presence when PDFs are present and `exports/<project>-image-evidence-inventory.json`.
+- **Required artifact fields**: `pdf_sources`, `conversion_tool`, `fallback_used`, `user_approved_fallback`, `total_pages_expected`, `total_pages_rendered`, `output_files`, `schematic_pngs`, `layout_pngs`, `pages_inspected`, `page_roles_or_labels_if_identifiable`, `visual_context_notes`, `limitations`, `confirmation_no_pixel_quantitative_claims`, `overall_pass`.
+- **Fallback distinctions**: image-render fallback means alternate rendering (for example PyMuPDF) to produce PNG evidence; JSON-only fallback means proceeding without image evidence.
+- **Approval rules**: these require separate approval. `user_approved_fallback=true` is sufficient only for image-render fallback. JSON-only review requires `json_only_review_approved=true` and explicit user approval in a new message after the blocker is reported.
+- **Validation/checkpoint before moving to next phase**: If PDFs exist but PNGs are missing or cannot be produced, stop unless `json_only_review_approved=true`.
+- **Phase-local failure loop**: If `exports/<project>-image-evidence-inventory.json` is missing or `overall_pass=false` when PDFs/images are required, remain in Phase 7. Repair image rendering or stop for explicit fallback approval. Do not proceed to schematic/board evidence review or candidate findings.
 - **Risks or ways the agent could go wrong**: Quietly skipping image gate or claiming image review without real renders.
 
 ## Phase 8 — Review Schematic Evidence FULL
@@ -126,12 +152,13 @@ Phase 20 — Final Summary
 - **Files/tools to inspect/use**: `exports/<project>-thomson-export-brd.json`, targeted Python/jq-style traversal for large files, layout PNG context if relevant.
 - **Expected evidence/output**: `exports/<project>-board-evidence-inventory.json` plus full-category inspection coverage.
 - **Validation/checkpoint before moving to next phase**:
-  - Full Board/Layout JSON Evaluation is not complete unless `exports/<project>-board-evidence-inventory.json` exists.
+  - Full Board/Layout JSON Evaluation is not complete unless both `exports/<project>-board-evidence-inventory.json` and `exports/<project>-board-evidence-inventory-validation.json` exist and validation `overall_pass=true`.
   - Record the exact board evidence inventory path.
   - A printed summary table is not sufficient evidence of full board JSON evaluation. The required inventory JSON artifact must exist and pass validation.
   - Board evidence inventory must contain required fields: `source_board_json`, `generated_timestamp`, `board_json_loaded`, `inspected_sections`, `unavailable_sections`, `object_counts`, `layer_count`, `net_count`, `route_count`, `via_count`, `hole_count`, `component_count_if_available`, `route_width_summary`, `route_length_summary`, `candidate_differential_or_paired_nets`, `candidate_power_nets`, `candidate_connector_or_interface_nets`, `candidate_test_or_debug_features`, `conversion_limitations`, `missing_or_unsupported_fields`, `evidence_paths_used`.
   - Required validation artifact: `exports/<project>-board-evidence-inventory-validation.json` with `inventory_exists`, `required_fields_present`, `board_json_loaded`, `required_categories_inspected_or_marked_unavailable`, `overall_pass`.
   - If board evidence inventory validation fails, stop and repair before Candidate Finding Development or Findings JSON.
+  - If `exports/<project>-board-evidence-inventory.json` or `exports/<project>-board-evidence-inventory-validation.json` is missing, invalid, or `overall_pass=false`, remain in Phase 9. Repair the inventory and validation artifacts. Do not proceed to stackup review, cross-source review, or candidate findings.
   - Board JSON loaded successfully.
   - Required categories inspected or explicitly marked unavailable: metadata, layers, units/coords, outline, components/footprints/packages, pads, vias/holes, plated vs non-plated, nets/net classes, routes, route width by net, route length by net/layer, polygons/copper areas, pour indicators, non-copper geometry, silkscreen/mechanical, test/debug features, connector/interface context, differential/paired candidates, power-net routing evidence, conversion limitations/missing fields.
   - Board evidence inventory created with counts/summaries/candidate groups/missing fields/evidence paths.
@@ -162,13 +189,14 @@ Phase 20 — Final Summary
 Image review requirements:
 - Image gate verifies files exist.
 - Image review must inspect actual generated PNGs, not only list filenames/sizes.
-- Required artifact: `exports/<project>-image-evidence-inventory.json` containing `schematic_pngs`, `layout_pngs`, `pages_inspected`, `page_roles_or_labels_if_identifiable`, `visual_context_notes`, `limitations`, `confirmation_no_pixel_quantitative_claims`.
+- Required artifact: `exports/<project>-image-evidence-inventory.json` containing `pdf_sources`, `conversion_tool`, `fallback_used`, `user_approved_fallback`, `total_pages_expected`, `total_pages_rendered`, `output_files`, `schematic_pngs`, `layout_pngs`, `pages_inspected`, `page_roles_or_labels_if_identifiable`, `visual_context_notes`, `limitations`, `confirmation_no_pixel_quantitative_claims`, `overall_pass`.
 - If image review is required and `image-evidence-inventory.json` is not created, do not proceed to Candidate Finding Development.
 
 - **Purpose**: Review PNG evidence as visual/context support.
 - **Files/tools to inspect/use**: Generated schematic and layout/Gerber/PCB PNG files.
 - **Expected evidence/output**: Recorded image pages inspected plus visual/context observations.
 - **Validation/checkpoint before moving to next phase**: Only qualitative/context conclusions from PNGs; no quantitative pixel-derived metrics.
+- **Phase-local failure loop**: If `exports/<project>-image-evidence-inventory.json` is missing or `overall_pass=false` when PDFs/images are required, remain in Phase 12. Repair image rendering or stop for explicit fallback approval. Do not proceed to schematic/board evidence review or candidate findings.
 - **Risks or ways the agent could go wrong**: Deriving dimensions/clearance/width from pixel measurements.
 
 ## Phase 13 — Review Datasheet Evidence FULL
@@ -195,20 +223,20 @@ Image review requirements:
 ## Phase 15 — Pre-Findings Gate Check
 - **Purpose**: Execute Workflow 14: Pre-Findings Gate Check and block findings work until all required artifacts and hard gates pass.
 - **Validation/checkpoint before moving to next phase**:
-  - converter completed
-  - JSON exports load
-  - PNG image gate passed
-  - datasheet manifest exists
-  - datasheet manifest validation `overall_pass=true`
-  - board evidence inventory exists
-  - board evidence inventory validation `overall_pass=true`
-  - image evidence inventory exists when images are required
-  - stackup completeness status recorded
-  - framework inspection completed
-  - findings JSON validates
-  - required HTML report exists under `exports/`
-  - `exports/<project>-report-generation-validation.json` exists with `overall_pass=true`
-  - no hard blocker remains
+  - required artifact `exports/<project>-pre-findings-gate.json` exists
+  - converter_completed=true
+  - json_exports_loadable=true
+  - png_image_gate_passed=true
+  - datasheet_manifest_exists=true
+  - datasheet_manifest_validation_pass=true
+  - board_evidence_inventory_exists=true
+  - board_evidence_inventory_validation_pass=true
+  - image_evidence_inventory_exists=true when images are required
+  - stackup_completeness_recorded=true
+  - framework_inspection_completed=true
+  - no hard blocker remains and `overall_gate_pass=true`
+  - this phase must not require findings validation or report generation artifacts
+- **Phase-local failure loop**: If `exports/<project>-pre-findings-gate.json` is missing or `overall_gate_pass=false`, remain in Pre-Findings Gate Check. Do not create candidate findings or findings JSON. The gate must identify which earlier phase failed and list the failed phase number requiring repair.
 - **Blocker rule**: If any item fails, stop before Candidate Finding Development. The agent must not proceed to candidate findings without board evidence inventory, and must not proceed without image evidence inventory when images are required.
 
 ## Phase 16 — Candidate Finding Development
@@ -230,6 +258,7 @@ Image review requirements:
 - **Files/tools to inspect/use**: `python3 tools/validate_findings.py exports/example-findings.json` (or matching project prefix).
 - **Expected evidence/output**: Validation pass output.
 - **Validation/checkpoint before moving to next phase**: Validator succeeds with no bypass.
+- **Phase-local failure loop**: If findings validation fails, remain in Validate and Repair Findings. Repair only findings JSON. Do not modify schema, validator, ontology, examples, source evidence, or generated converter outputs.
 - **Risks or ways the agent could go wrong**: Editing framework files instead of findings JSON.
 
 ## Phase 19 — Generate Report
@@ -256,15 +285,16 @@ Image review requirements:
     - `html_report_exists=true`
     - `markdown_report_only_detected=false`
     - `overall_pass=true`
-  - Do not mark the review complete if only `exports/review_report.md` exists.
+  - Do not mark the review complete if only `exports/review_report.md` or `exports/example-review-report.md` exists.
   - Do not substitute markdown output for the required HTML report.
+- **Phase-local failure loop**: If `exports/<project>-review.html` is missing or `exports/<project>-report-generation-validation.json` is missing or `overall_pass=false`, remain in Generate Report. Re-run `tools/gen_report.py` or repair report generation. Do not proceed to Final Summary.
 - **Risks or ways the agent could go wrong**: Running report generation pre-validation or treating markdown-only output as complete.
 
 ## Phase 20 — Final Summary
 - **Purpose**: Provide final operational summary and required metrics.
 - **Files/tools to inspect/use**: Converter logs/report, framework inspection notes, evidence inspection notes, findings/validation/report outputs.
 - **Expected evidence/output**: Final summary including datasheet retrieval totals (BOM line items, manifest rows, local/found/ambiguous/missing/not_applicable_generic counts, manifest path, cited datasheets, candidate URL failure summary) plus stackup source/completeness/limitations and per-evidence-class inspection summaries.
-- **Validation/checkpoint before completion**: Final summary includes required metrics and limitations/skipped checks.
+- **Validation/checkpoint before completion**: Final summary may be produced only if `exports/<project>-phase-checkpoints.jsonl` exists, all required phase rows exist, all phase rows have `phase_passed=true`, `exports/tool-preflight-status.json overall_pass=true`, `exports/datasheets/datasheet_manifest_validation.json overall_pass=true`, `exports/<project>-board-evidence-inventory-validation.json overall_pass=true`, `exports/<project>-image-evidence-inventory.json overall_pass=true` when PDFs/images are required, `exports/<project>-pre-findings-gate.json overall_gate_pass=true`, findings JSON exists and validator passed, `exports/<project>-report-generation-validation.json overall_pass=true`, and `exports/<project>-review.html` exists. If any gate fails, write `INVALID RUN SUMMARY` instead of a completion summary.
 - **Risks or ways the agent could go wrong**: Omitting datasheet metrics or evidence-class coverage details.
 
 

@@ -2,6 +2,28 @@
 
 ## Purpose
 
+
+## Artifact-Based Phase Completion Rule
+
+A phase may not be marked complete based only on narrative text. If the phase defines a required artifact or validation JSON, that artifact must exist on disk, parse successfully if JSON, and contain the required pass field set to true before the phase can be marked complete. Verbal claims such as "phase complete", "gate passed", or "reviewed" are invalid unless backed by the required artifact.
+
+Universal phase checkpoint artifact: `exports/<project>-phase-checkpoints.jsonl`.
+Every phase must append exactly one JSONL checkpoint row before moving to the next phase. Each row must include: `phase_number`, `phase_name`, `started_at_utc`, `completed_at_utc`, `required_artifacts`, `artifacts_verified`, `validation_artifacts`, `validation_passed`, `blockers`, `phase_passed`.
+Rules: a phase is not complete unless its checkpoint row exists and `phase_passed=true`; if a phase has no separate artifact, the checkpoint row itself is the required artifact; phases 8 through 14 must each have a distinct checkpoint row; phases 16 and 17 must each have a distinct checkpoint row; the agent must not mark multiple phases complete with one shared checkpoint row; narrative text is not a checkpoint.
+`exports/<project>-phase-checkpoints.jsonl` must record the phase-local gate result for each phase. The checkpoint row must include `failed_phase_number` and `repair_required=true` when a phase-local gate fails.
+
+Phase-Local Gate Enforcement Rule:
+Each phase owns its own gate. A phase must not be marked complete until its required artifacts exist, parse successfully if JSON, and pass that phase’s validation criteria.
+
+If a phase-local gate fails:
+1. Stay in the same phase.
+2. Repair only the artifact or work product for that phase.
+3. Re-run that phase’s validation.
+4. Repeat until the phase passes or a blocker is reported.
+5. Do not advance to later phases.
+6. Do not defer the failure to Phase 15, Phase 20, or a final audit.
+
+
 This repo contains ThomsonLint and an integrated converter. An OpenHands or other coding agent must follow this order: prepare inputs, run setup/tool preflight, run the converter, inspect the framework, then continue the review workflow exactly as defined by this repository.
 
 Do not invent a new review process, findings schema, ontology, or report format. Follow the existing ThomsonLint framework: `ontology/ontology.json`, `examples/examples.json`, `tests/findings_schema.json`, `tests/sample_findings.json`, `tools/validate_findings.py`, `tools/gen_report.py`, and `docs/REVIEWER_INSTRUCTIONS.md` when present.
@@ -84,8 +106,27 @@ Place raw review inputs under `input/`:
    pdfinfo -v
    ```
 
-8. If package installation fails or `pdftoppm`/`pdfinfo` remain unavailable, stop and report a blocker. Do not proceed to converter execution and do not produce JSON-only review unless the user explicitly approves fallback.
-9. If PDFs are present in `input/`, the converter must not be run until `pdftoppm` and `pdfinfo` are available.
+8. Required preflight artifact: `exports/tool-preflight-status.json` with fields:
+   - `python3_available`
+   - `pdftoppm_available`
+   - `pdfinfo_available`
+   - `install_attempted`
+   - `install_command`
+   - `install_succeeded`
+   - `pdfs_present`
+   - `fallback_used`
+   - `user_approved_fallback`
+   - `approval_source`
+   - `json_only_review_approved`
+   - `json_only_approval_source`
+   - `overall_pass`
+9. Image-render fallback means using an alternate renderer (for example PyMuPDF) to produce PNG evidence. JSON-only fallback means proceeding without image evidence.
+10. Image-render fallback approval and JSON-only fallback approval are separate. `user_approved_fallback=true` is sufficient only for image-render fallback.
+11. JSON-only review requires `json_only_review_approved=true` and explicit user approval in a new message after the blocker is reported, recorded in `json_only_approval_source`.
+12. Pass logic when PDFs are present: this workflow passes only if either (a) `pdftoppm_available=true` and `pdfinfo_available=true`, (b) image-render fallback is used and `user_approved_fallback=true`, or (c) JSON-only fallback is explicitly approved with `json_only_review_approved=true`.
+13. Do not treat image-render fallback approval as JSON-only approval.
+14. If PDFs are present and no approved render path or approved JSON-only fallback exists, stop before converter execution.
+15. If `exports/tool-preflight-status.json` is missing or `overall_pass=false`, remain in Setup and Tool Preflight. Do not run the converter. Repair tool installation or stop for explicit user approval.
 
 ## Workflow 3: Run Integrated Converter
 
@@ -192,31 +233,36 @@ Before reviewing evidence, inspect the repo framework files:
     - verify `candidate_urls` are recorded for web-discovered rows
     - verify failed candidate URLs are recorded when a download attempt fails
     - fail the checkpoint if any `status=found` row lacks a local file
-28. Required validation artifact: `exports/datasheets/datasheet_manifest_validation.json` including:
-    - `total_bom_line_items`
-    - `manifest_rows`
-    - `local_count`
-    - `found_count`
-    - `ambiguous_count`
-    - `missing_count`
-    - `not_applicable_generic_count`
-    - `status_found_missing_local_file_count`
-    - `missing_local_files`
-    - `coverage_pass`
+28. Define BOM line item: every raw BOM CSV row is a BOM line item, including labels, documents, generic passives, connectors, test points, mechanical rows, rows without MPN, and rows with MPN=`?`.
+29. Every raw BOM CSV row must produce exactly one manifest row unless a grouped row explicitly lists all included raw BOM row indexes.
+30. Coverage is invalid if manifest row count plus grouped covered row indexes does not cover every raw BOM row index.
+31. Rows without an applicable unique datasheet must still be represented, usually as `not_applicable_generic` with a reason.
+32. Do not omit document, label, connector, test point, mechanical, or generic rows.
+33. Required validation artifact: `exports/datasheets/datasheet_manifest_validation.json` including:
+    - `bom_csv_path`
+    - `bom_raw_row_count`
+    - `manifest_path`
+    - `manifest_row_count`
+    - `covered_bom_row_indexes`
+    - `uncovered_bom_row_indexes`
+    - `status_counts`
+    - `found_rows_missing_local_files`
     - `local_file_validation_pass`
+    - `coverage_pass`
     - `overall_pass`
-29. Full BOM Datasheet Retrieval passes only if `coverage_pass=true`, `local_file_validation_pass=true`, and `overall_pass=true`.
-30. If manifest validation fails, stop and repair the manifest and/or download files before continuing. Do not proceed to Review Datasheet Evidence, Cross-Source Consistency Review, Candidate Finding Development, or Findings JSON.
-31. Do not write "datasheets available online" as equivalent to found. Use "discovered_url only" and classify as `ambiguous` or `missing` unless a local file is saved.
-32. When a candidate datasheet URL is found, the agent must attempt to save the file locally under `exports/datasheets/`. If direct PDF download fails, try the next bounded candidate URL or inspect the product page for a PDF link if tooling supports it.
-33. Keep bounded retries for specific non-generic parts (up to 3–5 plausible candidate URLs); do not loop indefinitely.
-34. If the environment cannot download files, do not mark rows found. Mark as `missing` or `ambiguous` and explicitly state "download unavailable in environment" in `status_note`.
-35. Full BOM Datasheet Retrieval means every BOM line item is represented in the manifest.
-36. The phase is not complete if only critical components were searched, only ICs were searched, only easy-URL rows were included, or generic/test-point/connector/mechanical parts were omitted instead of classified.
-37. Even if a part does not need a datasheet, it must still receive a manifest row with `status=not_applicable_generic` or `missing`/`ambiguous` as appropriate.
-38. Cite only local saved datasheet filenames in findings.
-39. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
-40. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
+34. Full BOM Datasheet Retrieval passes only if `coverage_pass=true`, `local_file_validation_pass=true`, `overall_pass=true`, and no `status=found` row lacks an existing `local_saved_filename`.
+35. If manifest validation fails, stop and repair the manifest and/or download files before continuing. Do not proceed to Review Datasheet Evidence, Cross-Source Consistency Review, Candidate Finding Development, or Findings JSON.
+36. Do not write "datasheets available online" as equivalent to found. Use "discovered_url only" and classify as `ambiguous` or `missing` unless a local file is saved.
+37. When a candidate datasheet URL is found, the agent must attempt to save the file locally under `exports/datasheets/`. If direct PDF download fails, try the next bounded candidate URL or inspect the product page for a PDF link if tooling supports it.
+38. Keep bounded retries for specific non-generic parts (up to 3–5 plausible candidate URLs); do not loop indefinitely.
+39. If the environment cannot download files, do not mark rows found. Mark as `missing` or `ambiguous` and explicitly state "download unavailable in environment" in `status_note`.
+40. Full BOM Datasheet Retrieval means every BOM line item is represented in the manifest.
+41. The phase is not complete if only critical components were searched, only ICs were searched, only easy-URL rows were included, or generic/test-point/connector/mechanical parts were omitted instead of classified.
+42. Even if a part does not need a datasheet, it must still receive a manifest row with `status=not_applicable_generic` or `missing`/`ambiguous` as appropriate.
+43. Cite only local saved datasheet filenames in findings.
+44. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
+45. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
+46. If `exports/datasheets/datasheet_manifest_validation.json` is missing or `overall_pass=false`, remain in Full BOM Datasheet Retrieval. Repair the manifest and/or datasheet files, regenerate `datasheet_manifest_validation.json`, and do not proceed to image gate or evidence review until Workflow 5 passes.
 
 ## Workflow 6: Enforce Image Review Gate
 
@@ -224,8 +270,20 @@ Before reviewing evidence, inspect the repo framework files:
 2. Verify schematic PNGs exist when schematic PDFs are present.
 3. Verify layout/Gerber/PCB PNGs exist when layout/Gerber/PCB PDFs are present.
 4. If PDFs are present but PNGs are missing, stop and report an image-rendering blocker.
-5. No silent JSON-only fallback is allowed.
-6. Fallback is allowed only if the user explicitly approves it.
+5. Distinguish fallback types:
+   - image-render fallback: use an alternate renderer (for example PyMuPDF) to still produce PNG evidence
+   - JSON-only fallback: proceed without image evidence
+6. These fallback types require separate approval.
+7. `user_approved_fallback=true` in `exports/tool-preflight-status.json` is sufficient only for image-render fallback.
+8. JSON-only review requires `json_only_review_approved=true` in `exports/tool-preflight-status.json` and explicit user approval in a new message after the blocker is reported.
+9. Do not treat image-render fallback approval as JSON-only approval.
+10. Required artifact: `exports/<project>-image-evidence-inventory.json` with fields `pdf_sources`, `conversion_tool`, `fallback_used`, `user_approved_fallback`, `total_pages_expected`, `total_pages_rendered`, `output_files`, `schematic_pngs`, `layout_pngs`, `pages_inspected`, `page_roles_or_labels_if_identifiable`, `visual_context_notes`, `limitations`, `confirmation_no_pixel_quantitative_claims`, `overall_pass`.
+11. File names and file sizes alone are not sufficient image review.
+12. If PDFs are present, `total_pages_rendered` must be greater than zero and equal `total_pages_expected` unless an explicit limitation is recorded.
+13. If `fallback_used=true`, then `user_approved_fallback` must be true.
+14. If PDFs are present and no PNG evidence can be produced, stop unless `json_only_review_approved=true`.
+15. If `overall_pass` is not true, do not proceed to evidence review or candidate findings.
+16. If `exports/<project>-image-evidence-inventory.json` is missing or `overall_pass=false` when PDFs/images are required, remain in Enforce Image Review Gate. Repair image rendering or stop for explicit fallback approval. Do not proceed to schematic/board evidence review or candidate findings.
 
 ## Workflow 7: Review Schematic Evidence FULL
 
@@ -276,6 +334,7 @@ Before reviewing evidence, inspect the repo framework files:
    - A printed summary table is not sufficient evidence of full board JSON evaluation. The required inventory JSON artifact must exist and pass validation.
 8. Board JSON is exported geometry/routing evidence, not true DRC.
 9. Do not claim exact clearance, net-short proof, annular-ring validation, soldermask validation, impedance verification, or manufacturing signoff unless explicit tool evidence supports it.
+10. If `exports/<project>-board-evidence-inventory.json` or `exports/<project>-board-evidence-inventory-validation.json` is missing, invalid, or `overall_pass=false`, remain in Full Board/Layout JSON Evaluation. Repair the inventory and validation artifacts. Do not proceed to stackup review, cross-source review, or candidate findings.
 
 ## Workflow 9: Review Stackup and Manufacturing Evidence
 
@@ -322,12 +381,15 @@ Before reviewing evidence, inspect the repo framework files:
 8. A file-size or filename listing alone is not sufficient evidence of image review.
 9. Use PNGs for visual/context evidence: schematic labels, connector labels, power/interface labels, page context, physical grouping, and obvious visual concerns.
 10. Do not derive distances, clearances, trace widths, or coordinates from PNG pixels.
-11. If PDFs are present but PNGs are missing after converter execution, stop and report an image-rendering blocker unless the user explicitly approves JSON-only fallback.
-12. Image gate is mandatory:
+11. Image-render fallback means using an alternate renderer (for example PyMuPDF) to produce PNG evidence; JSON-only fallback means proceeding without image evidence.
+12. These require separate approval; `user_approved_fallback=true` is only for image-render fallback and does not imply JSON-only approval.
+13. If PDFs are present but PNGs are missing after converter execution, stop and report an image-rendering blocker. Proceed without PNG evidence only if `json_only_review_approved=true` and the user provided explicit approval in a new message after the blocker was reported.
+14. Image gate is mandatory:
    - schematic PDFs present require schematic PNGs
    - layout/Gerber/PCB PDFs present require layout/Gerber/PCB PNGs
    - no silent JSON-only fallback
-13. If image review is required and `exports/<project>-image-evidence-inventory.json` is not created, do not proceed to Candidate Finding Development.
+15. If image review is required and `exports/<project>-image-evidence-inventory.json` is not created, do not proceed to Candidate Finding Development.
+16. If `exports/<project>-image-evidence-inventory.json` is missing or `overall_pass=false` when PDFs/images are required, remain in Review Image Evidence FULL. Repair image rendering or stop for explicit fallback approval. Do not proceed to schematic/board evidence review or candidate findings.
 
 ## Workflow 12: Review Datasheet Evidence FULL
 
@@ -359,6 +421,8 @@ Before reviewing evidence, inspect the repo framework files:
 
 ## Workflow 14: Pre-Findings Gate Check
 
+Required artifact: `exports/<project>-pre-findings-gate.json`. Findings JSON must not be created until this file exists and `overall_gate_pass=true`. This gate must not require findings validation or report generation artifacts.
+
 1. Verify converter completed.
 2. Verify JSON exports load.
 3. Verify PNG image gate passed.
@@ -371,6 +435,7 @@ Before reviewing evidence, inspect the repo framework files:
 10. Verify framework inspection completed.
 11. Verify no hard blocker remains.
 12. Blocker rule: If any item fails, stop before Candidate Finding Development.
+13. If `exports/<project>-pre-findings-gate.json` is missing or `overall_gate_pass=false`, remain in Pre-Findings Gate Check. Do not create candidate findings or findings JSON. The gate must identify which earlier phase failed and list the phase number that must be repaired.
 
 ## Workflow 15: Create Candidate Findings
 
@@ -406,8 +471,11 @@ Before reviewing evidence, inspect the repo framework files:
    - repeat until validation passes
 3. Do not bypass the validator.
 4. Do not generate the report until validation passes.
+5. If findings validation fails, remain in Validate Findings. Repair only the findings JSON. Do not modify schema, validator, ontology, examples, source evidence, or generated converter outputs.
 
 ## Workflow 18: Generate Report
+
+Required command: `python3 tools/gen_report.py exports/example-findings.json --output exports` (or matching validated findings JSON project prefix while still using `tools/gen_report.py`). Required artifacts: `exports/<project>-review.html` and `exports/<project>-report-generation-validation.json`. Markdown-only report output is explicitly invalid.
 
 1. Run report generation after findings validation passes using the repository report generator:
 
@@ -435,6 +503,7 @@ Before reviewing evidence, inspect the repo framework files:
 8. If the HTML report is missing, stop and repair report generation before final summary.
 9. Do not mark the review complete if only `exports/review_report.md` exists.
 10. Do not substitute markdown output for the required HTML report.
+11. If `exports/<project>-review.html` is missing or `exports/<project>-report-generation-validation.json` is missing or `overall_pass=false`, remain in Generate Report. Re-run `tools/gen_report.py` or repair the report-generation step. Do not proceed to Final Summary.
 
 ## Evidence Rules
 
@@ -476,6 +545,8 @@ Do not claim any of the following unless repository tools and concrete evidence 
 - Keep generated files under `exports/`.
 
 ## Final Agent Response Format
+
+Final summary may only be produced if these are true: `exports/<project>-phase-checkpoints.jsonl` exists; all required phase rows exist; all phase rows have `phase_passed=true`; `exports/tool-preflight-status.json overall_pass=true`; `exports/datasheets/datasheet_manifest_validation.json overall_pass=true`; `exports/<project>-board-evidence-inventory-validation.json overall_pass=true`; `exports/<project>-image-evidence-inventory.json overall_pass=true` when PDFs/images are required; `exports/<project>-pre-findings-gate.json overall_gate_pass=true`; findings JSON exists and validator passed; `exports/<project>-report-generation-validation.json overall_pass=true`; and `exports/<project>-review.html` exists. If any item fails, do not write a completion summary and write `INVALID RUN SUMMARY` instead.
 
 When finished, report:
 
