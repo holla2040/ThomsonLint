@@ -19,7 +19,7 @@ Phase 1: Ingest and map OPENHANDS_REVIEW.md to executable steps
 Phase 2: Inspect all framework files to determine valid findings structure
 Phase 3: Inspect input files and handle missing datasheets as evidence gaps
 Phase 4: Run converter before any review analysis
-Phase 4B: Use Tavily only as a controlled datasheet discovery tool when local datasheets are missing and `TAVILY_API_KEY` is available.
+Phase 4B: Use SearXNG only as a controlled datasheet discovery tool when local datasheets are missing and SEARXNG_URL is available.
 Phase 5: Enforce image PNG generation gate (stop if PDFs present but PNGs missing)
 Phase 6: Deep evidence review across JSON, images, and datasheets
 Phase 7: Develop evidence-backed candidate findings before writing JSON
@@ -127,8 +127,8 @@ Running review analysis before converter execution. OPENHANDS_REVIEW.md Workflow
 Skipping --clean flag causing stale exports
 Treating converter warnings as design issues rather than evidence-quality notes
 
-Phase 4B — Tavily Datasheet Discovery
-Purpose: Use Tavily only as a controlled datasheet discovery tool when local datasheets are missing and `TAVILY_API_KEY` is available.
+Phase 4B — SearXNG Datasheet Discovery
+Purpose: Use SearXNG only as a controlled datasheet discovery tool when local datasheets are missing and SEARXNG_URL is available.
 
 Files/tools to inspect/use:
 
@@ -136,7 +136,7 @@ Files/tools to inspect/use:
 - exports/<project>-thomson-export-sch.json
 - datasheets/ if present
 - exports/datasheets/ for downloaded datasheets
-- Tavily Search API through environment variable `TAVILY_API_KEY`
+- SearXNG Search API through environment variable SEARXNG_URL
 
 Expected evidence/output:
 
@@ -156,19 +156,19 @@ Expected evidence/output:
 
 Validation/checkpoint before moving to next phase:
 
-- `TAVILY_API_KEY` is present, or the phase is skipped with a clear note.
+- `SEARXNG_URL` is present, or the phase is skipped with a clear note.
 - Local datasheets are preferred over web results.
 - Downloaded datasheets exist as local files before being used as evidence.
-- Tavily snippets are not used as evidence.
-- No API key is printed, committed, stored in findings, stored in reports, or written to the manifest.
+- SearXNG snippets are not used as evidence.
+- No SEARXNG_URL key is printed, committed, stored in findings, stored in reports, or written to the manifest.
 
 Risks or ways the agent could go wrong:
 
-- Treating Tavily search snippets as facts.
+- Treating SearXNG search snippets as facts.
 - Downloading the wrong datasheet for an ambiguous part number.
 - Searching for every passive component and wasting time.
 - Citing a web result instead of a local saved datasheet.
-- Leaking `TAVILY_API_KEY`.
+- Leaking `SEARXNG_URL`.
 
 Phase 5 — Enforce Image Review Gate
 Purpose: Ensure PNG images exist for visual evidence before proceeding; stop if PDFs present but PNGs missing.
