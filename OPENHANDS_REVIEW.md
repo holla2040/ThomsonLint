@@ -37,6 +37,30 @@ Place raw review inputs under `input/`:
 5. Do not delete input files.
 6. Use local datasheets from `datasheets/` if present; cite local filenames later in evidence.
 
+## Workflow 1B: Datasheet Discovery with Tavily or other web search
+
+1. Prefer local datasheets under `datasheets/` first.
+2. If local datasheets are missing, use Tavily only to discover candidate datasheet sources.
+3. Use BOM and schematic evidence to identify candidate parts. Search only for critical ICs, regulators, protection devices, connectors with electrical limits, sensors, transceivers, and other components relevant to a concrete check.
+4. Do not search for every passive component unless specifically needed.
+5. Prefer official manufacturer pages and major distributor datasheet links.
+6. Do not treat Tavily search snippets as design evidence.
+7. Download or save only confirmed datasheet PDFs or manufacturer pages needed for review.
+8. Store downloaded datasheets under `exports/datasheets/`.
+9. Create `exports/datasheets/datasheet_manifest.jsonl` recording:
+   - component reference or part identifier
+   - search query
+   - selected URL
+   - title
+   - source domain
+   - local saved filename
+   - timestamp
+   - reason selected
+10. Cite only local saved datasheet filenames in findings.
+11. If a datasheet cannot be confidently identified, record it as missing evidence rather than guessing.
+12. Do not block the review on missing datasheets unless the user explicitly makes datasheets a hard gate.
+13. Do not print or store `TAVILY_API_KEY` in any repo file, findings file, report, manifest, or logs.
+
 ## Workflow 2: Run Integrated Converter
 
 1. Run the integrated converter first:
