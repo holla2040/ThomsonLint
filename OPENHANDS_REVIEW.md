@@ -2,6 +2,12 @@
 
 ## Purpose
 
+
+## Artifact-Based Phase Completion Rule
+
+A phase may not be marked complete based only on narrative text. If the phase defines a required artifact or validation JSON, that artifact must exist on disk, parse successfully if JSON, and contain the required pass field set to true before the phase can be marked complete. Verbal claims such as "phase complete", "gate passed", or "reviewed" are invalid unless backed by the required artifact.
+
+
 This repo contains ThomsonLint and an integrated converter. An OpenHands or other coding agent must follow this order: prepare inputs, run setup/tool preflight, run the converter, inspect the framework, then continue the review workflow exactly as defined by this repository.
 
 Do not invent a new review process, findings schema, ontology, or report format. Follow the existing ThomsonLint framework: `ontology/ontology.json`, `examples/examples.json`, `tests/findings_schema.json`, `tests/sample_findings.json`, `tools/validate_findings.py`, `tools/gen_report.py`, and `docs/REVIEWER_INSTRUCTIONS.md` when present.
@@ -84,8 +90,21 @@ Place raw review inputs under `input/`:
    pdfinfo -v
    ```
 
-8. If package installation fails or `pdftoppm`/`pdfinfo` remain unavailable, stop and report a blocker. Do not proceed to converter execution and do not produce JSON-only review unless the user explicitly approves fallback.
-9. If PDFs are present in `input/`, the converter must not be run until `pdftoppm` and `pdfinfo` are available.
+8. Required preflight artifact: `exports/tool-preflight-status.json` with fields:
+   - `python3_available`
+   - `pdftoppm_available`
+   - `pdfinfo_available`
+   - `install_attempted`
+   - `install_command`
+   - `install_succeeded`
+   - `pdfs_present`
+   - `fallback_used`
+   - `user_approved_fallback`
+   - `approval_source`
+   - `overall_pass`
+9. Pass logic when PDFs are present: this workflow passes only if either (a) `pdftoppm_available=true` and `pdfinfo_available=true`, or (b) `fallback_used` is not null and `user_approved_fallback=true`.
+10. Fallback must not be used merely because PyMuPDF is available. Fallback requires explicit user approval recorded in `exports/tool-preflight-status.json`.
+11. If PDFs are present and neither pass condition is satisfied, stop before converter execution.
 
 ## Workflow 3: Run Integrated Converter
 
@@ -192,20 +211,24 @@ Before reviewing evidence, inspect the repo framework files:
     - verify `candidate_urls` are recorded for web-discovered rows
     - verify failed candidate URLs are recorded when a download attempt fails
     - fail the checkpoint if any `status=found` row lacks a local file
-28. Required validation artifact: `exports/datasheets/datasheet_manifest_validation.json` including:
-    - `total_bom_line_items`
-    - `manifest_rows`
-    - `local_count`
-    - `found_count`
-    - `ambiguous_count`
-    - `missing_count`
-    - `not_applicable_generic_count`
-    - `status_found_missing_local_file_count`
-    - `missing_local_files`
-    - `coverage_pass`
+28. Define BOM line item: every raw BOM CSV row is a BOM line item, including labels, documents, generic passives, connectors, test points, mechanical rows, rows without MPN, and rows with MPN=`?`.
+29. Every raw BOM CSV row must produce exactly one manifest row unless a grouped row explicitly lists all included raw BOM row indexes.
+30. Coverage is invalid if manifest row count plus grouped covered row indexes does not cover every raw BOM row index.
+31. Rows without an applicable unique datasheet must still be represented, usually as `not_applicable_generic` with a reason.
+32. Do not omit document, label, connector, test point, mechanical, or generic rows.
+33. Required validation artifact: `exports/datasheets/datasheet_manifest_validation.json` including:
+    - `bom_csv_path`
+    - `bom_raw_row_count`
+    - `manifest_path`
+    - `manifest_row_count`
+    - `covered_bom_row_indexes`
+    - `uncovered_bom_row_indexes`
+    - `status_counts`
+    - `found_rows_missing_local_files`
     - `local_file_validation_pass`
+    - `coverage_pass`
     - `overall_pass`
-29. Full BOM Datasheet Retrieval passes only if `coverage_pass=true`, `local_file_validation_pass=true`, and `overall_pass=true`.
+34. Full BOM Datasheet Retrieval passes only if `coverage_pass=true`, `local_file_validation_pass=true`, and no `status=found` row lacks an existing `local_saved_filename`.
 30. If manifest validation fails, stop and repair the manifest and/or download files before continuing. Do not proceed to Review Datasheet Evidence, Cross-Source Consistency Review, Candidate Finding Development, or Findings JSON.
 31. Do not write "datasheets available online" as equivalent to found. Use "discovered_url only" and classify as `ambiguous` or `missing` unless a local file is saved.
 32. When a candidate datasheet URL is found, the agent must attempt to save the file locally under `exports/datasheets/`. If direct PDF download fails, try the next bounded candidate URL or inspect the product page for a PDF link if tooling supports it.
@@ -226,6 +249,11 @@ Before reviewing evidence, inspect the repo framework files:
 4. If PDFs are present but PNGs are missing, stop and report an image-rendering blocker.
 5. No silent JSON-only fallback is allowed.
 6. Fallback is allowed only if the user explicitly approves it.
+7. Required artifact: `exports/<project>-image-evidence-inventory.json` with fields `pdf_sources`, `conversion_tool`, `fallback_used`, `user_approved_fallback`, `total_pages_expected`, `total_pages_rendered`, `output_files`, `schematic_pngs`, `layout_pngs`, `pages_inspected`, `page_roles_or_labels_if_identifiable`, `visual_context_notes`, `limitations`, `confirmation_no_pixel_quantitative_claims`, `overall_pass`.
+8. File names and file sizes alone are not sufficient image review.
+9. If PDFs are present, `total_pages_rendered` must be greater than zero and equal `total_pages_expected` unless an explicit limitation is recorded.
+10. If `fallback_used=true`, then `user_approved_fallback` must be true.
+11. If `overall_pass` is not true, do not proceed to evidence review or candidate findings.
 
 ## Workflow 7: Review Schematic Evidence FULL
 
@@ -359,6 +387,8 @@ Before reviewing evidence, inspect the repo framework files:
 
 ## Workflow 14: Pre-Findings Gate Check
 
+Required artifact: `exports/<project>-pre-findings-gate.json`. Findings JSON must not be created until this file exists and `overall_gate_pass=true`. This gate must not require findings validation or report generation artifacts.
+
 1. Verify converter completed.
 2. Verify JSON exports load.
 3. Verify PNG image gate passed.
@@ -408,6 +438,8 @@ Before reviewing evidence, inspect the repo framework files:
 4. Do not generate the report until validation passes.
 
 ## Workflow 18: Generate Report
+
+Required command: `python3 tools/gen_report.py exports/example-findings.json --output exports` (or matching validated findings JSON project prefix while still using `tools/gen_report.py`). Required artifacts: `exports/<project>-review.html` and `exports/<project>-report-generation-validation.json`. Markdown-only report output is explicitly invalid.
 
 1. Run report generation after findings validation passes using the repository report generator:
 
@@ -476,6 +508,8 @@ Do not claim any of the following unless repository tools and concrete evidence 
 - Keep generated files under `exports/`.
 
 ## Final Agent Response Format
+
+Final summary may only be produced if these are true: `exports/tool-preflight-status.json overall_pass=true`; `exports/datasheets/datasheet_manifest_validation.json overall_pass=true`; `exports/<project>-board-evidence-inventory-validation.json overall_pass=true`; `exports/<project>-image-evidence-inventory.json overall_pass=true` when PDFs/images are required; `exports/<project>-pre-findings-gate.json overall_gate_pass=true`; findings JSON exists and validator passed; `exports/<project>-report-generation-validation.json overall_pass=true`; and `exports/<project>-review.html` exists. If any item fails, do not write a completion summary and write `INVALID RUN SUMMARY` instead.
 
 When finished, report:
 
