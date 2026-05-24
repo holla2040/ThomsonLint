@@ -2,14 +2,14 @@
 Create a linear, deep, and checkpointed ThomsonLint execution plan that follows `OPENHANDS_REVIEW.md` as source of truth and prevents shortcutting across evidence classes.
 
 2. CONTEXT SUMMARY
-This plan enforces a strict order: converter and framework inspection first, datasheet retrieval as a normal numbered phase, then separate evidence-class reviews (schematic, board/layout, stackup, BOM, images, datasheets), then cross-source consistency, candidate development, findings JSON, validation, report generation, and final summary.
+This plan enforces a strict order: inspect inputs first, then setup/tool preflight, then converter execution, then framework inspection, then datasheet retrieval as a normal numbered phase, followed by separate evidence-class reviews (schematic, board/layout, stackup, BOM, images, datasheets), then cross-source consistency, candidate development, findings JSON, validation, report generation, and final summary.
 
 3. APPROACH OVERVIEW
 Phase 1 — Ingest ThomsonLint Workflow
-Phase 2 — Inspect Findings Framework
-Phase 3 — Inspect Inputs and Datasheets
-Phase 4 — Setup and Tool Preflight
-Phase 5 — Run Integrated Converter
+Phase 2 — Inspect Inputs and Datasheets
+Phase 3 — Setup and Tool Preflight
+Phase 4 — Run Integrated Converter
+Phase 5 — Inspect Findings Framework
 Phase 6 — Full BOM Datasheet Retrieval
 Phase 7 — Enforce Image Review Gate
 Phase 8 — Review Schematic Evidence FULL
@@ -34,21 +34,14 @@ Phase 19 — Final Summary
 - **Validation/checkpoint before moving to next phase**: Mapping covers all workflows and preserves order without lettered side phases.
 - **Risks or ways the agent could go wrong**: Inventing alternate sequence, skipping required workflows, or reintroducing side phases.
 
-## Phase 2 — Inspect Findings Framework
-- **Purpose**: Determine valid finding structure, issue fields, evidence row format, `verified_checks`, `cross_checks`, severity, domains, and rule IDs.
-- **Files/tools to inspect/use**: `tests/findings_schema.json`, `tests/sample_findings.json`, `ontology/ontology.json`, `examples/examples.json`, `tools/validate_findings.py`, `tools/gen_report.py`.
-- **Expected evidence/output**: Definitive schema/validator constraints and allowed ontology values.
-- **Validation/checkpoint before moving to next phase**: Required/optional fields and accepted enumerations documented and consistent across schema + validator + ontology.
-- **Risks or ways the agent could go wrong**: Using invalid severities/domains/rule IDs, missing required fields, or inventing schema fields.
-
-## Phase 3 — Inspect Inputs and Datasheets
+## Phase 2 — Inspect Inputs and Datasheets
 - **Purpose**: Inspect `input/` and `datasheets/`, and record missing datasheets as evidence gaps rather than guessed values.
 - **Files/tools to inspect/use**: `input/`, `datasheets/` (if present), explicit stackup inputs (`input/stackup.csv`, `input/stackup.json`, fab drawing PDFs, ODB++ archive/folder, IPC-2581 with cross-section, EDA stackup reports).
 - **Expected evidence/output**: Complete file inventory and datasheet availability status.
 - **Validation/checkpoint before moving to next phase**: At least one raw design input exists; datasheet gaps are explicitly recorded as missing evidence.
 - **Risks or ways the agent could go wrong**: Guessing datasheet parameters or ignoring missing-evidence tracking.
 
-## Phase 4 — Setup and Tool Preflight
+## Phase 3 — Setup and Tool Preflight
 - **Purpose**: Ensure required local tools are available before any converter execution.
 - **Files/tools to inspect/use**: `python3`, `pdftoppm`, `pdfinfo`, Ubuntu/Debian package `poppler-utils`.
 - **Expected evidence/output**: Tool availability results and installation attempt status.
@@ -60,12 +53,19 @@ Phase 19 — Final Summary
   - If install fails or tools remain unavailable when PDFs are present, stop and report blocker; no silent JSON-only fallback unless user explicitly approves fallback.
 - **Risks or ways the agent could go wrong**: Running converter before tool preflight, skipping install attempt, or proceeding after failed preflight.
 
-## Phase 5 — Run Integrated Converter
+## Phase 4 — Run Integrated Converter
 - **Purpose**: Generate review artifacts before evidence analysis.
 - **Files/tools to inspect/use**: `python3 tools/run_converter_pipeline.py input --project-name example --clean`, `exports/` outputs.
 - **Expected evidence/output**: `exports/` created, JSON exports loadable, PNG renders present when PDFs exist, conversion report files inspected.
 - **Validation/checkpoint before moving to next phase**: JSON parsing succeeds; report artifacts reviewed; converter warnings captured as evidence-quality notes.
 - **Risks or ways the agent could go wrong**: Reviewing before conversion, stale exports, or treating converter warnings as automatic findings.
+
+## Phase 5 — Inspect Findings Framework
+- **Purpose**: Determine valid finding structure, issue fields, evidence row format, `verified_checks`, `cross_checks`, severity, domains, and rule IDs.
+- **Files/tools to inspect/use**: `tests/findings_schema.json`, `tests/sample_findings.json`, `ontology/ontology.json`, `examples/examples.json`, `tools/validate_findings.py`, `tools/gen_report.py`.
+- **Expected evidence/output**: Definitive schema/validator constraints and allowed ontology values.
+- **Validation/checkpoint before moving to next phase**: Required/optional fields and accepted enumerations documented and consistent across schema + validator + ontology.
+- **Risks or ways the agent could go wrong**: Using invalid severities/domains/rule IDs, missing required fields, or inventing schema fields.
 
 ## Phase 6 — Full BOM Datasheet Retrieval
 - **Purpose**: Build a datasheet manifest for every BOM line item and attempt full BOM datasheet coverage.
@@ -154,7 +154,7 @@ Phase 19 — Final Summary
 
 ## Phase 15 — Candidate Finding Development
 - **Purpose**: Develop candidate findings before writing final JSON.
-- **Files/tools to inspect/use**: Phase 7–13 evidence plus `ontology/ontology.json` and `examples/examples.json` (style/rule mapping only).
+- **Files/tools to inspect/use**: Phase 8–14 evidence plus `ontology/ontology.json` and `examples/examples.json` (style/rule mapping only).
 - **Expected evidence/output**: Evidence-cited candidate set mapped to rule/domain/severity where possible.
 - **Validation/checkpoint before moving to next phase**: Unsupported or vague candidates rejected; concrete citations required.
 - **Risks or ways the agent could go wrong**: Promoting weak/vague ideas to issues.
