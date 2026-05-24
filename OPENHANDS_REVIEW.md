@@ -10,6 +10,18 @@ A phase may not be marked complete based only on narrative text. If the phase de
 Universal phase checkpoint artifact: `exports/<project>-phase-checkpoints.jsonl`.
 Every phase must append exactly one JSONL checkpoint row before moving to the next phase. Each row must include: `phase_number`, `phase_name`, `started_at_utc`, `completed_at_utc`, `required_artifacts`, `artifacts_verified`, `validation_artifacts`, `validation_passed`, `blockers`, `phase_passed`.
 Rules: a phase is not complete unless its checkpoint row exists and `phase_passed=true`; if a phase has no separate artifact, the checkpoint row itself is the required artifact; phases 8 through 14 must each have a distinct checkpoint row; phases 16 and 17 must each have a distinct checkpoint row; the agent must not mark multiple phases complete with one shared checkpoint row; narrative text is not a checkpoint.
+`exports/<project>-phase-checkpoints.jsonl` must record the phase-local gate result for each phase. The checkpoint row must include `failed_phase_number` and `repair_required=true` when a phase-local gate fails.
+
+Phase-Local Gate Enforcement Rule:
+Each phase owns its own gate. A phase must not be marked complete until its required artifacts exist, parse successfully if JSON, and pass that phase’s validation criteria.
+
+If a phase-local gate fails:
+1. Stay in the same phase.
+2. Repair only the artifact or work product for that phase.
+3. Re-run that phase’s validation.
+4. Repeat until the phase passes or a blocker is reported.
+5. Do not advance to later phases.
+6. Do not defer the failure to Phase 15, Phase 20, or a final audit.
 
 
 This repo contains ThomsonLint and an integrated converter. An OpenHands or other coding agent must follow this order: prepare inputs, run setup/tool preflight, run the converter, inspect the framework, then continue the review workflow exactly as defined by this repository.
@@ -114,6 +126,7 @@ Place raw review inputs under `input/`:
 12. Pass logic when PDFs are present: this workflow passes only if either (a) `pdftoppm_available=true` and `pdfinfo_available=true`, (b) image-render fallback is used and `user_approved_fallback=true`, or (c) JSON-only fallback is explicitly approved with `json_only_review_approved=true`.
 13. Do not treat image-render fallback approval as JSON-only approval.
 14. If PDFs are present and no approved render path or approved JSON-only fallback exists, stop before converter execution.
+15. If `exports/tool-preflight-status.json` is missing or `overall_pass=false`, remain in Setup and Tool Preflight. Do not run the converter. Repair tool installation or stop for explicit user approval.
 
 ## Workflow 3: Run Integrated Converter
 
@@ -249,6 +262,7 @@ Before reviewing evidence, inspect the repo framework files:
 43. Cite only local saved datasheet filenames in findings.
 44. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
 45. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
+46. If `exports/datasheets/datasheet_manifest_validation.json` is missing or `overall_pass=false`, remain in Full BOM Datasheet Retrieval. Repair the manifest and/or datasheet files, regenerate `datasheet_manifest_validation.json`, and do not proceed to image gate or evidence review until Workflow 5 passes.
 
 ## Workflow 6: Enforce Image Review Gate
 
@@ -269,6 +283,7 @@ Before reviewing evidence, inspect the repo framework files:
 13. If `fallback_used=true`, then `user_approved_fallback` must be true.
 14. If PDFs are present and no PNG evidence can be produced, stop unless `json_only_review_approved=true`.
 15. If `overall_pass` is not true, do not proceed to evidence review or candidate findings.
+16. If `exports/<project>-image-evidence-inventory.json` is missing or `overall_pass=false` when PDFs/images are required, remain in Enforce Image Review Gate. Repair image rendering or stop for explicit fallback approval. Do not proceed to schematic/board evidence review or candidate findings.
 
 ## Workflow 7: Review Schematic Evidence FULL
 
@@ -319,6 +334,7 @@ Before reviewing evidence, inspect the repo framework files:
    - A printed summary table is not sufficient evidence of full board JSON evaluation. The required inventory JSON artifact must exist and pass validation.
 8. Board JSON is exported geometry/routing evidence, not true DRC.
 9. Do not claim exact clearance, net-short proof, annular-ring validation, soldermask validation, impedance verification, or manufacturing signoff unless explicit tool evidence supports it.
+10. If `exports/<project>-board-evidence-inventory.json` or `exports/<project>-board-evidence-inventory-validation.json` is missing, invalid, or `overall_pass=false`, remain in Full Board/Layout JSON Evaluation. Repair the inventory and validation artifacts. Do not proceed to stackup review, cross-source review, or candidate findings.
 
 ## Workflow 9: Review Stackup and Manufacturing Evidence
 
@@ -373,6 +389,7 @@ Before reviewing evidence, inspect the repo framework files:
    - layout/Gerber/PCB PDFs present require layout/Gerber/PCB PNGs
    - no silent JSON-only fallback
 15. If image review is required and `exports/<project>-image-evidence-inventory.json` is not created, do not proceed to Candidate Finding Development.
+16. If `exports/<project>-image-evidence-inventory.json` is missing or `overall_pass=false` when PDFs/images are required, remain in Review Image Evidence FULL. Repair image rendering or stop for explicit fallback approval. Do not proceed to schematic/board evidence review or candidate findings.
 
 ## Workflow 12: Review Datasheet Evidence FULL
 
@@ -418,6 +435,7 @@ Required artifact: `exports/<project>-pre-findings-gate.json`. Findings JSON mus
 10. Verify framework inspection completed.
 11. Verify no hard blocker remains.
 12. Blocker rule: If any item fails, stop before Candidate Finding Development.
+13. If `exports/<project>-pre-findings-gate.json` is missing or `overall_gate_pass=false`, remain in Pre-Findings Gate Check. Do not create candidate findings or findings JSON. The gate must identify which earlier phase failed and list the phase number that must be repaired.
 
 ## Workflow 15: Create Candidate Findings
 
@@ -453,6 +471,7 @@ Required artifact: `exports/<project>-pre-findings-gate.json`. Findings JSON mus
    - repeat until validation passes
 3. Do not bypass the validator.
 4. Do not generate the report until validation passes.
+5. If findings validation fails, remain in Validate Findings. Repair only the findings JSON. Do not modify schema, validator, ontology, examples, source evidence, or generated converter outputs.
 
 ## Workflow 18: Generate Report
 
@@ -484,6 +503,7 @@ Required command: `python3 tools/gen_report.py exports/example-findings.json --o
 8. If the HTML report is missing, stop and repair report generation before final summary.
 9. Do not mark the review complete if only `exports/review_report.md` exists.
 10. Do not substitute markdown output for the required HTML report.
+11. If `exports/<project>-review.html` is missing or `exports/<project>-report-generation-validation.json` is missing or `overall_pass=false`, remain in Generate Report. Re-run `tools/gen_report.py` or repair the report-generation step. Do not proceed to Final Summary.
 
 ## Evidence Rules
 
