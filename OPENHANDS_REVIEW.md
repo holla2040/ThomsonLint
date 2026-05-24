@@ -133,7 +133,7 @@ Before reviewing evidence, inspect the repo framework files:
 6. If local datasheets are missing and SearXNG MCP is available, use SearXNG MCP for datasheet discovery. Do not use browser Google search. Do not use Tavily unless explicitly requested by the user.
 7. Do not use search snippets as design evidence.
 8. Prefer official manufacturer or major distributor sources.
-9. Save confirmed retrieved datasheets under `exports/datasheets/`.
+9. Save confirmed retrieved datasheets under `exports/datasheets/` as downloaded datasheet files (see definitions below).
 10. Each manifest row must include:
     - `refdes` or `refdes_group`
     - BOM row index or stable component key
@@ -150,9 +150,9 @@ Before reviewing evidence, inspect the repo framework files:
     - status
     - reason/status_note
 11. Allowed status values are exactly: `local`, `found`, `ambiguous`, `missing`, `not_applicable_generic`.
-12. Status definitions:
+12. Status definitions and required terms:
     - `local`: matching datasheet already existed locally and was reused.
-    - `found`: matching datasheet found via approved discovery and saved under `exports/datasheets/`.
+    - `found`: matching datasheet found via approved discovery and saved under `exports/datasheets/` (must be a downloaded_datasheet).
     - `ambiguous`: multiple plausible datasheets or insufficiently specific part number.
     - `missing`: specific part appears to need a datasheet, but no confident match found after bounded multi-attempt search.
     - `not_applicable_generic`: generic passives/mechanical/commodity entry with no unique manufacturer MPN or distributor part number.
@@ -175,9 +175,48 @@ Before reviewing evidence, inspect the repo framework files:
 19. Mandatory checkpoint B (retrieved evidence): all `found` datasheets are saved locally under `exports/datasheets/`.
 20. A datasheet URL alone does not satisfy status `found`. Status `found` requires a local saved datasheet file under `exports/datasheets/`.
 21. Missing/ambiguous datasheets do not block review unless user explicitly sets datasheets as a hard gate; report them as evidence limitations.
-22. Cite only local saved datasheet filenames in findings.
-23. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
-24. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
+22. **Hard definitions**:
+    - `discovered_url`: a candidate datasheet URL found by SearXNG MCP or another approved discovery path. This is not evidence and does not count as found.
+    - `downloaded_datasheet`: a datasheet file saved locally under `exports/datasheets/`. Only this can satisfy `status=found` or be cited as datasheet evidence.
+23. **Hard rule**: A BOM row must not be marked `status=found` unless `local_saved_filename` is populated and that file exists under `exports/datasheets/`.
+24. **Hard rule**: If candidate URLs are discovered but no local file is saved, the manifest row status must be `ambiguous` or `missing`, not `found`.
+25. **Hard rule**: The agent must not continue past Full BOM Datasheet Retrieval while any `status=found` row points to a missing local file.
+26. **Hard rule**: The agent must validate the datasheet manifest before moving to evidence review.
+27. Required manifest validation step (before evidence review):
+    - load `exports/datasheets/datasheet_manifest.jsonl`
+    - count BOM rows from `exports/<project>-bom.json`
+    - verify every BOM row has a manifest row or clearly grouped equivalent row
+    - verify every status is one of `local`, `found`, `ambiguous`, `missing`, `not_applicable_generic`
+    - verify every `status=local` row has a `local_saved_filename` that exists
+    - verify every `status=found` row has a `local_saved_filename` that exists under `exports/datasheets/`
+    - verify `candidate_urls` are recorded for web-discovered rows
+    - verify failed candidate URLs are recorded when a download attempt fails
+    - fail the checkpoint if any `status=found` row lacks a local file
+28. Required validation artifact: `exports/datasheets/datasheet_manifest_validation.json` including:
+    - `total_bom_line_items`
+    - `manifest_rows`
+    - `local_count`
+    - `found_count`
+    - `ambiguous_count`
+    - `missing_count`
+    - `not_applicable_generic_count`
+    - `status_found_missing_local_file_count`
+    - `missing_local_files`
+    - `coverage_pass`
+    - `local_file_validation_pass`
+    - `overall_pass`
+29. Full BOM Datasheet Retrieval passes only if `coverage_pass=true`, `local_file_validation_pass=true`, and `overall_pass=true`.
+30. If manifest validation fails, stop and repair the manifest and/or download files before continuing. Do not proceed to Review Datasheet Evidence, Cross-Source Consistency Review, Candidate Finding Development, or Findings JSON.
+31. Do not write "datasheets available online" as equivalent to found. Use "discovered_url only" and classify as `ambiguous` or `missing` unless a local file is saved.
+32. When a candidate datasheet URL is found, the agent must attempt to save the file locally under `exports/datasheets/`. If direct PDF download fails, try the next bounded candidate URL or inspect the product page for a PDF link if tooling supports it.
+33. Keep bounded retries for specific non-generic parts (up to 3–5 plausible candidate URLs); do not loop indefinitely.
+34. If the environment cannot download files, do not mark rows found. Mark as `missing` or `ambiguous` and explicitly state "download unavailable in environment" in `status_note`.
+35. Full BOM Datasheet Retrieval means every BOM line item is represented in the manifest.
+36. The phase is not complete if only critical components were searched, only ICs were searched, only easy-URL rows were included, or generic/test-point/connector/mechanical parts were omitted instead of classified.
+37. Even if a part does not need a datasheet, it must still receive a manifest row with `status=not_applicable_generic` or `missing`/`ambiguous` as appropriate.
+38. Cite only local saved datasheet filenames in findings.
+39. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
+40. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
 
 ## Workflow 6: Enforce Image Review Gate
 
@@ -224,14 +263,17 @@ Before reviewing evidence, inspect the repo framework files:
    - differential/paired-net candidates and routing evidence
    - power-net routing/width evidence
    - conversion limitations and missing fields
-5. Produce a board evidence inventory file under `exports/`, for example `exports/<project>-board-evidence-inventory.json`.
-6. Board evidence inventory should include: source board JSON filename, generated timestamp, inspected sections list, counts by object type, nets count, components count (if available), route count, via/hole count, layer count, route width summary, route length summary, candidate differential/paired nets, candidate power nets, candidate connector/interface nets, candidate test/debug features, missing/unsupported board evidence fields, and evidence paths used for candidate findings.
+5. Produce a board evidence inventory file under `exports/`: `exports/<project>-board-evidence-inventory.json` (required, exact path must be recorded).
+6. Board evidence inventory must include: `source_board_json`, `generated_timestamp`, `board_json_loaded`, `inspected_sections`, `unavailable_sections`, `object_counts`, `layer_count`, `net_count`, `route_count`, `via_count`, `hole_count`, `component_count_if_available`, `route_width_summary`, `route_length_summary`, `candidate_differential_or_paired_nets`, `candidate_power_nets`, `candidate_connector_or_interface_nets`, `candidate_test_or_debug_features`, `conversion_limitations`, `missing_or_unsupported_fields`, and `evidence_paths_used`.
 7. Board evidence review checkpoint requires:
    - board JSON loaded successfully
    - required categories inspected or explicitly marked unavailable
-   - board evidence inventory created
+   - board evidence inventory created and file existence verified
+   - board evidence inventory validation artifact exists: `exports/<project>-board-evidence-inventory-validation.json` with `inventory_exists`, `required_fields_present`, `board_json_loaded`, `required_categories_inspected_or_marked_unavailable`, `overall_pass`
    - no findings written before board evidence inventory exists
+   - if board evidence inventory validation fails, stop and repair before Candidate Finding Development or Findings JSON
    - if `exports/<project>-board-evidence-inventory.json` is not created, the agent must stop before candidate finding development
+   - A printed summary table is not sufficient evidence of full board JSON evaluation. The required inventory JSON artifact must exist and pass validation.
 8. Board JSON is exported geometry/routing evidence, not true DRC.
 9. Do not claim exact clearance, net-short proof, annular-ring validation, soldermask validation, impedance verification, or manufacturing signoff unless explicit tool evidence supports it.
 
@@ -245,7 +287,7 @@ Before reviewing evidence, inspect the repo framework files:
 6. Layer names, Gerber filenames, ODB++ matrix layer names, IPC-2581 layer names, or PDF/Gerber page names alone are insufficient for dielectric thickness, copper weight, material system, Dk/Df, controlled impedance, finished board thickness, or manufacturing signoff.
 7. Without explicit stackup/material/impedance evidence, do not claim impedance verification, stackup verification, manufacturing signoff, return-path quality beyond limited qualitative observations, exact dielectric spacing, exact layer construction, exact copper weight, or material/Dk/Df verification.
 8. Report stackup completeness status as one of: `complete_explicit`, `partial_explicit`, `layer_order_only`, `missing`.
-9. Status definitions:
+9. Status definitions and required terms:
    - `complete_explicit`: layer order/type, copper thickness/weight, dielectric thickness, and material/Dk or equivalent facts are available.
    - `partial_explicit`: some explicit stackup facts exist but key fields are missing.
    - `layer_order_only`: only layer names/order/types are available.
@@ -267,13 +309,25 @@ Before reviewing evidence, inspect the repo framework files:
 2. Inspect generated schematic PNGs.
 3. Inspect generated layout/Gerber/PCB PNGs.
 4. Record image pages inspected.
-5. Use PNGs for visual/context evidence: schematic labels, connector labels, power/interface labels, page context, physical grouping, and obvious visual concerns.
-6. Do not derive distances, clearances, trace widths, or coordinates from PNG pixels.
-7. If PDFs are present but PNGs are missing after converter execution, stop and report an image-rendering blocker unless the user explicitly approves JSON-only fallback.
-8. Image gate is mandatory:
+5. Image review must inspect actual generated PNGs, not only list filenames/sizes.
+6. Required artifact: `exports/<project>-image-evidence-inventory.json`.
+7. The image evidence inventory must include:
+   - `schematic_pngs`
+   - `layout_pngs`
+   - `pages_inspected`
+   - `page_roles_or_labels_if_identifiable`
+   - `visual_context_notes`
+   - `limitations`
+   - `confirmation_no_pixel_quantitative_claims`
+8. A file-size or filename listing alone is not sufficient evidence of image review.
+9. Use PNGs for visual/context evidence: schematic labels, connector labels, power/interface labels, page context, physical grouping, and obvious visual concerns.
+10. Do not derive distances, clearances, trace widths, or coordinates from PNG pixels.
+11. If PDFs are present but PNGs are missing after converter execution, stop and report an image-rendering blocker unless the user explicitly approves JSON-only fallback.
+12. Image gate is mandatory:
    - schematic PDFs present require schematic PNGs
    - layout/Gerber/PCB PDFs present require layout/Gerber/PCB PNGs
    - no silent JSON-only fallback
+13. If image review is required and `exports/<project>-image-evidence-inventory.json` is not created, do not proceed to Candidate Finding Development.
 
 ## Workflow 12: Review Datasheet Evidence FULL
 
@@ -303,7 +357,22 @@ Before reviewing evidence, inspect the repo framework files:
    - conversion warnings vs evidence reliability
 3. Use `verified_checks` and `cross_checks` for checked-good or broad analyses.
 
-## Workflow 14: Create Candidate Findings
+## Workflow 14: Pre-Findings Gate Check
+
+1. Verify converter completed.
+2. Verify JSON exports load.
+3. Verify PNG image gate passed.
+4. Verify datasheet manifest exists.
+5. Verify datasheet manifest validation `overall_pass=true`.
+6. Verify board evidence inventory exists.
+7. Verify board evidence inventory validation `overall_pass=true`.
+8. Verify image evidence inventory exists when images are required.
+9. Verify stackup completeness status recorded.
+10. Verify framework inspection completed.
+11. Verify no hard blocker remains.
+12. Blocker rule: If any item fails, stop before Candidate Finding Development.
+
+## Workflow 15: Create Candidate Findings
 
 1. Create candidate findings before writing final JSON.
 2. Reject unsupported claims.
@@ -312,7 +381,7 @@ Before reviewing evidence, inspect the repo framework files:
 5. Require concrete evidence before promoting a candidate to an issue.
 6. Use examples/sample findings as style references only, not evidence.
 
-## Workflow 15: Create Findings JSON
+## Workflow 16: Create Findings JSON
 
 1. Write `exports/example-findings.json` or the matching project-prefixed findings file.
 2. Use only schema-allowed fields.
@@ -322,7 +391,7 @@ Before reviewing evidence, inspect the repo framework files:
 6. Include `verified_checks` and `cross_checks` if supported.
 7. Limit `issues[]` to at most 15 high-signal issues unless the user explicitly requests otherwise.
 
-## Workflow 16: Validate Findings
+## Workflow 17: Validate Findings
 
 1. Run:
 
@@ -338,7 +407,7 @@ Before reviewing evidence, inspect the repo framework files:
 3. Do not bypass the validator.
 4. Do not generate the report until validation passes.
 
-## Workflow 17: Generate Report
+## Workflow 18: Generate Report
 
 1. Run:
 
@@ -434,3 +503,27 @@ When finished, report:
 - Report generation command and result.
 - Generated report path.
 - Limitations and skipped checks.
+
+
+## Required Final Response Format Additions
+
+Datasheets:
+- datasheet manifest validation path
+- datasheet manifest validation overall_pass
+- status=found rows with existing local file count
+- status=found rows missing local file count
+- discovered URL only count
+- download unavailable count
+
+Board:
+- board evidence inventory validation path
+- board evidence inventory validation overall_pass
+
+Images:
+- image evidence inventory path
+- image evidence inventory created: yes/no
+- image pages actually inspected count
+
+Pre-findings gate:
+- pre-findings gate passed: yes/no
+- any blockers remaining before findings: yes/no
