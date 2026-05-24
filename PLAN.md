@@ -230,11 +230,32 @@ Image review requirements:
 - **Risks or ways the agent could go wrong**: Editing framework files instead of findings JSON.
 
 ## Phase 19 — Generate Report
-- **Purpose**: Generate report only after validation passes.
+- **Purpose**: Generate report only after findings validation passes and enforce report-generation gates.
 - **Files/tools to inspect/use**: `python3 tools/gen_report.py exports/example-findings.json --output exports` (or matching project prefix).
-- **Expected evidence/output**: HTML report path under `exports/`.
-- **Validation/checkpoint before moving to next phase**: Report generation is strictly post-validation.
-- **Risks or ways the agent could go wrong**: Running report generation pre-validation.
+- **Expected evidence/output**: HTML report path under `exports/` plus `exports/<project>-report-generation-validation.json`.
+- **Validation/checkpoint before moving to next phase**:
+  - Must run `tools/gen_report.py` after findings validation passes.
+  - Must produce an HTML report under `exports/`.
+  - Must verify the HTML report exists.
+  - Must record the exact HTML report path.
+  - Markdown-only report output does not satisfy the phase; markdown report alone is not sufficient.
+  - If no HTML report exists, stop before Phase 20 Final Summary.
+  - Required report validation artifact: `exports/<project>-report-generation-validation.json` including:
+    - `findings_json_path`
+    - `validation_passed_before_report`
+    - `report_command`
+    - `html_report_path`
+    - `html_report_exists`
+    - `markdown_report_only_detected`
+    - `overall_pass`
+  - Report generation passes only if:
+    - `validation_passed_before_report=true`
+    - `html_report_exists=true`
+    - `markdown_report_only_detected=false`
+    - `overall_pass=true`
+  - Do not mark the review complete if only `exports/review_report.md` exists.
+  - Do not substitute markdown output for the required HTML report.
+- **Risks or ways the agent could go wrong**: Running report generation pre-validation or treating markdown-only output as complete.
 
 ## Phase 20 — Final Summary
 - **Purpose**: Provide final operational summary and required metrics.
@@ -266,3 +287,10 @@ Images:
 Pre-findings gate:
 - pre-findings gate passed: yes/no
 - any blockers remaining before findings: yes/no
+
+Report:
+- report generation validation path
+- report generation validation overall_pass
+- HTML report path
+- HTML report exists: yes/no
+- markdown-only report detected: yes/no
