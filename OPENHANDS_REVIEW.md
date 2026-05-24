@@ -27,6 +27,16 @@ Place raw review inputs under `input/`:
 - Schematic PDF.
 - Layout/Gerber/PCB PDF.
 - Optional datasheets under `datasheets/`.
+- `input/stackup.csv`.
+- `input/stackup.json`.
+- Board fabrication drawing PDF containing stackup table.
+- ODB++ archive.
+- ODB++ folder.
+- IPC-2581 export with stackup/cross-section enabled.
+- Allegro/OrCAD PCB Editor cross-section or stackup report.
+- Altium Layer Stack Manager export or `.stackup` file.
+- PADS layer stack/report export.
+- KiCad `.kicad_pcb` or stackup report.
 
 ## Workflow 1: Prepare Review Inputs
 
@@ -73,36 +83,60 @@ Before reviewing evidence, inspect the repo framework files:
 15. Determine `verified_checks` format if present.
 16. Determine `cross_checks` format if present.
 
-## Workflow 4: Retrieve Datasheets
+## Workflow 4: Full BOM Datasheet Retrieval
 
 1. This is a required normal numbered workflow.
-2. Prefer local datasheets under `datasheets/` first.
-3. If local datasheets are missing and SearXNG MCP is available, use SearXNG only for targeted datasheet discovery.
-4. Perform retrieval after converter execution and framework inspection because BOM/schematic exports identify candidate parts.
-5. Search only for critical components needed for concrete checks:
-   - regulators
-   - power-path ICs
-   - protection/ESD/TVS devices
-   - transceivers
-   - sensors
-   - connectors with electrical limits
-   - other parts required for a specific rule check
-6. Do not search for every passive component unless needed for a concrete finding or verified check.
-7. Prefer official manufacturer or major distributor datasheet sources.
-8. Do not use SearXNG snippets as evidence.
-9. Save confirmed datasheets under `exports/datasheets/`.
-10. Create `exports/datasheets/datasheet_manifest.jsonl` recording:
-    - component reference or part identifier
-    - search query
-    - selected URL
-    - source domain
-    - local saved filename
-    - reason selected
-    - status: found, ambiguous, or missing
-11. Cite only local saved datasheet filenames in findings.
-12. If a datasheet cannot be confidently identified, record it as missing evidence rather than guessing.
-13. If SearXNG MCP is unavailable, do not use browser Google search; record retrieval as unavailable/missing evidence and continue unless datasheets are a hard gate.
-14. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
+2. Build a datasheet manifest for every BOM line item and attempt full BOM datasheet coverage.
+3. Enumerate every unique BOM line item from `exports/<project>-bom.json`; use schematic/component exports as needed for refdes/function context.
+4. Every BOM line item must be accounted for in `exports/datasheets/datasheet_manifest.jsonl` with exactly one manifest row (or a clearly grouped row for equivalent BOM entries).
+5. Prefer local datasheets under `datasheets/` first; record reused files with status `local`.
+6. If local datasheets are missing and SearXNG MCP is available, use SearXNG MCP for datasheet discovery. Do not use browser Google search. Do not use Tavily unless explicitly requested by the user.
+7. Do not use search snippets as design evidence.
+8. Prefer official manufacturer or major distributor sources.
+9. Save confirmed retrieved datasheets under `exports/datasheets/`.
+10. Each manifest row must include:
+    - `refdes` or `refdes_group`
+    - BOM row index or stable component key
+    - quantity
+    - manufacturer (if available)
+    - MPN (if available)
+    - LCSC/distributor part number (if available)
+    - description/value/package (if available)
+    - search query or local matching method used
+    - candidate URLs attempted (if web discovery was used)
+    - selected URL (if found)
+    - source domain (if found)
+    - local saved filename (if found)
+    - status
+    - reason/status_note
+11. Allowed status values are exactly: `local`, `found`, `ambiguous`, `missing`, `not_applicable_generic`.
+12. Status definitions:
+    - `local`: matching datasheet already existed locally and was reused.
+    - `found`: matching datasheet found via approved discovery and saved under `exports/datasheets/`.
+    - `ambiguous`: multiple plausible datasheets or insufficiently specific part number.
+    - `missing`: specific part appears to need a datasheet, but no confident match found after bounded multi-attempt search.
+    - `not_applicable_generic`: generic passives/mechanical/commodity entry with no unique manufacturer MPN or distributor part number.
+13. For generic resistor/capacitor/inductor/ferrite entries without unique manufacturer MPN or distributor part number, do not invent datasheets; mark `not_applicable_generic` with reason.
+14. For specific parts with MPN/LCSC/distributor part number where no confident datasheet is found, mark `missing` or `ambiguous` with reason.
+15. For each specific non-generic part, use an honest bounded multi-attempt process before marking missing (for example up to 3–5 candidate URLs) and try multiple query forms, such as:
+    - `<MPN> datasheet pdf`
+    - `<manufacturer> <MPN> datasheet`
+    - `<LCSC part number> datasheet`
+    - `<description> <package> <MPN> datasheet`
+    - distributor/manufacturer-focused query
+16. If the first URL fails, do not give up. Try additional plausible manufacturer/distributor candidates before marking missing.
+17. Candidate URL handling:
+    - try most authoritative result first
+    - if download fails, try next plausible result
+    - if PDF URL fails but product page works, inspect product page for datasheet link when tooling supports it
+    - record failed candidate URLs in `candidate_urls` or `status_note`
+    - do not loop indefinitely; use bounded attempts
+18. Mandatory checkpoint A (manifest coverage): every BOM line item has a manifest row or clearly grouped equivalent row. This checkpoint must pass before evidence review continues.
+19. Mandatory checkpoint B (retrieved evidence): all `found` datasheets are saved locally under `exports/datasheets/`.
+20. Missing/ambiguous datasheets do not block review unless user explicitly sets datasheets as a hard gate; report them as evidence limitations.
+21. Cite only local saved datasheet filenames in findings.
+22. Final response must include: total BOM line items, manifest row count, local datasheets reused count, retrieved datasheets count, ambiguous count, missing count, not_applicable_generic count, manifest path, datasheets cited in findings, and candidate URL/download failure summary (if any).
+23. Do not print, store, or write secrets/API keys in repo files, findings, reports, manifests, or logs.
 
 ## Workflow 5: Review Schematic Evidence
 
@@ -124,9 +158,21 @@ Before reviewing evidence, inspect the repo framework files:
 ## Workflow 7: Review Stackup and Manufacturing Evidence
 
 1. Inspect generated stack JSON.
-2. Review layer order, copper layers, available material/thickness/stackup facts, missing impedance data, manufacturing evidence limits, and converter limitations.
-3. Do not claim impedance verification or manufacturing signoff unless explicit evidence supports it.
-4. Record missing stackup facts as limitations or `verified_checks`/`cross_checks` where appropriate.
+2. Explicitly inspect candidate stackup sources: generated stack JSON, `input/stackup.csv`, `input/stackup.json`, fabrication drawing PDFs, ODB++ archive/folder if present, IPC-2581 stackup/cross-section content if present, and EDA-specific stackup reports if present.
+3. ODB++ may be the preferred board/layout/fabrication source when present, but always inspect what stackup/material fields are actually present before making stackup claims.
+4. IPC-2581 and ODB++ are both possible board/layout sources, but neither guarantees complete stackup/material/impedance data unless the export includes it.
+5. If no explicit stackup source exists, mark stackup as missing evidence.
+6. Layer names, Gerber filenames, ODB++ matrix layer names, IPC-2581 layer names, or PDF/Gerber page names alone are insufficient for dielectric thickness, copper weight, material system, Dk/Df, controlled impedance, finished board thickness, or manufacturing signoff.
+7. Without explicit stackup/material/impedance evidence, do not claim impedance verification, stackup verification, manufacturing signoff, return-path quality beyond limited qualitative observations, exact dielectric spacing, exact layer construction, exact copper weight, or material/Dk/Df verification.
+8. Report stackup completeness status as one of: `complete_explicit`, `partial_explicit`, `layer_order_only`, `missing`.
+9. Status definitions:
+   - `complete_explicit`: layer order/type, copper thickness/weight, dielectric thickness, and material/Dk or equivalent facts are available.
+   - `partial_explicit`: some explicit stackup facts exist but key fields are missing.
+   - `layer_order_only`: only layer names/order/types are available.
+   - `missing`: no reliable explicit stackup source is available.
+10. Recommended manual `stackup.csv` schema: `layer_index`, `layer_name`, `layer_type`, `material`, `thickness_mil`, `copper_oz`, `dielectric_dk`, `dielectric_df`, `notes`.
+11. Optional `impedance_rules.csv` schema: `rule_name`, `net_class`, `target_ohms`, `tolerance_ohms`, `layer`, `width_mil`, `spacing_mil`, `reference_plane`, `notes`.
+12. Final response must include: stackup source used, stackup completeness status, missing stackup fields, whether impedance evidence was available, and stackup limitations.
 
 ## Workflow 8: Review BOM and Component Evidence
 

@@ -9,7 +9,7 @@ Phase 1 — Ingest ThomsonLint Workflow
 Phase 2 — Inspect Findings Framework
 Phase 3 — Inspect Inputs and Datasheets
 Phase 4 — Run Integrated Converter
-Phase 5 — Retrieve Datasheets
+Phase 5 — Full BOM Datasheet Retrieval
 Phase 6 — Enforce Image Review Gate
 Phase 7 — Review Schematic Evidence
 Phase 8 — Review Board/Layout Evidence
@@ -42,7 +42,7 @@ Phase 18 — Final Summary
 
 ## Phase 3 — Inspect Inputs and Datasheets
 - **Purpose**: Inspect `input/` and `datasheets/`, and record missing datasheets as evidence gaps rather than guessed values.
-- **Files/tools to inspect/use**: `input/`, `datasheets/` (if present).
+- **Files/tools to inspect/use**: `input/`, `datasheets/` (if present), explicit stackup inputs (`input/stackup.csv`, `input/stackup.json`, fab drawing PDFs, ODB++ archive/folder, IPC-2581 with cross-section, EDA stackup reports).
 - **Expected evidence/output**: Complete file inventory and datasheet availability status.
 - **Validation/checkpoint before moving to next phase**: At least one raw design input exists; datasheet gaps are explicitly recorded as missing evidence.
 - **Risks or ways the agent could go wrong**: Guessing datasheet parameters or ignoring missing-evidence tracking.
@@ -54,12 +54,18 @@ Phase 18 — Final Summary
 - **Validation/checkpoint before moving to next phase**: JSON parsing succeeds; report artifacts reviewed; converter warnings captured as evidence-quality notes.
 - **Risks or ways the agent could go wrong**: Reviewing before conversion, stale exports, or treating converter warnings as automatic findings.
 
-## Phase 5 — Retrieve Datasheets
-- **Purpose**: Retrieve datasheets as a normal numbered phase.
-- **Files/tools to inspect/use**: Local `datasheets/`, targeted SearXNG MCP (only if available), `exports/datasheets/`.
-- **Expected evidence/output**: Confirmed datasheet files saved locally and `exports/datasheets/datasheet_manifest.jsonl` with found/ambiguous/missing status.
-- **Validation/checkpoint before moving to next phase**: Local-first policy used; no browser Google search; no Tavily unless explicitly requested; snippets not used as evidence; continue with missing/unavailable datasheets unless hard-gated by user.
-- **Risks or ways the agent could go wrong**: Broad unfocused searching, wrong datasheet selection, citing snippets, leaking keys/secrets.
+## Phase 5 — Full BOM Datasheet Retrieval
+- **Purpose**: Build a datasheet manifest for every BOM line item and attempt full BOM datasheet coverage.
+- **Files/tools to inspect/use**: `exports/<project>-bom.json`, schematic/component exports for context, local `datasheets/`, SearXNG MCP (if available), `exports/datasheets/`.
+- **Expected evidence/output**: `exports/datasheets/datasheet_manifest.jsonl` with one manifest row for every BOM line item (or clearly grouped equivalent row), plus locally saved datasheets for `local`/`found` items.
+- **Validation/checkpoint before moving to next phase**:
+  - Manifest coverage checkpoint: every BOM line item is represented.
+  - Retrieved evidence checkpoint: all `found` datasheets are saved under `exports/datasheets/`.
+  - Status values limited to `local`, `found`, `ambiguous`, `missing`, `not_applicable_generic`.
+  - No browser Google search; no Tavily unless user explicitly requests it.
+  - Search snippets are not evidence.
+  - If first URL fails, do not give up; attempt additional candidate URLs with bounded multi-attempt logic (for example up to 3–5 candidates).
+- **Risks or ways the agent could go wrong**: Incomplete BOM accounting, premature `missing` labels, untrusted source selection, or unbounded URL retry loops.
 
 ## Phase 6 — Enforce Image Review Gate
 - **Purpose**: Enforce PNG evidence readiness for deep review runs.
@@ -83,11 +89,15 @@ Phase 18 — Final Summary
 - **Risks or ways the agent could go wrong**: Over-claiming DRC/clearance/manufacturing conclusions.
 
 ## Phase 9 — Review Stackup and Manufacturing Evidence
-- **Purpose**: Review stackup facts and manufacturing evidence limits.
-- **Files/tools to inspect/use**: Generated stack JSON.
-- **Expected evidence/output**: Layer order, copper layer count, available materials/thicknesses, impedance/manufacturing limitations.
-- **Validation/checkpoint before moving to next phase**: Missing stackup facts are recorded as limitations rather than assumptions.
-- **Risks or ways the agent could go wrong**: Claiming impedance or manufacturing signoff without explicit tool evidence.
+- **Purpose**: Review stackup facts and manufacturing evidence limits with explicit source and fallback reporting.
+- **Files/tools to inspect/use**: Generated stack JSON, `input/stackup.csv`, `input/stackup.json`, fabrication drawing PDFs with stackup tables, ODB++ archive/folder when present, IPC-2581 stackup/cross-section content when present, and EDA/fab stackup reports (Allegro/OrCAD, Altium, PADS, KiCad) when present.
+- **Expected evidence/output**: Reported stackup source used, whether generated stack JSON exists, whether explicit `stackup.csv` or `stackup.json` exists, whether ODB++ exists, whether EDA/fab stackup report exists, stackup completeness status, missing stackup fields, impedance-evidence availability, and stackup limitations.
+- **Validation/checkpoint before moving to next phase**:
+  - Stackup completeness status must be one of `complete_explicit`, `partial_explicit`, `layer_order_only`, `missing`.
+  - If no explicit stackup source exists, mark stackup as missing evidence.
+  - Do not claim impedance verification, stackup verification, or manufacturing signoff without explicit stackup/material/impedance evidence.
+  - Layer names/order/files alone are insufficient for dielectric thickness, copper weight, Dk/Df, controlled impedance, finished thickness, or manufacturing signoff.
+- **Risks or ways the agent could go wrong**: Inferring stackup from naming conventions, overstating impedance/manufacturing confidence, or omitting limitations.
 
 ## Phase 10 — Review BOM and Component Evidence
 - **Purpose**: Review BOM quality and component metadata completeness.
@@ -155,6 +165,6 @@ Phase 18 — Final Summary
 ## Phase 18 — Final Summary
 - **Purpose**: Provide final operational summary and required metrics.
 - **Files/tools to inspect/use**: Converter logs/report, framework inspection notes, evidence inspection notes, findings/validation/report outputs.
-- **Expected evidence/output**: Final summary including datasheet retrieval method/counts/manifest plus per-evidence-class inspection summaries.
+- **Expected evidence/output**: Final summary including datasheet retrieval totals (BOM line items, manifest rows, local/found/ambiguous/missing/not_applicable_generic counts, manifest path, cited datasheets, candidate URL failure summary) plus stackup source/completeness/limitations and per-evidence-class inspection summaries.
 - **Validation/checkpoint before completion**: Final summary includes required metrics and limitations/skipped checks.
 - **Risks or ways the agent could go wrong**: Omitting datasheet metrics or evidence-class coverage details.
