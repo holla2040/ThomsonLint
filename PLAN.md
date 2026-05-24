@@ -8,9 +8,11 @@ This plan enforces a strict order: inspect inputs first, then setup/tool preflig
 
 Artifact-Based Phase Completion Rule:
 A phase may not be marked complete based only on narrative text. If the phase defines a required artifact or validation JSON, that artifact must exist on disk, parse successfully if JSON, and contain the required pass field set to true before the phase can be marked complete. Verbal claims such as "phase complete", "gate passed", or "reviewed" are invalid unless backed by the required artifact.
+Universal phase checkpoint artifact: `exports/<project>-phase-checkpoints.jsonl`. Every phase must append exactly one JSONL checkpoint row before moving to the next phase, and each row must include `phase_number`, `phase_name`, `started_at_utc`, `completed_at_utc`, `required_artifacts`, `artifacts_verified`, `validation_artifacts`, `validation_passed`, `blockers`, `phase_passed`. A phase is not complete unless its checkpoint row exists and `phase_passed=true`. If a phase has no separate artifact, the checkpoint row itself is the required artifact. Narrative text is not a checkpoint.
 
 No Phase Consolidation:
 Phases must be executed one at a time. Phases 8 through 14 must not be consolidated. Phases 16 and 17 must not be consolidated. Each phase must print its phase name, produce its required checkpoint artifacts, verify those artifacts, and only then proceed to the next phase.
+Checkpoint-row enforcement: phases 8 through 14 must each append a distinct row in `exports/<project>-phase-checkpoints.jsonl`; phases 16 and 17 must each append a distinct row; one shared row must not mark multiple phases complete.
 
 Phase 1 — Ingest ThomsonLint Workflow
 Phase 2 — Inspect Inputs and Datasheets
@@ -60,7 +62,8 @@ Phase 20 — Final Summary
   - Verify post-install with `which pdftoppm`, `which pdfinfo`, `pdftoppm -v`, `pdfinfo -v`.
   - If install fails or tools remain unavailable when PDFs are present, stop and report blocker; no silent JSON-only fallback unless user explicitly approves fallback.
 - **Required artifact fields**: `python3_available`, `pdftoppm_available`, `pdfinfo_available`, `install_attempted`, `install_command`, `install_succeeded`, `pdfs_present`, `fallback_used`, `user_approved_fallback`, `approval_source`, `overall_pass`.
-- **Pass logic**: If PDFs are present, pass only when (`pdftoppm_available=true` and `pdfinfo_available=true`) or (`fallback_used` is not null and `user_approved_fallback=true`). Fallback cannot be used solely because PyMuPDF is available; explicit user approval must be recorded.
+- **Required artifact fields**: include `json_only_review_approved` and `json_only_approval_source`.
+- **Pass logic**: If PDFs are present, pass only when (`pdftoppm_available=true` and `pdfinfo_available=true`) or (image-render fallback is used and `user_approved_fallback=true`) or (JSON-only fallback is explicitly approved with `json_only_review_approved=true`). Do not treat image-render fallback approval as JSON-only approval.
 - **Risks or ways the agent could go wrong**: Running converter before tool preflight, skipping install attempt, or proceeding after failed preflight.
 
 ## Phase 4 — Run Integrated Converter
@@ -124,7 +127,9 @@ Phase 20 — Final Summary
 - **Files/tools to inspect/use**: `exports/` PNG artifacts; `pdftoppm`/`pdfinfo` when relevant.
 - **Expected evidence/output**: Verified schematic and layout/Gerber/PCB PNG presence when PDFs are present and `exports/<project>-image-evidence-inventory.json`.
 - **Required artifact fields**: `pdf_sources`, `conversion_tool`, `fallback_used`, `user_approved_fallback`, `total_pages_expected`, `total_pages_rendered`, `output_files`, `schematic_pngs`, `layout_pngs`, `pages_inspected`, `page_roles_or_labels_if_identifiable`, `visual_context_notes`, `limitations`, `confirmation_no_pixel_quantitative_claims`, `overall_pass`.
-- **Validation/checkpoint before moving to next phase**: If PDFs exist but PNGs are missing, stop unless user explicitly approves JSON-only fallback.
+- **Fallback distinctions**: image-render fallback means alternate rendering (for example PyMuPDF) to produce PNG evidence; JSON-only fallback means proceeding without image evidence.
+- **Approval rules**: these require separate approval. `user_approved_fallback=true` is sufficient only for image-render fallback. JSON-only review requires `json_only_review_approved=true` and explicit user approval in a new message after the blocker is reported.
+- **Validation/checkpoint before moving to next phase**: If PDFs exist but PNGs are missing or cannot be produced, stop unless `json_only_review_approved=true`.
 - **Risks or ways the agent could go wrong**: Quietly skipping image gate or claiming image review without real renders.
 
 ## Phase 8 — Review Schematic Evidence FULL
@@ -276,7 +281,7 @@ Image review requirements:
 - **Purpose**: Provide final operational summary and required metrics.
 - **Files/tools to inspect/use**: Converter logs/report, framework inspection notes, evidence inspection notes, findings/validation/report outputs.
 - **Expected evidence/output**: Final summary including datasheet retrieval totals (BOM line items, manifest rows, local/found/ambiguous/missing/not_applicable_generic counts, manifest path, cited datasheets, candidate URL failure summary) plus stackup source/completeness/limitations and per-evidence-class inspection summaries.
-- **Validation/checkpoint before completion**: Final summary may be produced only if `exports/tool-preflight-status.json overall_pass=true`, `exports/datasheets/datasheet_manifest_validation.json overall_pass=true`, `exports/<project>-board-evidence-inventory-validation.json overall_pass=true`, `exports/<project>-image-evidence-inventory.json overall_pass=true` when PDFs/images are required, `exports/<project>-pre-findings-gate.json overall_gate_pass=true`, findings JSON exists and validator passed, `exports/<project>-report-generation-validation.json overall_pass=true`, and `exports/<project>-review.html` exists. If any gate fails, write `INVALID RUN SUMMARY` instead of a completion summary.
+- **Validation/checkpoint before completion**: Final summary may be produced only if `exports/<project>-phase-checkpoints.jsonl` exists, all required phase rows exist, all phase rows have `phase_passed=true`, `exports/tool-preflight-status.json overall_pass=true`, `exports/datasheets/datasheet_manifest_validation.json overall_pass=true`, `exports/<project>-board-evidence-inventory-validation.json overall_pass=true`, `exports/<project>-image-evidence-inventory.json overall_pass=true` when PDFs/images are required, `exports/<project>-pre-findings-gate.json overall_gate_pass=true`, findings JSON exists and validator passed, `exports/<project>-report-generation-validation.json overall_pass=true`, and `exports/<project>-review.html` exists. If any gate fails, write `INVALID RUN SUMMARY` instead of a completion summary.
 - **Risks or ways the agent could go wrong**: Omitting datasheet metrics or evidence-class coverage details.
 
 
