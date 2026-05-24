@@ -409,14 +409,32 @@ Before reviewing evidence, inspect the repo framework files:
 
 ## Workflow 18: Generate Report
 
-1. Run:
+1. Run report generation after findings validation passes using the repository report generator:
 
    ```bash
-   python3 tools/gen_report.py exports/example-findings.json --output exports
+   python3 tools/gen_report.py <validated-findings-json> --output exports
    ```
 
-2. Verify the HTML report exists.
-3. Report final paths.
+2. The report phase is not complete unless an HTML report file exists under `exports/`.
+3. A markdown report alone is not sufficient.
+4. A text or markdown summary is allowed only as supplemental output, not as the final ThomsonLint report artifact.
+5. The agent must verify the generated HTML report path exists before final summary.
+6. Required report validation artifact: `exports/<project>-report-generation-validation.json` with:
+   - `findings_json_path`
+   - `validation_passed_before_report`
+   - `report_command`
+   - `html_report_path`
+   - `html_report_exists`
+   - `markdown_report_only_detected`
+   - `overall_pass`
+7. Report generation passes only if:
+   - `validation_passed_before_report=true`
+   - `html_report_exists=true`
+   - `markdown_report_only_detected=false`
+   - `overall_pass=true`
+8. If the HTML report is missing, stop and repair report generation before final summary.
+9. Do not mark the review complete if only `exports/review_report.md` exists.
+10. Do not substitute markdown output for the required HTML report.
 
 ## Evidence Rules
 
@@ -527,3 +545,10 @@ Images:
 Pre-findings gate:
 - pre-findings gate passed: yes/no
 - any blockers remaining before findings: yes/no
+
+Report:
+- report generation validation path
+- report generation validation overall_pass
+- HTML report path
+- HTML report exists: yes/no
+- markdown-only report detected: yes/no
