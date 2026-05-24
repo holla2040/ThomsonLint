@@ -31,7 +31,7 @@ Phase 20 — Final Summary
 ## Phase 1 — Ingest ThomsonLint Workflow
 - **Purpose**: Map `OPENHANDS_REVIEW.md` workflows to concrete actions and confirm phase order matches the numbered workflow order.
 - **Files/tools to inspect/use**: `OPENHANDS_REVIEW.md`, `docs/REVIEWER_INSTRUCTIONS.md` (if present), `README.md` (if present).
-- **Expected evidence/output**: Workflow-to-phase mapping table and explicit confirmation of the 1→19 linear sequence.
+- **Expected evidence/output**: Workflow-to-phase mapping table and explicit confirmation of the 1→20 linear sequence.
 - **Validation/checkpoint before moving to next phase**: Mapping covers all workflows and preserves order without lettered side phases.
 - **Risks or ways the agent could go wrong**: Inventing alternate sequence, skipping required workflows, or reintroducing side phases.
 
@@ -193,7 +193,7 @@ Image review requirements:
 - **Risks or ways the agent could go wrong**: Single-source conclusions presented as cross-source facts.
 
 ## Phase 15 — Pre-Findings Gate Check
-- **Purpose**: Block findings work until all required artifacts and hard gates pass.
+- **Purpose**: Execute Workflow 14: Pre-Findings Gate Check and block findings work until all required artifacts and hard gates pass.
 - **Validation/checkpoint before moving to next phase**:
   - converter completed
   - JSON exports load

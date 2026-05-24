@@ -309,13 +309,25 @@ Before reviewing evidence, inspect the repo framework files:
 2. Inspect generated schematic PNGs.
 3. Inspect generated layout/Gerber/PCB PNGs.
 4. Record image pages inspected.
-5. Use PNGs for visual/context evidence: schematic labels, connector labels, power/interface labels, page context, physical grouping, and obvious visual concerns.
-6. Do not derive distances, clearances, trace widths, or coordinates from PNG pixels.
-7. If PDFs are present but PNGs are missing after converter execution, stop and report an image-rendering blocker unless the user explicitly approves JSON-only fallback.
-8. Image gate is mandatory:
+5. Image review must inspect actual generated PNGs, not only list filenames/sizes.
+6. Required artifact: `exports/<project>-image-evidence-inventory.json`.
+7. The image evidence inventory must include:
+   - `schematic_pngs`
+   - `layout_pngs`
+   - `pages_inspected`
+   - `page_roles_or_labels_if_identifiable`
+   - `visual_context_notes`
+   - `limitations`
+   - `confirmation_no_pixel_quantitative_claims`
+8. A file-size or filename listing alone is not sufficient evidence of image review.
+9. Use PNGs for visual/context evidence: schematic labels, connector labels, power/interface labels, page context, physical grouping, and obvious visual concerns.
+10. Do not derive distances, clearances, trace widths, or coordinates from PNG pixels.
+11. If PDFs are present but PNGs are missing after converter execution, stop and report an image-rendering blocker unless the user explicitly approves JSON-only fallback.
+12. Image gate is mandatory:
    - schematic PDFs present require schematic PNGs
    - layout/Gerber/PCB PDFs present require layout/Gerber/PCB PNGs
    - no silent JSON-only fallback
+13. If image review is required and `exports/<project>-image-evidence-inventory.json` is not created, do not proceed to Candidate Finding Development.
 
 ## Workflow 12: Review Datasheet Evidence FULL
 
@@ -345,7 +357,22 @@ Before reviewing evidence, inspect the repo framework files:
    - conversion warnings vs evidence reliability
 3. Use `verified_checks` and `cross_checks` for checked-good or broad analyses.
 
-## Workflow 14: Create Candidate Findings
+## Workflow 14: Pre-Findings Gate Check
+
+1. Verify converter completed.
+2. Verify JSON exports load.
+3. Verify PNG image gate passed.
+4. Verify datasheet manifest exists.
+5. Verify datasheet manifest validation `overall_pass=true`.
+6. Verify board evidence inventory exists.
+7. Verify board evidence inventory validation `overall_pass=true`.
+8. Verify image evidence inventory exists when images are required.
+9. Verify stackup completeness status recorded.
+10. Verify framework inspection completed.
+11. Verify no hard blocker remains.
+12. Blocker rule: If any item fails, stop before Candidate Finding Development.
+
+## Workflow 15: Create Candidate Findings
 
 1. Create candidate findings before writing final JSON.
 2. Reject unsupported claims.
@@ -354,7 +381,7 @@ Before reviewing evidence, inspect the repo framework files:
 5. Require concrete evidence before promoting a candidate to an issue.
 6. Use examples/sample findings as style references only, not evidence.
 
-## Workflow 15: Create Findings JSON
+## Workflow 16: Create Findings JSON
 
 1. Write `exports/example-findings.json` or the matching project-prefixed findings file.
 2. Use only schema-allowed fields.
@@ -364,7 +391,7 @@ Before reviewing evidence, inspect the repo framework files:
 6. Include `verified_checks` and `cross_checks` if supported.
 7. Limit `issues[]` to at most 15 high-signal issues unless the user explicitly requests otherwise.
 
-## Workflow 16: Validate Findings
+## Workflow 17: Validate Findings
 
 1. Run:
 
@@ -380,7 +407,7 @@ Before reviewing evidence, inspect the repo framework files:
 3. Do not bypass the validator.
 4. Do not generate the report until validation passes.
 
-## Workflow 17: Generate Report
+## Workflow 18: Generate Report
 
 1. Run:
 
