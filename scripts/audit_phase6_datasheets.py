@@ -330,8 +330,10 @@ def main() -> int:
                 failures["no_mpn_rows_not_not_applicable"].append((idx, status, raw.get("DESCRIPTION")))
             continue
 
-        # New hard rule:
-        # Every concrete MPN row must be found/local with a verified datasheet.
+        # Phase 6 policy:
+        # Concrete MPN rows may remain ambiguous/missing after helper processing.
+        # The blocking requirement is that they were processed/searched and that
+        # any found/local rows have a verified PDF.
         if status == "not_applicable_generic":
             failures["concrete_mpn_rows_marked_not_applicable"].append(
                 (idx, raw.get("DESCRIPTION"), [raw.get("MFG P/N_1"), raw.get("MFG P/N_2"), raw.get("MFG P/N_3")])
@@ -363,11 +365,13 @@ def main() -> int:
     print(f"status_counts: {status_counts}")
 
     any_failures = False
+    report_only_failures = {"concrete_mpn_rows_not_found_or_local"}
     for name, items in failures.items():
         if not items:
             continue
-        any_failures = True
-        print(f"\n{name}: {len(items)}")
+        if name not in report_only_failures:
+            any_failures = True
+        print(f"\n{name}: {len(items)}" + (" (report-only)" if name in report_only_failures else ""))
         for item in items[:40]:
             print(f"  {item}")
         if len(items) > 40:

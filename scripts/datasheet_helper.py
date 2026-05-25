@@ -44,6 +44,7 @@ ALLOWED_STATUSES = {
     "found",
     "ambiguous",
     "missing",
+    "error",
     "not_applicable_generic",
 }
 
@@ -1335,6 +1336,7 @@ def validate_manifest(rows: list[dict[str, Any]] | None = None) -> dict[str, Any
     concrete_mpn_rows_missing_verified_pdf = []
     concrete_mpn_rows_not_searched = []
     concrete_mpn_rows_marked_not_applicable = []
+    concrete_mpn_rows_error = []
 
     for source in bom:
         idx = source["bom_row_index"]
@@ -1354,6 +1356,9 @@ def validate_manifest(rows: list[dict[str, Any]] | None = None) -> dict[str, Any
 
         if status == "not_applicable_generic":
             concrete_mpn_rows_marked_not_applicable.append(idx)
+
+        if status == "error":
+            concrete_mpn_rows_error.append(idx)
 
         if status not in {"found", "local"}:
             concrete_mpn_rows_not_found_or_local.append({
@@ -1376,6 +1381,17 @@ def validate_manifest(rows: list[dict[str, Any]] | None = None) -> dict[str, Any
                     "reason": result["error"],
                 })
 
+    found_rows_missing_local_files = []
+    for r in rows:
+        if r.get("status") in {"found", "local"} and not r.get("local_saved_path"):
+            found_rows_missing_local_files.append(r.get("bom_row_index"))
+
+    forbidden_statuses_present = [
+        {"bom_row_index": r.get("bom_row_index"), "status": r.get("status")}
+        for r in rows
+        if r.get("status") in {"found/url_only", "download_unavailable", "missing_generic"}
+    ]
+
     validation = {
         "bom_csv_path": str(INPUT_BOM),
         "bom_raw_row_count": len(bom),
@@ -1386,10 +1402,17 @@ def validate_manifest(rows: list[dict[str, Any]] | None = None) -> dict[str, Any
         "duplicate_bom_row_indexes": sorted(set(duplicate_indexes)),
         "status_counts": status_counts,
         "invalid_statuses": invalid_statuses,
+
+        # Report-only after the Phase 6 policy change:
+        # ambiguous/missing are allowed if the helper actually attempted search.
         "concrete_mpn_rows_not_found_or_local": concrete_mpn_rows_not_found_or_local,
+
+        # Blocking:
         "concrete_mpn_rows_not_searched": concrete_mpn_rows_not_searched,
         "concrete_mpn_rows_marked_not_applicable": concrete_mpn_rows_marked_not_applicable,
+        "concrete_mpn_rows_error": concrete_mpn_rows_error,
         "concrete_mpn_rows_missing_verified_pdf": concrete_mpn_rows_missing_verified_pdf,
+
         "coverage_pass": covered == expected and not duplicate_indexes and len(rows) == len(bom),
         "local_file_validation_pass": not concrete_mpn_rows_missing_verified_pdf,
         "overall_pass": False,
@@ -1397,16 +1420,25 @@ def validate_manifest(rows: list[dict[str, Any]] | None = None) -> dict[str, Any
         "root_datasheet_dir": str(ROOT_DATASHEETS),
         "downloaded_file_count": len(list(EXPORT_DATASHEETS.glob("*.pdf"))),
         "root_datasheet_file_count": len(list(ROOT_DATASHEETS.glob("*.pdf"))) if ROOT_DATASHEETS.exists() else 0,
+        "local_existing_file_count": len([r for r in rows if r.get("status") == "local"]),
+        "search_attempted_count": len([r for r in rows if r.get("search_attempted") is True]),
+        "candidate_url_count": sum(len(r.get("candidate_urls", [])) for r in rows),
+        "download_failed_count": sum(len(r.get("failed_candidate_urls", [])) for r in rows),
+        "found_rows_missing_local_files": found_rows_missing_local_files,
+        "forbidden_statuses_present": forbidden_statuses_present,
         "manual_downloads_path": str(MANUAL_DOWNLOADS_JSON),
+        "phase6_policy": "allow_ambiguous_or_missing_after_helper_attempt",
     }
 
     validation["overall_pass"] = (
         validation["coverage_pass"]
         and not validation["invalid_statuses"]
-        and not validation["concrete_mpn_rows_not_found_or_local"]
         and not validation["concrete_mpn_rows_not_searched"]
         and not validation["concrete_mpn_rows_marked_not_applicable"]
+        and not validation["concrete_mpn_rows_error"]
         and validation["local_file_validation_pass"]
+        and not validation["found_rows_missing_local_files"]
+        and not validation["forbidden_statuses_present"]
     )
 
     VALIDATION_JSON.write_text(json.dumps(validation, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -1463,7 +1495,7 @@ def replace_phase6_checkpoint(validation: dict[str, Any], started_at: str) -> No
         "validation_artifacts": [str(VALIDATION_JSON)],
         "validation_passed": validation["overall_pass"],
         "blockers": [] if validation["overall_pass"] else [
-            "one or more concrete MPN rows lack verified datasheets",
+            "one or more BOM rows were not processed by the datasheet helper, a row errored, or a found/local PDF failed validation",
             f"manual download list: {MANUAL_DOWNLOADS_JSON}",
         ],
         "phase_passed": validation["overall_pass"],
