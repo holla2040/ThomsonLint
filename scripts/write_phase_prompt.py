@@ -175,6 +175,120 @@ Do not push.
 """
     # END STRICT PHASE 6 DATASHEET PROMPT
 
+    # BEGIN STRICT PHASE 8 SCHEMATIC PROMPT
+    if args.phase == 8:
+        prompt += f"""
+
+Phase 8 specific instructions:
+
+Review schematic evidence using:
+- exports/{project}-thomson-export-sch.json
+- schematic PNG images only as qualitative visual context if needed
+
+Critical schema rule:
+- The schematic JSON stores net connectivity in nets[].nodes, not nets[].members.
+- Each node entry may contain refdes, pin_number, and pin_name.
+- Use node_count and len(net["nodes"]) for connectivity counts.
+- Do not conclude that schematic nets lack connectivity merely because nets[].members is absent.
+- If members is absent but nodes is populated, connectivity is present.
+- If both nodes and members are absent/empty, then record a connectivity extraction limitation.
+
+Required Phase 8 artifact:
+- exports/{project}-schematic-evidence-review.json
+
+The artifact must include:
+- source_schematic_json
+- schematic_json_loaded
+- component_count
+- net_count
+- total_node_count
+- nets_with_nodes_count
+- nets_without_nodes_count
+- power_nets
+- ground_nets
+- clock_nets
+- connector_components
+- connector_nets_or_interface_nets
+- differential_or_paired_net_candidates
+- unusual_connection_notes
+- limitations
+- evidence_citations
+- gate.overall_pass
+
+Required review coverage:
+- components
+- nets
+- power nets
+- external interfaces
+- connector nets
+- unusual connections
+- limitations
+
+Evidence requirements:
+- Cite file/path/field/value where practical.
+- For net connectivity, cite nets[].name, nets[].node_count, and nets[].nodes[].
+- Do not make quantitative claims from PNG-only evidence.
+- Do not write findings in Phase 8.
+
+Validation requirements:
+- JSON artifact exists and parses.
+- schematic_json_loaded=true.
+- component_count > 0.
+- net_count > 0.
+- total_node_count must be computed from nets[].nodes.
+- gate.overall_pass=true only if required sections exist and citations/limitations are populated.
+"""
+    # END STRICT PHASE 8 SCHEMATIC PROMPT
+
+    # BEGIN STRICT PHASE 12 IMAGE VISION PROMPT
+    if args.phase == 12:
+        prompt += f"""
+
+Phase 12 specific instructions:
+
+This phase has two distinct jobs:
+1. Confirm rendered PNGs exist/open and are usable visual context.
+2. Run actual multimodal vision review through scripts/vision_image_review.py.
+
+Required image sources:
+- exports/{project}-img-sch-p*.png
+- exports/{project}-img-layout-p*.png
+
+Required commands:
+1. python3 scripts/vision_image_review.py --project {project} --out exports/{project}-image-vision-review.json
+2. Validate exports/{project}-image-vision-review.json
+3. Ensure exports/{project}-image-evidence-inventory.json still exists or recreate basic render inventory if missing.
+
+Required artifacts:
+- exports/{project}-image-evidence-inventory.json
+- exports/{project}-image-vision-review.json
+
+Vision review rules:
+- Use scripts/vision_image_review.py for actual image-to-model review.
+- Do not claim vision review was performed from ls/file/identify/checksum/Pillow metadata alone.
+- Do not mark vision_review_performed=true unless the helper successfully sent PNG image content to a multimodal endpoint.
+- If the endpoint/model rejects image input, mark Phase 12 blocked.
+- Electrical calculations may be suggested from visibly readable schematic values.
+- Physical/layout measurements from raster pixels are forbidden unless a calibrated scale/reference exists.
+- Do not derive trace width, spacing, clearance, creepage, pad size, hole size, or board dimensions from uncalibrated PNG pixels.
+
+Required pass criteria:
+- exports/{project}-image-vision-review.json exists and parses.
+- vision_review_performed=true.
+- metadata_only_review=false.
+- actual_multimodal_endpoint_used=true.
+- reviewed_image_count == expected_image_count.
+- per_page_vision_observations has one entry per image.
+- confirmation_no_pixel_quantitative_claims=true.
+- overall_pass=true.
+
+Do not create findings in Phase 12.
+Do not execute Phase 13.
+"""
+    # END STRICT PHASE 12 IMAGE VISION PROMPT
+
+
+
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(prompt, encoding="utf-8")
