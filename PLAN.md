@@ -250,7 +250,7 @@ Image review requirements:
 - **Purpose**: Create findings JSON using schema-allowed fields only.
 - **Files/tools to inspect/use**: Findings schema, validator expectations, generated evidence sources.
 - **Expected evidence/output**: Findings JSON with `issues`, `evidence`, `recommended_actions`, and `verified_checks`/`cross_checks`/`source_documents` as supported.
-- **Validation/checkpoint before moving to next phase**: Findings writing occurs after all evidence-review phases; `issues[]` limited to 15 high-signal items unless user requests otherwise.
+- **Validation/checkpoint before moving to next phase**: Findings writing occurs after all evidence-review phases; `issues[]` must provide full evidence-backed coverage. Do not apply arbitrary count caps. Include every concrete, non-duplicative, evidence-supported issue that satisfies schema and validation requirements.
 - **Risks or ways the agent could go wrong**: Writing findings too early or violating schema.
 
 ## Phase 18 — Validate and Repair Findings
