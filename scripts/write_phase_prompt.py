@@ -287,6 +287,253 @@ Do not execute Phase 13.
 """
     # END STRICT PHASE 12 IMAGE VISION PROMPT
 
+    # BEGIN STRICT PHASE 13 DATASHEET REVIEW PROMPT
+    if args.phase == 13:
+        prompt += f"""
+
+Phase 13 specific instructions:
+
+This phase is a datasheet evidence review phase only.
+It is not a findings phase.
+
+Hard prohibition:
+- Do not create findings.
+- Do not create candidate findings.
+- Do not create issue objects.
+- Do not create severity-ranked findings.
+- Do not create rule-mapped findings.
+- Do not use a top-level key named findings.
+- Do not assign severity.
+- Do not promote missing/ambiguous datasheets to final issue language.
+- Phase 17 is the only phase allowed to write findings JSON.
+
+Required artifact:
+- exports/{project}-datasheet-evidence-review.json
+
+The artifact must include these top-level keys:
+- phase
+- phase_name
+- reviewed_at_utc
+- manifest_path
+- manifest_validation_path
+- summary
+- local_datasheet_review
+- reused_datasheet_records
+- ambiguous_datasheet_records
+- missing_datasheet_records
+- datasheet_evidence_gaps
+- limitations
+- validation
+- gate
+
+Allowed terminology:
+- evidence review
+- evidence check
+- evidence gap
+- ambiguous record
+- missing record
+- limitation
+- review note
+- follow-up required
+
+Forbidden terminology:
+- finding
+- issue
+- severity
+- rule_id
+- final finding
+- candidate finding
+
+Required summary fields:
+- total_bom_rows
+- datasheet_applicable_count
+- not_applicable_generic_count
+- status_found
+- status_ambiguous
+- status_missing
+- status_not_applicable_generic
+- found_with_existing_local_file_count
+- unique_local_file_count
+- reused_datasheet_file_count
+- ambiguous_record_count
+- missing_record_count
+
+Required evidence rules:
+- Only cite local saved PDFs under exports/datasheets/.
+- Do not cite SearXNG snippets.
+- Do not cite candidate URL text as datasheet evidence.
+- Candidate URLs may be recorded only as discovery metadata for ambiguous/missing records.
+- Local saved PDFs may be cited by filename/path and manifest row.
+- Ambiguous/missing records must be explicit, but must not be written as findings.
+
+Required validation:
+- Artifact JSON parses.
+- Top-level key findings is absent.
+- No object uses severity.
+- No object uses rule_id.
+- No final issue language is present.
+- All status=found cited datasheets have local_file_exists=true.
+- All cited datasheet paths are under exports/datasheets/.
+- Ambiguous and missing records are present and counted.
+- gate.overall_pass=true only when the above checks pass.
+
+Checkpoint validation text must not say "findings documented".
+Use "datasheet evidence records documented" instead.
+
+Do not execute Phase 14.
+"""
+    # END STRICT PHASE 13 DATASHEET REVIEW PROMPT
+
+    # BEGIN STRICT PHASE 14 CROSS-SOURCE REVIEW PROMPT
+    if args.phase == 14:
+        prompt += f"""
+
+Phase 14 specific instructions:
+
+This phase is a cross-source consistency review phase only.
+It is not a findings phase.
+
+Hard prohibition:
+- Do not create findings.
+- Do not create candidate findings.
+- Do not create issue objects.
+- Do not create severity-ranked findings.
+- Do not create rule-mapped findings.
+- Do not use keys named findings, finding, issues, issue, severity, or rule_id.
+- Do not promote observations into final issue language.
+- Phase 17 is the only phase allowed to write findings JSON.
+
+Required artifact:
+- exports/{project}-cross-source-consistency-review.json
+
+Use these top-level keys:
+- phase
+- phase_name
+- project
+- timestamp
+- summary
+- checks
+- cross_source_observations
+- evidence_gaps
+- limitations
+- downstream_constraints
+- gate
+
+Allowed terminology:
+- cross-source check
+- consistency observation
+- evidence gap
+- limitation
+- downstream constraint
+- review note
+- blocked check
+- partial check
+
+Forbidden terminology:
+- finding
+- issue
+- severity
+- rule_id
+- candidate finding
+- final finding
+
+Required coverage:
+- BOM vs schematic
+- BOM vs board
+- power nets vs board/stack evidence
+- connector/interface nets vs protection evidence
+- regulator/power path schematic vs layout context
+- paired/differential candidates vs routing evidence
+- conversion warnings vs evidence reliability
+
+Required validation:
+- Artifact JSON parses.
+- Top-level key findings is absent.
+- No key named finding exists anywhere.
+- No key named severity exists anywhere.
+- No key named rule_id exists anywhere.
+- No key named issue or issues exists anywhere.
+- Cross-source conclusions are evidence-backed.
+- Limitations are explicit where evidence is incomplete.
+- gate.overall_pass=true only when these checks pass.
+
+Do not execute Phase 15.
+"""
+    # END STRICT PHASE 14 CROSS-SOURCE REVIEW PROMPT
+
+    # BEGIN STRICT PHASE 16/17 FULL COVERAGE PROMPT
+    if args.phase == 16:
+        prompt += f"""
+
+Phase 16 full-coverage candidate development instructions:
+
+This phase develops candidate findings only.
+Do not write final findings JSON in Phase 16.
+
+Do not apply arbitrary count limits.
+Do not cap candidates at 10, 15, 20, or any other number.
+Do not select only a small sample when more concrete evidence-backed candidates exist.
+
+Required behavior:
+- Review all Phase 8 through Phase 14 evidence.
+- Include every concrete, non-duplicative, evidence-supported candidate.
+- Reject unsupported, vague, duplicate, or single-source-overclaimed candidates.
+- Keep rejected candidates in a rejected_candidates section with the rejection reason.
+- Each retained candidate must have concrete citations to generated evidence artifacts.
+- Candidate volume is controlled only by evidence quality, duplication, schema compatibility, and validation requirements.
+
+Allowed:
+- Many candidates, if each is evidence-backed.
+- Grouping duplicates into one broader candidate when they share the same root cause.
+- Marking confidence and evidence completeness.
+
+Forbidden:
+- Arbitrary candidate count caps.
+- Dropping valid candidates solely to stay under a number.
+- Promoting weak observations into candidates without evidence.
+- Writing exports/{project}-findings.json in Phase 16.
+
+Do not execute Phase 17.
+"""
+
+    if args.phase == 17:
+        prompt += f"""
+
+Phase 17 full-coverage findings JSON instructions:
+
+This phase writes final findings JSON from the Phase 16 candidate artifact.
+
+Do not apply arbitrary issue-count limits.
+Do not cap issues at 10, 15, 20, or any other number.
+The final issues list must include every concrete, non-duplicative, evidence-supported candidate that satisfies the findings schema and validation requirements.
+
+Required behavior:
+- Read exports/{project}-candidate-findings.json.
+- Promote all valid evidence-backed candidates into final issues.
+- Merge only true duplicates.
+- Preserve evidence citations.
+- Preserve rule/domain/severity mapping where supported by ontology and evidence.
+- Keep broad evidence limitations worded as limitations, not overstated design defects.
+- Include verified_checks and cross_checks as appropriate.
+- Validate against the findings schema if a validator is available.
+
+Valid reasons to exclude a candidate:
+- It is unsupported by concrete citations.
+- It is duplicate of another stronger issue.
+- It violates schema.
+- It is speculative or overclaims beyond available evidence.
+- It belongs in verified_checks/cross_checks rather than issues.
+
+Invalid reasons to exclude a candidate:
+- The issue count is above 15.
+- The report is getting long.
+- The model should be concise.
+- Token/cost concerns.
+
+Do not execute Phase 18.
+"""
+    # END STRICT PHASE 16/17 FULL COVERAGE PROMPT
+
 
 
     out = Path(args.out)
