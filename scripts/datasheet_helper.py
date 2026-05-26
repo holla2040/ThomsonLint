@@ -1368,7 +1368,10 @@ def validate_manifest(rows: list[dict[str, Any]] | None = None) -> dict[str, Any
                 "mpns": [p["mpn"] for p in pairs],
             })
 
-        if status != "local" and row.get("search_attempted") is not True:
+        # Phase 6 policy:
+        # found/local rows pass by verified local PDF evidence.
+        # Only unresolved concrete-MPN rows must show discovery was attempted.
+        if status in {"ambiguous", "missing", "error"} and row.get("search_attempted") is not True:
             concrete_mpn_rows_not_searched.append(idx)
 
         if status in {"found", "local"}:

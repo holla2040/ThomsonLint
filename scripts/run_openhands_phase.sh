@@ -27,6 +27,12 @@ openhands \
   --override-with-envs \
   --file "$PROMPT_FILE" | tee "$LOG_FILE"
 
+echo "== Ensuring checkpoint for phase $PHASE =="
+python3 scripts/ensure_phase_checkpoint.py \
+  --project "$PROJECT" \
+  --phase "$PHASE" \
+  --exports exports
+
 echo "== Auditing phase $PHASE =="
 python3 scripts/audit_phase.py \
   --project "$PROJECT" \
