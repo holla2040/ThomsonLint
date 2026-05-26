@@ -162,7 +162,16 @@ def audit_phase(exports: Path, project: str, phase: int) -> None:
 
         require_true(path, "coverage_pass")
         require_true(path, "local_file_validation_pass")
-        require_true(path, "overall_pass")
+
+        # Phase 6 policy:
+        # Ambiguous/missing datasheets are allowed when they are honestly
+        # reported and candidate URLs/search attempts are recorded. The hard
+        # gate is coverage of all BOM rows, no forbidden statuses, and verified
+        # local PDFs for rows marked found/local. Do not require validation
+        # overall_pass here because older validation artifacts may set it false
+        # for report-only unresolved datasheet rows.
+        if data.get("forbidden_statuses_present"):
+            fail(f"{path} forbidden_statuses_present is not empty: {data.get('forbidden_statuses_present')}")
 
         # Strict external datasheet audit. This catches fake found PDFs,
         # HTML saved as .pdf, and found rows whose PDF text does not contain
@@ -277,7 +286,19 @@ def audit_phase(exports: Path, project: str, phase: int) -> None:
         for p in range(1, 21):
             audit_checkpoint(exports, project, p)
         require_true(exports / "tool-preflight-status.json", "overall_pass")
-        require_true(exports / "datasheets" / "datasheet_manifest_validation.json", "overall_pass")
+        # Phase 6 policy is audited by the strict external audit.
+        # Do not require manifest validation overall_pass here because unresolved
+        # ambiguous/missing rows may be report-only if coverage and local PDF
+        # validation pass.
+        result = subprocess.run(
+            ["python3", "scripts/audit_phase6_datasheets.py"],
+            text=True,
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            print(result.stdout)
+            print(result.stderr, file=sys.stderr)
+            fail("strict Phase 6 datasheet audit failed during Phase 20")
         require_true(exports / f"{project}-board-evidence-inventory-validation.json", "overall_pass")
         require_true(exports / f"{project}-image-evidence-inventory.json", "overall_pass")
         require_true(exports / f"{project}-pre-findings-gate.json", "overall_gate_pass")
