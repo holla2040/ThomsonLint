@@ -100,8 +100,22 @@ def artifact_passes(path: Path, phase: int) -> tuple[bool, list[str]]:
             return False, [f"invalid JSON artifact {path}: {exc}"]
 
         # Known artifact-level pass fields.
-        if phase == 7 and data.get("overall_pass") is not True:
-            blockers.append(f"{path} overall_pass is not true")
+        if phase == 7:
+            for field in [
+                "pdf_sources",
+                "conversion_tool",
+                "total_pages_expected",
+                "total_pages_rendered",
+                "output_files",
+                "schematic_pngs",
+                "layout_pngs",
+                "pages_inspected",
+                "overall_pass",
+            ]:
+                if field not in data:
+                    blockers.append(f"{path} missing field {field}")
+            if data.get("overall_pass") is not True:
+                blockers.append(f"{path} overall_pass is not true")
         if phase == 9 and path.name.endswith("-validation.json") and data.get("overall_pass") is not True:
             blockers.append(f"{path} overall_pass is not true")
         if phase == 15 and data.get("overall_gate_pass") is not True:

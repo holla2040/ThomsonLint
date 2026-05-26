@@ -384,6 +384,64 @@ Do not execute Phase 14.
 """
     # END STRICT PHASE 13 DATASHEET REVIEW PROMPT
 
+
+
+    # BEGIN STRICT PHASE 7 CHECKPOINT PROMPT
+    if args.phase == 7:
+        prompt += f"""
+
+Phase 7 artifact requirements:
+
+Create or update:
+exports/{project}-image-evidence-inventory.json
+
+It must be valid JSON and must include these exact required keys:
+- pdf_sources
+- conversion_tool
+- fallback_used
+- total_pages_expected
+- total_pages_rendered
+- output_files
+- schematic_pngs
+- layout_pngs
+- pages_inspected
+- limitations
+- confirmation_no_pixel_quantitative_claims
+- overall_pass
+
+Required values for the example project:
+- total_pages_expected must be 18
+- total_pages_rendered must be 18
+- schematic_pngs must contain 6 files
+- layout_pngs must contain 12 files
+- conversion_tool must identify the rendering tool, normally pdftoppm
+- overall_pass=true only if all expected PNGs exist and are non-empty
+
+Phase 7 checkpoint requirements:
+
+After creating exports/{project}-image-evidence-inventory.json, append exactly one JSONL row to:
+exports/{project}-phase-checkpoints.jsonl
+
+The row must use this exact schema:
+{{
+  "phase_number": 7,
+  "phase_name": "Enforce Image Review Gate",
+  "started_at_utc": "<UTC ISO timestamp>",
+  "completed_at_utc": "<UTC ISO timestamp>",
+  "required_artifacts": ["exports/{project}-image-evidence-inventory.json"],
+  "artifacts_verified": ["exports/{project}-image-evidence-inventory.json"],
+  "validation_artifacts": ["exports/{project}-image-evidence-inventory.json"],
+  "validation_passed": true,
+  "blockers": [],
+  "phase_passed": true
+}}
+
+Do not use a key named phase instead of phase_number.
+Do not use a different phase_name.
+Do not write the checkpoint to any other path.
+Do not execute Phase 8.
+"""
+    # END STRICT PHASE 7 CHECKPOINT PROMPT
     # BEGIN STRICT PHASE 14 CROSS-SOURCE REVIEW PROMPT
     if args.phase == 14:
         prompt += f"""
