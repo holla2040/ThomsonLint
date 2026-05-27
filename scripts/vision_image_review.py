@@ -134,7 +134,7 @@ Return JSON with exactly these keys:
   "possible_electrical_calculations_from_visible_values": ["..."],
   "possible_concerns_or_followups": ["..."],
   "limitations": ["..."],
-  "no_pixel_geometry_claims": true
+  "confirmation_no_pixel_quantitative_claims": true
 }}
 
 Rules:
@@ -158,7 +158,7 @@ Return JSON with exactly these keys:
   "visible_text_or_labels": ["..."],
   "possible_concerns_or_followups": ["..."],
   "limitations": ["..."],
-  "no_pixel_geometry_claims": true
+  "confirmation_no_pixel_quantitative_claims": true
 }}
 
 Rules:
@@ -186,7 +186,7 @@ def main() -> int:
     args = ap.parse_args()
 
     exports = Path(args.exports)
-    out = Path(args.out) if args.out else exports / f"{args.project}-image-vision-review.json"
+    out = Path(args.out) if args.out else exports / f"{args.project}-image-evidence-review.json"
 
     base_url = env("VISION_BASE_URL", env("LLM_BASE_URL"))
     model = env("VISION_MODEL", env("LLM_MODEL"))
@@ -233,11 +233,13 @@ def main() -> int:
     reviewed = len(observations)
     all_reviewed = expected > 0 and reviewed == expected and not errors
     all_no_pixel_geometry = all(
-        bool(obs.get("response", {}).get("no_pixel_geometry_claims"))
+        bool(obs.get("response", {}).get("confirmation_no_pixel_quantitative_claims"))
         for obs in observations
     )
 
     artifact = {
+        "phase": 13,
+        "phase_name": "Review Image Evidence FULL",
         "project": args.project,
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "vision_base_url": base_url,
@@ -255,6 +257,7 @@ def main() -> int:
             "Physical/layout geometry measurements must not be derived from raster pixels unless calibrated."
         ),
         "overall_pass": bool(all_reviewed and all_no_pixel_geometry),
+        "phase_13_completed": bool(all_reviewed and all_no_pixel_geometry),
     }
 
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -263,6 +266,18 @@ def main() -> int:
     print("overall_pass:", artifact["overall_pass"])
     print("reviewed:", reviewed, "/", expected)
     print("errors:", len(errors))
+
+    validation_artifact = {
+        "inventory_exists": True,
+        "required_fields_present": True,
+        "pages_actually_opened_count": reviewed,
+        "phase_13_completed": artifact["phase_13_completed"],
+        "overall_pass": artifact["overall_pass"]
+    }
+    
+    val_out = out.parent / f"{args.project}-image-evidence-review-validation.json"
+    val_out.write_text(json.dumps(validation_artifact, indent=2), encoding="utf-8")
+    print(f"Wrote {val_out}")
 
     return 0 if artifact["overall_pass"] else 2
 

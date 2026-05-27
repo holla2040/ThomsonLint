@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT="${1:-example}"
 START_PHASE="${2:-1}"
-END_PHASE="${3:-20}"
+END_PHASE="${3:-22}"
 
 echo "== Checking LLM env =="
 : "${LLM_API_KEY:?missing LLM_API_KEY}"

@@ -23,7 +23,7 @@ from datasheet_smart_match import score_best_pdf_match
 ROOT = Path.cwd()
 PROJECT = "example"
 
-INPUT_BOM = ROOT / "input" / "example_bom.csv"
+INPUT_BOM = ROOT / "exports" / f"{PROJECT}-bom.json"
 ROOT_DATASHEETS = ROOT / "datasheets"
 EXPORT_DATASHEETS = ROOT / "exports" / "datasheets"
 MANIFEST_JSONL = EXPORT_DATASHEETS / "datasheet_manifest.jsonl"
@@ -159,16 +159,20 @@ def request_bytes(url: str, timeout: int = FETCH_TIMEOUT) -> tuple[bytes | None,
 
 def bom_rows(path: Path = INPUT_BOM) -> list[dict[str, Any]]:
     if not path.exists():
-        raise FileNotFoundError(f"missing BOM: {path}")
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
-        rows = []
-        reader = csv.DictReader(f)
-        for idx, row in enumerate(reader, 1):
-            rows.append({
-                "bom_row_index": idx,
-                "raw": {k: (v or "").strip() for k, v in row.items()},
-            })
-        return rows
+        raise FileNotFoundError(f"missing BOM JSON: {path}")
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    rows = []
+    # Support standard converter JSON structure
+    bom_items = data if isinstance(data, list) else data.get("rows", [])
+    for idx, row in enumerate(bom_items, 1):
+        raw_data = row.get("raw", row) # Fallback if 'raw' key is missing
+        rows.append({
+            "bom_row_index": idx,
+            "raw": {k: (str(v) or "").strip() for k, v in raw_data.items()},
+        })
+    return rows
 
 
 def mpn_pairs(raw: dict[str, str]) -> list[dict[str, Any]]:

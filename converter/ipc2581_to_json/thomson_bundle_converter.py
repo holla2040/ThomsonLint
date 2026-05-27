@@ -147,8 +147,35 @@ HEADER_MAP = {
     "vendor": "vendor", "vendorpn": "vendor_pn", "quantity": "quantity", "qty": "quantity", "footprint": "footprint", "package": "package",
     "dni": "dnp", "dnp": "dnp", "donotinstall": "dnp", "part": "item", "item": "item",
     "mfg1": "manufacturer", "mfg2": "manufacturer", "mfg3": "manufacturer",
-    "mfgpn1": "mpn", "mfgpn2": "mpn", "mfgpn3": "mpn"
+    "mfgpn1": "mpn", "mfgpn2": "mpn", "mfgpn3": "mpn",
+    # Aerospace & high-reliability fields (Appendix K)
+    "mass": "mass_g", "massg": "mass_g", "weight": "mass_g", "weightg": "mass_g",
+    "weightgrams": "mass_g", "componentmass": "mass_g", "componentweight": "mass_g",
+    "solderalloy": "solder_alloy", "solder": "solder_alloy", "soldertype": "solder_alloy",
+    "leadfinish": "lead_finish", "finish": "lead_finish", "terminationfinish": "lead_finish",
+    "plating": "lead_finish", "leadplating": "lead_finish",
 }
+
+# JESD201-compliant lead-finish suffixes (Appendix K.2)
+_LEAD_FINISH_SUFFIX_PATTERNS = [
+    (re.compile(r"-E3$", re.IGNORECASE), "JESD201_matte_tin_Vishay_E3"),
+    (re.compile(r"-M3$", re.IGNORECASE), "JESD201_tin_lead_Vishay_M3"),
+    (re.compile(r"-G3$", re.IGNORECASE), "JESD201_matte_tin_ON_Semi_G3"),
+    (re.compile(r"-PBF$", re.IGNORECASE), "lead_free_RoHS"),
+    (re.compile(r"#PBF$", re.IGNORECASE), "lead_free_RoHS"),
+    (re.compile(r"-ND$", re.IGNORECASE), "distributor_suffix_Digi-Key"),
+    (re.compile(r"-CT$", re.IGNORECASE), "cut_tape_packaging"),
+]
+
+
+def _detect_lead_finish_from_mpn(mpn: str | None) -> dict[str, Any]:
+    """Detect lead-finish class from MPN suffix patterns per JESD201/Appendix K.2."""
+    if not mpn:
+        return {"lead_finish_detected": None, "lead_finish_source": None}
+    for pattern, classification in _LEAD_FINISH_SUFFIX_PATTERNS:
+        if pattern.search(mpn):
+            return {"lead_finish_detected": classification, "lead_finish_source": f"MPN suffix match: {pattern.pattern}"}
+    return {"lead_finish_detected": None, "lead_finish_source": None}
 
 
 def parse_bool(v: str) -> bool | None:
@@ -189,8 +216,9 @@ def parse_bom(project_name: str, project_root: Path, files: list[ClassifiedFile]
         warnings.append({"code": "WARN_BOM_MISSING", "message": "No BOM CSV candidate discovered."})
         return {"project_name": project_name, "source_file": None, "parser_version": BOM_PARSER_VERSION, "raw_headers": [], "normalized_headers": {}, "row_count": 0, "expanded_refdes_count": 0, "duplicate_refdes": [], "warnings": warnings, "items": []}
     source = candidates[0]
-    if len(candidates) > 1:
-        warnings.append({"code": "WARN_BOM_MULTIPLE_CANDIDATES", "message": f"Multiple BOM CSV candidates found ({len(candidates)}); using {source.relative_path}"})
+    # OMIT: WARN_BOM_MULTIPLE_CANDIDATES - file discovery diagnostic, not actionable
+    # if len(candidates) > 1:
+    #     warnings.append({"code": "WARN_BOM_MULTIPLE_CANDIDATES", "message": f"Multiple BOM CSV candidates found ({len(candidates)}); using {source.relative_path}"})
 
     text = (project_root / source.relative_path).read_text(encoding="utf-8-sig", errors="replace")
     reader = csv.DictReader(io.StringIO(text))
@@ -202,11 +230,15 @@ def parse_bom(project_name: str, project_root: Path, files: list[ClassifiedFile]
 
     items = []
     ref_counts: dict[str, int] = {}
+    # Identify known/standard headers for custom column preservation
+    standard_normalized = set(HEADER_MAP.values())
+    
     for idx, row in enumerate(reader, start=1):
         ref_cell = ((row.get(ref_cols[0]) if ref_cols else "") or "").strip()
         refs = expand_refdes_cell(ref_cell, warnings) if ref_cell else []
         for r in refs:
-            ref_counts[r] = ref_counts.get(r, 0) + 1
+            # Use uppercase key for case-insensitive duplicate detection
+            ref_counts[r.upper()] = ref_counts.get(r.upper(), 0) + 1
 
         def pick(field: str) -> str | None:
             for h, n in normalized_headers.items():
@@ -214,13 +246,36 @@ def parse_bom(project_name: str, project_root: Path, files: list[ClassifiedFile]
                     return (row.get(h) or "").strip()
             return None
 
+        # --- DNP Detection (Task A) ---
         dnp_val = None
+        # Check explicit DNP column first
         for h, n in normalized_headers.items():
             if n == "dnp":
                 parsed = parse_bool(row.get(h, "") or "")
                 if parsed is not None:
                     dnp_val = parsed
                     break
+        # Check QTY == "0" implies DNP
+        qty_raw = pick("quantity")
+        if dnp_val is None and qty_raw is not None:
+            qty_stripped = qty_raw.strip()
+            if qty_stripped == "0":
+                dnp_val = True
+        # Check NOTES/Description for "DNP" or "DNI" keywords
+        if dnp_val is None:
+            notes_val = pick("description") or ""
+            notes_upper = notes_val.upper()
+            if "DNP" in notes_upper or "DNI" in notes_upper or "DO NOT POPULATE" in notes_upper or "DO NOT INSTALL" in notes_upper:
+                dnp_val = True
+
+        # --- Custom Column Preservation (Task B) ---
+        custom_metadata: dict[str, str] = {}
+        for header in raw_headers:
+            norm_key = normalized_headers.get(header, "unknown")
+            if norm_key == "unknown":
+                cell_value = (row.get(header) or "").strip()
+                if cell_value:
+                    custom_metadata[header] = cell_value
 
         manufacturer_alternates: list[dict[str, Any]] = []
         for rank in (1, 2, 3):
@@ -242,14 +297,59 @@ def parse_bom(project_name: str, project_root: Path, files: list[ClassifiedFile]
         if not primary_mpn and manufacturer_alternates:
             primary_mpn = manufacturer_alternates[0].get("mpn")
 
+        # Aerospace & high-reliability field extraction (Appendix K)
+        mass_raw = pick("mass_g")
+        mass_g: float | None = None
+        if mass_raw:
+            try:
+                mass_g = float(re.sub(r"[^\d.\-]", "", mass_raw))
+            except (ValueError, TypeError):
+                mass_g = None
+        solder_alloy = pick("solder_alloy")
+        lead_finish_explicit = pick("lead_finish")
+        lead_finish_from_mpn = _detect_lead_finish_from_mpn(primary_mpn)
+
+        # Task 3: Extract passive values from description if explicit value is missing
+        explicit_value = pick("value")
+        if explicit_value is None:
+            description_raw = pick("description") or ""
+            item_name_raw = pick("item") or ""
+            mpn_raw = primary_mpn or ""
+            combined_text = f"{description_raw} {item_name_raw}".upper()
+            
+            # Capacitor value extraction: matches 0.1UF, 10UF, 100PF, 22NF, etc.
+            cap_match = re.search(r'\b(\d+(?:\.\d+)?\s*[UuPpNnFf][Ff])\b', combined_text)
+            if cap_match:
+                explicit_value = cap_match.group(1).replace(" ", "")
+            
+            # Resistor value extraction: matches 4K7, 120R, 5K1, 10K, 0R00, 100OHM, etc.
+            if explicit_value is None:
+                # Check if it's likely a resistor (description or MPN hints)
+                is_resistor = ("RES" in combined_text or "RESISTOR" in combined_text or 
+                               mpn_raw.upper().startswith(("RMCF", "ERJ", "RMCP", "RC", "CRCW", "CR")))
+                if is_resistor:
+                    res_match = re.search(r'\b(\d+[KkRrMm]\d*|\d+(?:\.\d+)?\s*(?:OHM|KOHM|MOHM|[KkMm]?Ω))\b', combined_text)
+                    if res_match:
+                        explicit_value = res_match.group(1).replace(" ", "")
+        
         items.append({
             "refdes": refs,
             "fields": {
-                "value": pick("value"), "description": pick("description"), "manufacturer": pick("manufacturer"),
+                "value": explicit_value, "description": pick("description"), "manufacturer": pick("manufacturer"),
                 "mpn": pick("mpn"), "vendor": pick("vendor"), "vendor_pn": pick("vendor_pn"),
                 "quantity": pick("quantity"), "footprint": pick("footprint"), "package": pick("package"), "dnp": dnp_val,
             },
+            "aerospace_hi_rel": {
+                "component_mass_g": mass_g,
+                "mass_data_source": "bom_csv" if mass_g is not None else None,
+                "solder_alloy": solder_alloy,
+                "lead_finish_explicit": lead_finish_explicit,
+                "lead_finish_detected": lead_finish_from_mpn["lead_finish_detected"],
+                "lead_finish_source": lead_finish_from_mpn["lead_finish_source"],
+                "data_source_required": "datasheet or user metadata" if (mass_g is None and not solder_alloy and not lead_finish_explicit and not lead_finish_from_mpn["lead_finish_detected"]) else None,
+            },
             "manufacturers": manufacturer_alternates,
+            "custom_metadata": custom_metadata if custom_metadata else None,
             "raw_row_index": idx,
         })
         items[-1]["fields"]["manufacturer"] = primary_manufacturer
@@ -280,8 +380,9 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
         warnings.append({"code": "WARN_PADS_MISSING", "message": "No PADS ASCII candidate discovered."})
         return {"source_file": None, "detected_dialect": "unknown", "parser_version": PADS_PARSER_VERSION, "components": [], "nets": [], "warnings": warnings, "extraction_counts": {"component_count": 0, "net_count": 0, "node_count": 0, "single_pin_net_count": 0, "power_net_count": 0, "ground_net_count": 0}, "bom_merge": {"components_with_bom_metadata": 0, "components_missing_bom_metadata": 0, "unmatched_bom_refdes": [], "value_mismatch_count": 0, "footprint_mismatch_count": 0}}
     source = candidates[0]
-    if len(candidates) > 1:
-        warnings.append({"code": "WARN_PADS_MULTIPLE_CANDIDATES", "message": f"Multiple PADS candidates found ({len(candidates)}); using {source.relative_path}"})
+    # OMIT: WARN_PADS_MULTIPLE_CANDIDATES - file discovery diagnostic, not actionable
+    # if len(candidates) > 1:
+    #     warnings.append({"code": "WARN_PADS_MULTIPLE_CANDIDATES", "message": f"Multiple PADS candidates found ({len(candidates)}); using {source.relative_path}"})
 
     lines = (project_root / source.relative_path).read_text(encoding="utf-8", errors="replace").splitlines()
     dialect = "unknown"
@@ -321,7 +422,7 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
                         value = tk.split("=", 1)[1]
                     elif low.startswith("footprint=") or low.startswith("package="):
                         footprint = tk.split("=", 1)[1]
-                components[refdes] = {"refdes": refdes, "value": value, "footprint": footprint, "package": footprint, "part_name": part_name, "source": {"format": "pads_ascii", "file": source.relative_path}}
+                components[refdes.upper()] = {"refdes": refdes, "value": value, "footprint": footprint, "package": footprint, "part_name": part_name, "source": {"format": "pads_ascii", "file": source.relative_path}}
         elif current_section == "net":
             if line.upper().startswith("*SIGNAL*"):
                 if current_net:
@@ -334,16 +435,26 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
                 current_net = {"name": line[4:].strip(), "nodes": []}
                 continue
             if current_net is not None:
-                for pin_token in line.split():
-                    if pin_token.startswith("*"):
-                        continue
-                    if "." in pin_token:
-                        refdes, pin = pin_token.rsplit(".", 1)
-                    else:
-                        refdes, pin = pin_token, None
-                    if not refdes:
-                        continue
-                    current_net["nodes"].append({"refdes": refdes, "pin_number": pin, "pin_name": None})
+                # Phase 4: Enhanced regex-based pin pattern matching
+                # Matches all [RefDes].[Pin] patterns including single-pin nets
+                pin_pattern = re.compile(r'([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z0-9_]+)')
+                matches = pin_pattern.findall(line)
+                if matches:
+                    for refdes, pin in matches:
+                        if refdes:
+                            current_net["nodes"].append({"refdes": refdes, "pin_number": pin, "pin_name": None})
+                else:
+                    # Fallback: space-split for tokens without dots (legacy compatibility)
+                    for pin_token in line.split():
+                        if pin_token.startswith("*"):
+                            continue
+                        if "." in pin_token:
+                            refdes, pin = pin_token.rsplit(".", 1)
+                        else:
+                            refdes, pin = pin_token, None
+                        if not refdes:
+                            continue
+                        current_net["nodes"].append({"refdes": refdes, "pin_number": pin, "pin_name": None})
     if current_net:
         nets.append(current_net)
 
@@ -352,23 +463,27 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
     if not nets:
         warnings.append({"code": "WARN_PADS_NO_NETS", "message": "No nets extracted from PADS file; fixture may be component-only or net sections were not found."})
 
-    # BOM merge
+    # BOM merge (case-insensitive refdes matching - Phase 4)
     bom_map: dict[str, dict[str, Any]] = {}
     non_electrical = set()
     for item in bom.get("items", []):
         for rd in item.get("refdes", []):
             if re.match(r"^(ASM|FAB|PCB|SCH)", rd, re.IGNORECASE) or re.fullmatch(r"\d+", rd or ""):
-                non_electrical.add(rd)
+                non_electrical.add(rd.upper())
                 continue
-            bom_map[rd] = item.get("fields", {})
+            # Force key to uppercase for case-insensitive matching
+            bom_map[rd.upper()] = item.get("fields", {})
 
     with_bom = 0
     missing_bom = 0
     value_mismatch = 0
     footprint_mismatch = 0
     for refdes, comp in components.items():
-        b = bom_map.get(refdes)
-        comp["bom"] = b
+        # Force query to uppercase for case-insensitive matching
+        b = bom_map.get(refdes.upper())
+        # Graceful fallback: set bom to empty dict if no match (not None)
+        # This allows downstream linters to flag orphan components without crashing
+        comp["bom"] = b if b is not None else {}
         if b:
             with_bom += 1
             bval = b.get("value")
@@ -382,13 +497,19 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
         else:
             missing_bom += 1
 
-    comp_refs = set(components.keys())
-    unmatched_bom_refdes = sorted([r for r in bom_map if r not in comp_refs and r not in non_electrical])
+    comp_refs_upper = set(components.keys())  # Keys are already uppercase
+    unmatched_bom_refdes = sorted([r for r in bom_map if r not in comp_refs_upper and r not in non_electrical])
 
     node_count = sum(len(n["nodes"]) for n in nets)
     single_pin_nets = [n["name"] for n in nets if len(n["nodes"]) <= 1]
-    ground_nets = [n["name"] for n in nets if n["name"].upper() in {"GND", "GROUND", "AGND", "DGND", "PGND"}]
-    power_nets = [n["name"] for n in nets if re.search(r"(^VCC|^VDD|^VBAT|\+\d|^PWR)", n["name"].upper())]
+    
+    # Task 4: Broadened power/ground net classification
+    # Ground net: substring search for any net containing "GND" (catches J3_LASER_GND, P3_LASER_GND, etc.)
+    # Power net: regex for common power supply naming conventions
+    _POWER_NET_REGEX = re.compile(r'^(VCC|VDD|VEE|VBAT|PWR|AVDD|DVDD|PVDD|\+?\d+V\d*|V\d+P\d+|VN?\d+P\d+|V_.*)$', re.IGNORECASE)
+    
+    ground_nets = [n["name"] for n in nets if "GND" in n["name"].upper()]
+    power_nets = [n["name"] for n in nets if _POWER_NET_REGEX.match(n["name"].upper())]
     clock_nets = [n["name"] for n in nets if "CLK" in n["name"].upper() or "CLOCK" in n["name"].upper()]
 
     sch_components = list(sorted(components.values(), key=lambda x: x["refdes"]))
@@ -418,19 +539,300 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
     }
 
 
-def build_schematic_export(project_name: str, project_root: Path, pads: dict[str, Any]) -> dict[str, Any]:
-    return {
+def build_schematic_export(project_name: str, project_root: Path, pads: dict[str, Any], cross_extraction: dict[str, Any] | None = None) -> dict[str, Any]:
+    # Schema optimization: Trim redundant, diagnostic, and physical placement fields from component output
+    cleaned_components = []
+    for comp in pads.get("components", []):
+        # Create cleaned component dict - remove root-level redundancies and physical placement
+        cleaned_comp = {k: v for k, v in comp.items() if k not in {
+            "source",                    # Duplicate of parent schematic-file metadata
+            "placement_source",          # Diagnostic only
+            "metadata_source_override",  # Diagnostic only
+            "package",                   # Redundant duplicate of footprint, consistently null
+            "part_name",                 # Redundant, unnormalized variant of footprint
+            "x_loc",                     # Physical placement - belongs in board JSON only
+            "y_loc",                     # Physical placement - belongs in board JSON only
+            "rotation",                  # Physical placement - belongs in board JSON only
+            "placement_layer"            # Physical placement - belongs in board JSON only
+        }}
+        
+        # Clean nested bom dict if present - remove redundant/null procurement fields
+        if "bom" in cleaned_comp and isinstance(cleaned_comp["bom"], dict):
+            cleaned_bom = {k: v for k, v in cleaned_comp["bom"].items() if k not in {
+                "value",      # Redundant; root-level "value" already holds resolved value
+                "footprint",  # Redundant; root-level "footprint" already holds this
+                "package",    # Redundant; root-level already has "footprint"
+                "vendor",     # Consistently null; procurement metadata out-of-scope
+                "vendor_pn"   # Consistently null; procurement metadata out-of-scope
+            }}
+            cleaned_comp["bom"] = cleaned_bom
+        
+        cleaned_components.append(cleaned_comp)
+    
+    result = {
         "project_name": project_name,
         "source": {"project_root": str(project_root), "schematic_file": pads.get("source_file"), "format": "pads_ascii", "detected_dialect": pads.get("detected_dialect")},
         "parser_version": pads.get("parser_version"),
-        "components": pads.get("components", []),
+        "components": cleaned_components,
         "nets": pads.get("nets", []),
         "analysis": pads.get("analysis", {}),
         "warnings": pads.get("warnings", []),
         "extraction_counts": pads.get("extraction_counts", {}),
         "bom_merge": pads.get("bom_merge", {}),
+        "aerospace_hi_rel_summary": {
+            "note": "Aerospace and high-reliability fields are extracted per-component in bom.json items[].aerospace_hi_rel. This summary aggregates availability.",
+            "data_source_required_fields": ["component_mass_g", "solder_alloy", "lead_finish"],
+            "extraction_capabilities": {
+                "component_mass_g": "from BOM CSV if 'mass'/'weight' column present, else null (source from datasheet)",
+                "solder_alloy": "from BOM CSV if 'solder alloy' column present, else null (specify in fab order per K.2)",
+                "lead_finish_explicit": "from BOM CSV if 'lead finish'/'plating' column present",
+                "lead_finish_detected": "auto-detected from MPN suffix patterns (-E3, -M3, -G3, #PBF per JESD201)",
+            },
+        },
+    }
+    if cross_extraction:
+        result["cross_extraction_summary"] = cross_extraction.get("enrichment_stats", {})
+        # Append cross-extraction warnings to schematic warnings
+        result["warnings"] = result["warnings"] + cross_extraction.get("warnings", [])
+    return result
+
+
+def cross_extract_and_enrich(bom: dict[str, Any], pads: dict[str, Any], ipc: dict[str, Any]) -> dict[str, Any]:
+    """Cross-extraction pipeline: merges BOM, PADS, and IPC-2581 datasets to eliminate nulls.
+
+    Runs after individual file parsing but before final JSON export building.
+    Returns a summary dict of enrichment actions taken.
+    """
+    warnings: list[dict[str, Any]] = []
+    enrichment_stats = {
+        "placement_back_annotations": 0,
+        "metadata_gap_fills": 0,
+        "footprint_conflicts": 0,
+        "netlist_parity_mismatches": 0,
+        "bom_backfill_count": 0,
     }
 
+    # Build case-insensitive lookup for IPC components by refdes
+    ipc_comp_map: dict[str, dict[str, Any]] = {}
+    for comp in ipc.get("components", []):
+        ref = comp.get("refdes")
+        if ref:
+            ipc_comp_map[ref.upper()] = comp
+
+    # Build case-insensitive lookup for PADS components by refdes
+    pads_comp_map: dict[str, dict[str, Any]] = {}
+    for comp in pads.get("components", []):
+        ref = comp.get("refdes")
+        if ref:
+            pads_comp_map[ref.upper()] = comp
+
+    # Build case-insensitive lookup for BOM items by refdes
+    bom_refdes_map: dict[str, dict[str, Any]] = {}
+    for item in bom.get("items", []):
+        for ref in item.get("refdes", []):
+            if ref:
+                bom_refdes_map[ref.upper()] = item
+
+    # --- 1. Placement Back-Annotation ---
+    # Inject x, y, rotation, layer from IPC-2581 into PADS and BOM components
+    for ref_upper, ipc_comp in ipc_comp_map.items():
+        ipc_x = ipc_comp.get("x")
+        ipc_y = ipc_comp.get("y")
+        ipc_rot = ipc_comp.get("rotation")
+        ipc_layer = ipc_comp.get("layer")
+        has_placement = ipc_x is not None and ipc_y is not None
+
+        if has_placement:
+            # Back-annotate into PADS component
+            pads_comp = pads_comp_map.get(ref_upper)
+            if pads_comp is not None:
+                pads_comp["x_loc"] = ipc_x
+                pads_comp["y_loc"] = ipc_y
+                pads_comp["rotation"] = ipc_rot
+                pads_comp["placement_layer"] = ipc_layer
+                pads_comp["placement_source"] = "ipc2581"
+                enrichment_stats["placement_back_annotations"] += 1
+
+            # Back-annotate into BOM item
+            bom_item = bom_refdes_map.get(ref_upper)
+            if bom_item is not None:
+                # Store per-refdes placement in a new key on the BOM item
+                placements = bom_item.setdefault("placement_data", {})
+                placements[ipc_comp.get("refdes", ref_upper)] = {
+                    "x_loc": ipc_x,
+                    "y_loc": ipc_y,
+                    "rotation": ipc_rot,
+                    "placement_layer": ipc_layer,
+                    "placement_source": "ipc2581",
+                }
+
+    # --- 2. Metadata Gap Filling ---
+    # Fill null footprint, value, part_number in PADS from IPC/BOM
+    for ref_upper, pads_comp in pads_comp_map.items():
+        ipc_comp = ipc_comp_map.get(ref_upper)
+        bom_item = bom_refdes_map.get(ref_upper)
+        overrides: list[str] = []
+
+        # Fill footprint
+        if pads_comp.get("footprint") is None:
+            ipc_fp = ipc_comp.get("footprint") if ipc_comp else None
+            bom_fp = (bom_item.get("fields", {}).get("footprint") or bom_item.get("fields", {}).get("package")) if bom_item else None
+            if ipc_fp:
+                pads_comp["footprint"] = ipc_fp
+                overrides.append("footprint:ipc2581")
+                enrichment_stats["metadata_gap_fills"] += 1
+            elif bom_fp:
+                pads_comp["footprint"] = bom_fp
+                overrides.append("footprint:bom")
+                enrichment_stats["metadata_gap_fills"] += 1
+
+        # Fill value
+        if pads_comp.get("value") is None:
+            ipc_val = ipc_comp.get("value") if ipc_comp else None
+            bom_val = bom_item.get("fields", {}).get("value") if bom_item else None
+            if ipc_val:
+                pads_comp["value"] = ipc_val
+                overrides.append("value:ipc2581")
+                enrichment_stats["metadata_gap_fills"] += 1
+            elif bom_val:
+                pads_comp["value"] = bom_val
+                overrides.append("value:bom")
+                enrichment_stats["metadata_gap_fills"] += 1
+
+        # Fill part_number (new key if not already present or if None)
+        existing_pn = pads_comp.get("part_number")
+        if existing_pn is None:
+            ipc_pn = ipc_comp.get("part_number") if ipc_comp else None
+            bom_pn = bom_item.get("fields", {}).get("mpn") if bom_item else None
+            if ipc_pn:
+                pads_comp["part_number"] = ipc_pn
+                overrides.append("part_number:ipc2581")
+                enrichment_stats["metadata_gap_fills"] += 1
+            elif bom_pn:
+                pads_comp["part_number"] = bom_pn
+                overrides.append("part_number:bom")
+                enrichment_stats["metadata_gap_fills"] += 1
+
+        if overrides:
+            pads_comp["metadata_source_override"] = overrides
+
+    # --- 3. Footprint Reconciliation ---
+    # Compare footprint/package names across BOM, PADS, IPC-2581
+    for ref_upper, pads_comp in pads_comp_map.items():
+        ipc_comp = ipc_comp_map.get(ref_upper)
+        bom_item = bom_refdes_map.get(ref_upper)
+
+        fp_pads = pads_comp.get("footprint") or pads_comp.get("package")
+        fp_ipc = ipc_comp.get("footprint") if ipc_comp else None
+        fp_bom = (bom_item.get("fields", {}).get("footprint") or bom_item.get("fields", {}).get("package")) if bom_item else None
+
+        sources: dict[str, str] = {}
+        if fp_pads:
+            sources["pads"] = fp_pads
+        if fp_ipc:
+            sources["ipc2581"] = fp_ipc
+        if fp_bom:
+            sources["bom"] = fp_bom
+
+        if len(sources) >= 2:
+            # Normalize for comparison (case-insensitive, strip whitespace)
+            normalized = {k: re.sub(r"[^a-z0-9]+", "", v.lower()) for k, v in sources.items()}
+            unique_values = set(normalized.values())
+            if len(unique_values) > 1:
+                refdes_display = pads_comp.get("refdes", ref_upper)
+                conflict_detail = ", ".join(f"{k}={v}" for k, v in sources.items())
+                warnings.append({
+                    "code": "WARN_FOOTPRINT_RECONCILIATION_CONFLICT",
+                    "message": f"Footprint conflict for {refdes_display}: {conflict_detail}",
+                })
+                pads_comp["footprint_conflict"] = sources
+                enrichment_stats["footprint_conflicts"] += 1
+
+    # --- 4. Netlist Parity Check ---
+    # Cross-check nets from PADS against LogicalNet list from IPC-2581
+    pads_nets = {n.get("name"): n for n in pads.get("nets", []) if n.get("name")}
+    ipc_nets = {n.get("name"): n for n in ipc.get("nets", []) if n.get("name")}
+
+    # Case-insensitive comparison
+    pads_net_names_upper = {name.upper(): name for name in pads_nets}
+    ipc_net_names_upper = {name.upper(): name for name in ipc_nets}
+
+    pads_only = set(pads_net_names_upper.keys()) - set(ipc_net_names_upper.keys())
+    ipc_only = set(ipc_net_names_upper.keys()) - set(pads_net_names_upper.keys())
+    common = set(pads_net_names_upper.keys()) & set(ipc_net_names_upper.keys())
+
+    for net_upper in pads_only:
+        original_name = pads_net_names_upper[net_upper]
+        # Filter: Skip CAD-generated dummy unused nets
+        if not str(original_name).upper().startswith("UNUSED"):
+            warnings.append({
+                "code": "WARN_NETLIST_PARITY_MISMATCH",
+                "message": f"Net '{original_name}' exists in PADS but not in IPC-2581.",
+            })
+            enrichment_stats["netlist_parity_mismatches"] += 1
+
+    for net_upper in ipc_only:
+        original_name = ipc_net_names_upper[net_upper]
+        # Filter: Skip CAD-generated dummy unused nets
+        if not str(original_name).upper().startswith("UNUSED"):
+            warnings.append({
+                "code": "WARN_NETLIST_PARITY_MISMATCH",
+                "message": f"Net '{original_name}' exists in IPC-2581 but not in PADS.",
+            })
+            enrichment_stats["netlist_parity_mismatches"] += 1
+
+    # Pin count comparison for common nets
+    for net_upper in common:
+        pads_net = pads_nets[pads_net_names_upper[net_upper]]
+        ipc_net = ipc_nets[ipc_net_names_upper[net_upper]]
+        pads_pin_count = pads_net.get("node_count", len(pads_net.get("nodes", [])))
+        ipc_pin_count = ipc_net.get("node_count", len(ipc_net.get("nodes", [])))
+        if pads_pin_count != ipc_pin_count:
+            original_name = pads_net_names_upper[net_upper]
+            # Filter: Skip CAD-generated dummy unused nets
+            if not str(original_name).upper().startswith("UNUSED"):
+                warnings.append({
+                    "code": "WARN_NETLIST_PARITY_MISMATCH",
+                    "message": f"Net '{original_name}' pin count differs: PADS={pads_pin_count}, IPC-2581={ipc_pin_count}.",
+                })
+                enrichment_stats["netlist_parity_mismatches"] += 1
+
+    # --- 5. BOM Back-Annotation ---
+    # Back-annotate resolved value and footprint from PADS components into BOM items
+    bom_backfill_count = 0
+    for item in bom.get("items", []):
+        refdes_list = item.get("refdes", [])
+        if not refdes_list:
+            continue
+        
+        # Use the first RefDes as the lookup key
+        primary_refdes = refdes_list[0].upper()
+        pads_comp = pads_comp_map.get(primary_refdes)
+        
+        if pads_comp:
+            fields = item.get("fields", {})
+            
+            # Back-annotate value if BOM value is null
+            if fields.get("value") is None:
+                resolved_value = pads_comp.get("value")
+                if resolved_value:
+                    fields["value"] = resolved_value
+                    bom_backfill_count += 1
+            
+            # Back-annotate footprint if BOM footprint is null
+            if fields.get("footprint") is None:
+                resolved_footprint = pads_comp.get("footprint")
+                if resolved_footprint:
+                    fields["footprint"] = resolved_footprint
+                    bom_backfill_count += 1
+    
+    enrichment_stats["bom_backfill_count"] = bom_backfill_count
+
+    return {
+        "cross_extraction_version": "1.0",
+        "enrichment_stats": enrichment_stats,
+        "warnings": warnings,
+    }
 
 
 
@@ -809,6 +1211,495 @@ def _bbox_overlap_possible(a: dict[str, float] | None, b: dict[str, float] | Non
     if not a or not b:
         return None
     return not (a["max_x"] < b["min_x"] or b["max_x"] < a["min_x"] or a["max_y"] < b["min_y"] or b["max_y"] < a["min_y"])
+
+
+# ---------------------------------------------------------------------------
+# DFM / Thermal / SMPS / Chassis-Ground Analysis Functions (KB Gap Fixes)
+# ---------------------------------------------------------------------------
+
+
+def _polygon_area_shoelace(points: list[dict[str, Any]]) -> float:
+    """Compute polygon area using the shoelace formula. Returns area in source units²."""
+    coords = [(p["x"], p["y"]) for p in points if isinstance(p.get("x"), (int, float)) and isinstance(p.get("y"), (int, float))]
+    n = len(coords)
+    if n < 3:
+        return 0.0
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        area += coords[i][0] * coords[j][1]
+        area -= coords[j][0] * coords[i][1]
+    return abs(area) / 2.0
+
+
+def _point_in_bbox(x: float, y: float, bbox: dict[str, float]) -> bool:
+    return bbox["min_x"] <= x <= bbox["max_x"] and bbox["min_y"] <= y <= bbox["max_y"]
+
+
+def _distance_point_to_segment(px: float, py: float, x1: float, y1: float, x2: float, y2: float) -> float:
+    """Minimum distance from point (px,py) to line segment (x1,y1)-(x2,y2)."""
+    dx, dy = x2 - x1, y2 - y1
+    len_sq = dx * dx + dy * dy
+    if len_sq == 0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / len_sq))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def _min_distance_to_outline(x: float, y: float, outline: list[dict[str, Any]]) -> float | None:
+    """Compute minimum distance from a point to the board outline polygon."""
+    coords = [(float(p["x"]), float(p["y"])) for p in outline if p.get("x") is not None and p.get("y") is not None]
+    if len(coords) < 2:
+        return None
+    min_dist = float("inf")
+    for i in range(len(coords)):
+        j = (i + 1) % len(coords)
+        d = _distance_point_to_segment(x, y, coords[i][0], coords[i][1], coords[j][0], coords[j][1])
+        min_dist = min(min_dist, d)
+    return min_dist if min_dist != float("inf") else None
+
+
+def _compute_annular_rings(holes: list[dict[str, Any]], pads: list[dict[str, Any]], units: str | None) -> dict[str, Any]:
+    """Compute annular ring for holes that co-locate with pads (Appendix G.2).
+
+    Annular ring = (pad_diameter - hole_diameter) / 2  or
+                   (min(pad_width, pad_height) - hole_diameter) / 2 for non-circular pads.
+    """
+    results: list[dict[str, Any]] = []
+    violations: list[dict[str, Any]] = []
+    min_annular_ring_threshold = 0.254  # 10 mil in mm (IPC minimum)
+
+    # Index pads by approximate location for matching
+    pad_index: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for pad in pads:
+        if pad.get("x") is None or pad.get("y") is None:
+            continue
+        # Quantize to grid for fast lookup
+        key = (int(round(pad["x"] * 100)), int(round(pad["y"] * 100)))
+        pad_index.setdefault(key, []).append(pad)
+
+    for hole in holes:
+        hx, hy, hd = hole.get("x"), hole.get("y"), hole.get("diameter")
+        if hx is None or hy is None or hd is None:
+            continue
+        hd_f = float(hd) if not isinstance(hd, (int, float)) else hd
+        if hd_f <= 0:
+            continue
+        key = (int(round(hx * 100)), int(round(hy * 100)))
+        # Check nearby grid cells for co-located pad
+        matched_pad = None
+        for dk in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]:
+            check_key = (key[0] + dk[0], key[1] + dk[1])
+            for p in pad_index.get(check_key, []):
+                if p.get("x") is not None and p.get("y") is not None:
+                    dist = math.hypot(p["x"] - hx, p["y"] - hy)
+                    if dist < hd_f * 0.5:  # pad center within half drill diameter
+                        matched_pad = p
+                        break
+            if matched_pad:
+                break
+
+        if matched_pad:
+            pad_dim = matched_pad.get("resolved_diameter")
+            if pad_dim is None:
+                pw = matched_pad.get("resolved_width")
+                ph = matched_pad.get("resolved_height")
+                if pw is not None and ph is not None:
+                    pad_dim = min(float(pw), float(ph))
+            if pad_dim is not None:
+                pad_dim_f = float(pad_dim)
+                annular_ring = (pad_dim_f - hd_f) / 2.0
+                entry = {
+                    "hole_id": hole.get("id"),
+                    "hole_diameter": hd_f,
+                    "pad_dimension": pad_dim_f,
+                    "annular_ring": round(annular_ring, 6),
+                    "units": units,
+                    "net": hole.get("net"),
+                    "layer": hole.get("layer"),
+                }
+                results.append(entry)
+                if annular_ring < min_annular_ring_threshold:
+                    violations.append({**entry, "violation": f"annular_ring {annular_ring:.4f} < minimum {min_annular_ring_threshold}"})
+
+    return {
+        "annular_ring_calculations": results,
+        "annular_ring_violation_count": len(violations),
+        "annular_ring_violations": violations,
+        "min_threshold_used": min_annular_ring_threshold,
+        "threshold_units": units,
+        "holes_analyzed": len(results),
+        "total_holes_available": len(holes),
+    }
+
+
+def _compute_board_edge_clearances(
+    outline: list[dict[str, Any]],
+    components: list[dict[str, Any]],
+    pads: list[dict[str, Any]],
+    units: str | None,
+) -> dict[str, Any]:
+    """Compute minimum distances from components and copper to board edge (Appendix G.8/G.10)."""
+    if len(outline) < 3:
+        return {"available": False, "reason": "insufficient outline points", "units": units}
+
+    component_clearances: list[dict[str, Any]] = []
+    copper_clearances: list[dict[str, Any]] = []
+    min_component_clearance: float | None = None
+    min_copper_clearance: float | None = None
+
+    for comp in components:
+        cx = _to_float(comp.get("x"))
+        cy = _to_float(comp.get("y"))
+        if cx is None or cy is None:
+            continue
+        dist = _min_distance_to_outline(cx, cy, outline)
+        if dist is not None:
+            component_clearances.append({"refdes": comp.get("refdes"), "distance_to_edge": round(dist, 6), "units": units})
+            if min_component_clearance is None or dist < min_component_clearance:
+                min_component_clearance = dist
+
+    # Sample pads for copper-to-edge (limit to avoid excessive computation)
+    sample_pads = pads[:2000] if len(pads) > 2000 else pads
+    for pad in sample_pads:
+        px, py = pad.get("x"), pad.get("y")
+        if px is None or py is None:
+            continue
+        dist = _min_distance_to_outline(px, py, outline)
+        if dist is not None:
+            if min_copper_clearance is None or dist < min_copper_clearance:
+                min_copper_clearance = dist
+            if dist < 1.0:  # Only report pads very close to edge (< 1 unit)
+                copper_clearances.append({
+                    "pad_id": pad.get("id"), "net": pad.get("net"),
+                    "distance_to_edge": round(dist, 6), "units": units,
+                })
+
+    return {
+        "available": True,
+        "units": units,
+        "component_clearances_near_edge": sorted(component_clearances, key=lambda x: x["distance_to_edge"])[:20],
+        "copper_clearances_near_edge": sorted(copper_clearances, key=lambda x: x["distance_to_edge"])[:20],
+        "min_component_to_edge": round(min_component_clearance, 6) if min_component_clearance is not None else None,
+        "min_copper_to_edge": round(min_copper_clearance, 6) if min_copper_clearance is not None else None,
+        "components_analyzed": len([c for c in components if _to_float(c.get("x")) is not None]),
+        "pads_sampled": len(sample_pads),
+    }
+
+
+def _detect_fiducials(pads: list[dict[str, Any]], packages: list[dict[str, Any]], units: str | None) -> dict[str, Any]:
+    """Detect fiducial marks via naming and shape heuristics (Appendix G.7).
+
+    Fiducials are typically 1mm circular pads with large clearance zones.
+    """
+    fiducial_candidates: list[dict[str, Any]] = []
+
+    # Check packages with fiducial-like names
+    fiducial_pkg_names = set()
+    for pkg in packages:
+        pkg_name = _upper(pkg.get("package_ref") or "")
+        if any(kw in pkg_name for kw in ["FIDUCIAL", "FID", "FIDUC"]):
+            fiducial_pkg_names.add(pkg.get("package_ref"))
+
+    # Check pads for fiducial characteristics
+    for pad in pads:
+        is_candidate = False
+        reason = []
+        net = pad.get("net")
+        # Fiducials typically have no net or a fiducial-named net
+        if net is None or "FID" in _upper(net or ""):
+            if pad.get("resolved_shape") == "circle":
+                diameter = pad.get("resolved_diameter")
+                if diameter is not None and 0.8 <= float(diameter) <= 3.0:
+                    is_candidate = True
+                    reason.append(f"circular pad diameter={diameter} within fiducial range 0.8-3.0")
+            if not is_candidate and pad.get("resolved_shape") == "circle":
+                is_candidate = True
+                reason.append("circular pad with no/fiducial net name")
+
+        if is_candidate:
+            fiducial_candidates.append({
+                "pad_id": pad.get("id"),
+                "x": pad.get("x"),
+                "y": pad.get("y"),
+                "layer": pad.get("layer"),
+                "net": net,
+                "diameter": pad.get("resolved_diameter"),
+                "shape": pad.get("resolved_shape"),
+                "reason": "; ".join(reason),
+                "units": units,
+            })
+
+    # Assess sufficiency
+    count = len(fiducial_candidates)
+    return {
+        "fiducial_candidates": fiducial_candidates,
+        "fiducial_count": count,
+        "meets_minimum_3": count >= 3,
+        "fiducial_package_names": sorted(fiducial_pkg_names),
+        "units": units,
+        "note": "Fiducial detection is heuristic based on pad shape, size, and net naming. Confirm with assembly drawings.",
+    }
+
+
+def _identify_thermal_pads(land_patterns: list[dict[str, Any]], root: ET.Element) -> list[dict[str, Any]]:
+    """Identify thermal/exposed pads in packages (Section 2.2 / Thermal Design).
+
+    Thermal pads are typically large central pads (often labeled EP, epad, or THERMAL)
+    with significantly larger area than signal pads in the same package.
+    """
+    thermal_pads: list[dict[str, Any]] = []
+
+    for pkg in root.iter():
+        if _local(pkg.tag) != "Package":
+            continue
+        pkg_name = pkg.attrib.get("name") or pkg.attrib.get("id") or ""
+        pads_in_pkg: list[dict[str, Any]] = []
+
+        for lp in pkg.iter():
+            if _local(lp.tag) != "LandPattern":
+                continue
+            for pad in lp.iter():
+                if _local(pad.tag) != "Pad":
+                    continue
+                pad_name = pad.attrib.get("number") or pad.attrib.get("padNum") or pad.attrib.get("name") or ""
+                loc = next((c for c in pad if _local(c.tag) == "Location"), None)
+                x = _to_float(pad.attrib.get("x") or (loc.attrib.get("x") if loc is not None else None))
+                y = _to_float(pad.attrib.get("y") or (loc.attrib.get("y") if loc is not None else None))
+                # Get pad dimensions from primitive ref
+                std_ref = pad.attrib.get("standardPrimitiveRef") or pad.attrib.get("stdPrimRef")
+                pads_in_pkg.append({"name": pad_name, "x": x, "y": y, "std_ref": std_ref, "pkg": pkg_name})
+
+        if not pads_in_pkg:
+            continue
+
+        # Heuristic: thermal pad is named EP/EPAD/THERMAL or is the largest pad
+        for p in pads_in_pkg:
+            pname_upper = _upper(p["name"])
+            if any(kw in pname_upper for kw in ["EP", "EPAD", "THERMAL", "EXPOSED", "GND_PAD", "TAB"]):
+                thermal_pads.append({
+                    "package_ref": pkg_name,
+                    "pad_name": p["name"],
+                    "x": p["x"],
+                    "y": p["y"],
+                    "identification_method": "name_match",
+                    "primitive_ref": p["std_ref"],
+                })
+
+    return thermal_pads
+
+
+def _count_thermal_vias_in_pad(
+    thermal_pads: list[dict[str, Any]],
+    via_holes: list[dict[str, Any]],
+    pad_primitives: dict[str, dict[str, Any]],
+    units: str | None,
+) -> list[dict[str, Any]]:
+    """Count vias within thermal pad footprints (thermal via arrays)."""
+    results: list[dict[str, Any]] = []
+
+    for tpad in thermal_pads:
+        # Estimate thermal pad bbox from primitive
+        prim = pad_primitives.get(tpad.get("primitive_ref") or "")
+        if not prim:
+            results.append({
+                "package_ref": tpad["package_ref"],
+                "pad_name": tpad["pad_name"],
+                "thermal_via_count": None,
+                "reason": "pad primitive not resolved; cannot determine pad area",
+            })
+            continue
+
+        cx, cy = tpad.get("x"), tpad.get("y")
+        if cx is None or cy is None:
+            continue
+
+        # Determine pad extent
+        diameter = prim.get("diameter")
+        width = prim.get("width")
+        height = prim.get("height")
+        if diameter is not None:
+            half = float(diameter) / 2.0
+            pad_bbox = {"min_x": cx - half, "min_y": cy - half, "max_x": cx + half, "max_y": cy + half}
+        elif width is not None and height is not None:
+            pad_bbox = {"min_x": cx - float(width)/2, "min_y": cy - float(height)/2, "max_x": cx + float(width)/2, "max_y": cy + float(height)/2}
+        else:
+            results.append({
+                "package_ref": tpad["package_ref"],
+                "pad_name": tpad["pad_name"],
+                "thermal_via_count": None,
+                "reason": "pad dimensions unknown",
+            })
+            continue
+
+        # Count vias within this bbox
+        via_count = 0
+        for via in via_holes:
+            vx, vy = via.get("x"), via.get("y")
+            if vx is not None and vy is not None:
+                if _point_in_bbox(float(vx), float(vy), pad_bbox):
+                    via_count += 1
+
+        results.append({
+            "package_ref": tpad["package_ref"],
+            "pad_name": tpad["pad_name"],
+            "thermal_via_count": via_count,
+            "pad_bbox": pad_bbox,
+            "units": units,
+        })
+
+    return results
+
+
+def _compute_smps_polygon_areas(
+    polygons: list[dict[str, Any]],
+    units: str | None,
+) -> dict[str, Any]:
+    """Compute copper polygon areas per net, especially for switching nodes (Appendix C).
+
+    Switching node nets often contain 'SW' in the name. Large polygons on power/SW nets
+    indicate copper pours for current carrying or thermal dissipation.
+    """
+    net_areas: dict[str, dict[str, Any]] = {}
+
+    for poly in polygons:
+        if poly.get("feature_domain") != "copper":
+            continue
+        net = poly.get("net")
+        if not net:
+            continue
+        points = poly.get("points", [])
+        area = _polygon_area_shoelace(points)
+        if area <= 0:
+            continue
+        slot = net_areas.setdefault(net, {"net": net, "total_area": 0.0, "polygon_count": 0, "layers": set(), "is_switching_node_candidate": False})
+        slot["total_area"] += area
+        slot["polygon_count"] += 1
+        slot["layers"].add(poly.get("layer"))
+
+    # Identify switching node candidates
+    sw_pattern = re.compile(r"(^SW$|^SW_|_SW$|_SW_|SWITCH|PHASE)", re.IGNORECASE)
+    for net, data in net_areas.items():
+        if sw_pattern.search(net):
+            data["is_switching_node_candidate"] = True
+
+    results = sorted(net_areas.values(), key=lambda x: x["total_area"], reverse=True)
+    for r in results:
+        r["total_area"] = round(r["total_area"], 6)
+        r["layers"] = sorted(r["layers"])
+
+    sw_nets = [r for r in results if r["is_switching_node_candidate"]]
+
+    return {
+        "polygon_area_by_net": results[:50],  # Top 50 by area
+        "switching_node_candidates": sw_nets,
+        "switching_node_count": len(sw_nets),
+        "units_squared": f"{units}²" if units else "source_units²",
+        "total_nets_with_polygons": len(results),
+        "note": "Polygon areas are computed via shoelace formula from IPC-2581 point data. Curved polygons may have estimation error.",
+    }
+
+
+def _analyze_npth_keepouts(
+    nonplated_holes: list[dict[str, Any]],
+    pads: list[dict[str, Any]],
+    polygons: list[dict[str, Any]],
+    routes: list[dict[str, Any]],
+    units: str | None,
+    keepout_radius: float = 4.0,
+) -> dict[str, Any]:
+    """Analyze copper presence around Non-Plated Through Holes (Appendix K.6).
+
+    Per K.6: 4mm radius copper keepout zone around every NPTH mounting hole
+    on ALL copper layers. Copper within this zone indicates a potential
+    chassis ground issue.
+    """
+    results: list[dict[str, Any]] = []
+
+    for hole in nonplated_holes:
+        hx, hy = hole.get("x"), hole.get("y")
+        if hx is None or hy is None:
+            continue
+
+        # Check for copper features within keepout radius
+        copper_intrusions: list[dict[str, Any]] = []
+
+        # Check pads
+        for pad in pads:
+            if pad.get("feature_domain") != "copper":
+                continue
+            px, py = pad.get("x"), pad.get("y")
+            if px is None or py is None:
+                continue
+            dist = math.hypot(px - hx, py - hy)
+            if dist < keepout_radius:
+                copper_intrusions.append({
+                    "type": "pad", "id": pad.get("id"), "net": pad.get("net"),
+                    "layer": pad.get("layer"), "distance": round(dist, 4),
+                })
+
+        # Check polygon points (sample approach)
+        for poly in polygons:
+            if poly.get("feature_domain") != "copper":
+                continue
+            bbox = poly.get("bbox")
+            if bbox and not _point_in_bbox(hx, hy, {"min_x": bbox["min_x"] - keepout_radius, "min_y": bbox["min_y"] - keepout_radius, "max_x": bbox["max_x"] + keepout_radius, "max_y": bbox["max_y"] + keepout_radius}):
+                continue
+            for pt in (poly.get("points") or [])[:5]:  # Sample first points
+                ptx, pty = pt.get("x"), pt.get("y")
+                if ptx is not None and pty is not None:
+                    dist = math.hypot(ptx - hx, pty - hy)
+                    if dist < keepout_radius:
+                        copper_intrusions.append({
+                            "type": "polygon_vertex", "id": poly.get("id"), "net": poly.get("net"),
+                            "layer": poly.get("layer"), "distance": round(dist, 4),
+                        })
+                        break
+
+        # Check route endpoints
+        for route in routes:
+            if route.get("feature_domain") != "copper":
+                continue
+            for pt in (route.get("points") or [])[:2]:  # Check start/end
+                ptx, pty = pt.get("x"), pt.get("y")
+                if ptx is not None and pty is not None:
+                    dist = math.hypot(ptx - hx, pty - hy)
+                    if dist < keepout_radius:
+                        copper_intrusions.append({
+                            "type": "route", "id": route.get("id"), "net": route.get("net"),
+                            "layer": route.get("layer"), "distance": round(dist, 4),
+                        })
+                        break
+
+        has_violation = len(copper_intrusions) > 0
+        layers_with_copper = sorted({ci["layer"] for ci in copper_intrusions if ci.get("layer")})
+
+        results.append({
+            "hole_id": hole.get("id"),
+            "hole_name": hole.get("name"),
+            "x": hx,
+            "y": hy,
+            "diameter": hole.get("diameter"),
+            "keepout_radius": keepout_radius,
+            "copper_intrusion_count": len(copper_intrusions),
+            "has_keepout_violation": has_violation,
+            "layers_with_copper_intrusion": layers_with_copper,
+            "intrusions": copper_intrusions[:10],  # Limit detail
+        })
+
+    violations = [r for r in results if r["has_keepout_violation"]]
+    return {
+        "npth_count": len(nonplated_holes),
+        "npth_analyzed": len(results),
+        "keepout_radius": keepout_radius,
+        "keepout_units": units,
+        "violations": violations,
+        "violation_count": len(violations),
+        "clean_npth_count": len(results) - len(violations),
+        "note": "Per Appendix K.6, 4mm copper keepout around NPTH mounting holes prevents uncontrolled chassis ground paths. Violations indicate copper within keepout zone.",
+    }
 
 
 def _count_phrase(count: int, singular: str, plural: str, layer: str) -> str:
@@ -1762,16 +2653,17 @@ def parse_ipc2581(project_root: Path, files: list[ClassifiedFile]) -> dict[str, 
     if not cands:
         warnings.append({"code": "WARN_IPC_MISSING", "message": "No IPC-2581 candidate discovered."})
         empty_counts={"board_component_count":0,"placement_count":0,"board_net_count":0,"layer_count":0,"stackup_layer_count":0,"via_count":0,"drill_count":0,"route_segment_count":0,"outline_point_count":0}
-        return {"source_file":None,"parser_version":IPC_PARSER_VERSION,"ipc_root":None,"ipc_revision":None,"namespace":None,"units":None,"components":[],"nets":[],"layers":[],"stackup_layers":[],"outline":[],"vias":[],"drills":[],"route_segments":[],"analysis":{},"warnings":warnings,"extraction_counts":empty_counts}
+        return {"source_file":None,"parser_version":IPC_PARSER_VERSION,"ipc_root":None,"ipc_revision":None,"namespace":None,"units":None,"components":[],"nets":[],"pin_to_net_map":{},"layers":[],"stackup_layers":[],"outline":[],"vias":[],"drills":[],"route_segments":[],"analysis":{},"warnings":warnings,"extraction_counts":empty_counts}
     src=cands[0]
-    if len(cands)>1:
-        warnings.append({"code":"WARN_IPC_MULTIPLE_CANDIDATES","message":f"Multiple IPC candidates found ({len(cands)}); using {src.relative_path}"})
+    # OMIT: WARN_IPC_MULTIPLE_CANDIDATES - file discovery diagnostic, not actionable
+    # if len(cands)>1:
+    #     warnings.append({"code":"WARN_IPC_MULTIPLE_CANDIDATES","message":f"Multiple IPC candidates found ({len(cands)}); using {src.relative_path}"})
     path=project_root/src.relative_path
     try:
         root=ET.parse(path).getroot()
     except Exception as exc:
         warnings.append({"code":"WARN_IPC_PARSE_FAILED","message":"IPC XML parse failed."})
-        return {"source_file":src.relative_path,"parser_version":IPC_PARSER_VERSION,"ipc_root":None,"ipc_revision":None,"namespace":None,"units":None,"components":[],"nets":[],"layers":[],"stackup_layers":[],"outline":[],"vias":[],"drills":[],"route_segments":[],"analysis":{},"warnings":warnings,"extraction_counts":{"board_component_count":0,"placement_count":0,"board_net_count":0,"layer_count":0,"stackup_layer_count":0,"via_count":0,"drill_count":0,"route_segment_count":0,"outline_point_count":0},"error":str(exc)}
+        return {"source_file":src.relative_path,"parser_version":IPC_PARSER_VERSION,"ipc_root":None,"ipc_revision":None,"namespace":None,"units":None,"components":[],"nets":[],"pin_to_net_map":{},"layers":[],"stackup_layers":[],"outline":[],"vias":[],"drills":[],"route_segments":[],"analysis":{},"warnings":warnings,"extraction_counts":{"board_component_count":0,"placement_count":0,"board_net_count":0,"layer_count":0,"stackup_layer_count":0,"via_count":0,"drill_count":0,"route_segment_count":0,"outline_point_count":0},"error":str(exc)}
 
     ns = root.tag.split('}')[0].strip('{') if root.tag.startswith('{') else None
     ipc_root=_local(root.tag)
@@ -1810,16 +2702,78 @@ def parse_ipc2581(project_root: Path, files: list[ClassifiedFile]) -> dict[str, 
             if not ref: continue
             if units is None and (e.attrib.get('unit') or e.attrib.get('units')):
                 units=e.attrib.get('unit') or e.attrib.get('units')
-            loc = next((c for c in list(e) if _local(c.tag) == "Location"), None)
-            x = e.attrib.get('x')
-            y = e.attrib.get('y')
-            if loc is not None:
-                x = x or loc.attrib.get('x')
-                y = y or loc.attrib.get('y')
-            components.append({"refdes":ref,"footprint":e.attrib.get('packageRef') or e.attrib.get('part') or e.attrib.get('cellRef'),"layer":e.attrib.get('layerRef') or e.attrib.get('side'),"x":x,"y":y,"rotation":e.attrib.get('rotation') or e.attrib.get('rot'),"source":{"format":"ipc2581","file":src.relative_path}})
+            
+            # PATCH: Namespace-agnostic matching for Location, Xform, and NonstandardAttribute nodes
+            location_node = None
+            xform_node = None
+            extracted_value = None
+            
+            for child in e:
+                tag_local = _local(child.tag).lower()
+                if tag_local == 'location':
+                    location_node = child
+                elif tag_local == 'xform':
+                    xform_node = child
+                elif tag_local == 'nonstandardattribute':
+                    # Safely capture case-insensitive 'VALUE' attributes
+                    name_attr = child.get('name')
+                    if name_attr and name_attr.upper() == 'VALUE':
+                        extracted_value = child.get('value')
+            
+            x = e.attrib.get('x') or "0.0"
+            y = e.attrib.get('y') or "0.0"
+            rotation = 0.0
+            
+            # 1. Extract coordinates from the Location node
+            if location_node is not None:
+                attrs_lower = {k.lower(): v for k, v in location_node.attrib.items()}
+                x_val = attrs_lower.get('x')
+                y_val = attrs_lower.get('y')
+                if x_val is not None:
+                    x = x_val
+                if y_val is not None:
+                    y = y_val
+            
+            # 2. Extract rotation from the Xform node (if present)
+            # Fallback to component/location attributes if Xform is missing
+            rotation_raw = e.attrib.get('rotation') or e.attrib.get('rot')
+            if xform_node is not None:
+                attrs_lower = {k.lower(): v for k, v in xform_node.attrib.items()}
+                rot_val = attrs_lower.get('rotation') or attrs_lower.get('rot')
+                if rot_val is not None:
+                    rotation_raw = rot_val
+            elif location_node is not None and rotation_raw is None:
+                # Fallback: check location node for rotation
+                attrs_lower = {k.lower(): v for k, v in location_node.attrib.items()}
+                rotation_raw = attrs_lower.get('rotation') or attrs_lower.get('rot') or attrs_lower.get('angle')
+            
+            # Safe float conversion for rotation with fallback to 0.0
+            if rotation_raw is not None:
+                try:
+                    rotation = float(str(rotation_raw).strip())
+                except (ValueError, TypeError):
+                    rotation = 0.0
+            
+            # Deep extraction: Attribute, Property, and NonstandardAttribute tags inside Component blocks
+            comp_attributes: dict[str, str] = {}
+            for child in e.iter():
+                ctag = _local(child.tag).lower()
+                if ctag in {"attribute", "property", "nonstandardattribute"}:
+                    attr_name = child.attrib.get("name") or child.attrib.get("key") or child.attrib.get("id")
+                    attr_value = child.attrib.get("value") or child.text or ""
+                    if attr_name:
+                        comp_attributes[attr_name] = attr_value.strip() if isinstance(attr_value, str) else str(attr_value)
+            
+            # Extract part_number, value, tolerance from attributes
+            ipc_part_number = comp_attributes.get("PART_NUMBER") or comp_attributes.get("PartNumber") or comp_attributes.get("MPN") or comp_attributes.get("mpn") or None
+            # 3. Use extracted_value from NonstandardAttribute if comp_attributes doesn't have VALUE
+            ipc_value = comp_attributes.get("VALUE") or comp_attributes.get("Value") or comp_attributes.get("value") or extracted_value or None
+            ipc_tolerance = comp_attributes.get("TOLERANCE") or comp_attributes.get("Tolerance") or comp_attributes.get("tolerance") or None
+            components.append({"refdes":ref,"footprint":e.attrib.get('packageRef') or e.attrib.get('part') or e.attrib.get('cellRef'),"layer":e.attrib.get('layerRef') or e.attrib.get('side'),"x":x,"y":y,"rotation":rotation,"part_number":ipc_part_number,"value":ipc_value,"tolerance":ipc_tolerance,"attributes":comp_attributes,"source":{"format":"ipc2581","file":src.relative_path}})
 
     nets=[]
     physical_nets=[]
+    pin_to_net_map: dict[str, str] = {}  # "REFDES.PIN" -> net_name
     phy_point_count = 0
     for e in root.iter():
         tag = _local(e.tag)
@@ -1833,6 +2787,8 @@ def parse_ipc2581(project_root: Path, files: list[ClassifiedFile]) -> dict[str, 
                     p=c.attrib.get('pin') or c.attrib.get('pinRef') or c.attrib.get('number')
                     if r or p:
                         nodes.append({"refdes":r,"pin_number":p})
+                        if r and p:
+                            pin_to_net_map[f"{r}.{p}"] = name
             nets.append({"name":name,"node_count":len(nodes),"nodes":nodes})
         elif tag == "PhyNet":
             pname = e.attrib.get("name") or e.attrib.get("id") or "unknown_phynet"
@@ -1857,7 +2813,66 @@ def parse_ipc2581(project_root: Path, files: list[ClassifiedFile]) -> dict[str, 
                 continue
             name=e.attrib.get('name') or e.attrib.get('layerRef') or e.attrib.get('id')
             if name:
-                stack.append({"name":name,"sequence":e.attrib.get('sequence') or e.attrib.get('order'),"material":e.attrib.get('material'),"thickness":e.attrib.get('thickness'),"dielectric_constant":e.attrib.get('er') or e.attrib.get('epsilonR'),"copper_thickness":e.attrib.get('copperThickness')})
+                # Primary attribute extraction
+                thickness_raw = e.attrib.get('thickness')
+                material = e.attrib.get('material')
+                dielectric_constant_raw = e.attrib.get('er') or e.attrib.get('epsilonR') or e.attrib.get('dielectricConstant')
+                copper_thickness_raw = e.attrib.get('copperThickness')
+                
+                # Phase 2: Hunt through child elements for <LayerThickness>, <DielectricConstant>, <Spec>
+                for child in e:
+                    child_tag = _local(child.tag)
+                    # Direct element extraction (handles namespaces dynamically)
+                    if child_tag == "LayerThickness" and thickness_raw is None:
+                        thickness_raw = child.attrib.get("value") or child.text or ""
+                    elif child_tag == "DielectricConstant" and dielectric_constant_raw is None:
+                        dielectric_constant_raw = child.attrib.get("value") or child.text or ""
+                    elif child_tag == "CopperThickness" and copper_thickness_raw is None:
+                        copper_thickness_raw = child.attrib.get("value") or child.text or ""
+                    elif child_tag == "Material" and material is None:
+                        material = child.attrib.get("value") or child.attrib.get("name") or child.text or ""
+                    # Fallback: hunt through child <Spec> nodes for missing data
+                    elif child_tag == "Spec":
+                        spec_name = (child.attrib.get("name") or child.attrib.get("id") or "").lower()
+                        spec_value = child.attrib.get("value") or child.text or ""
+                        if isinstance(spec_value, str):
+                            spec_value = spec_value.strip()
+                        if thickness_raw is None and "thickness" in spec_name:
+                            thickness_raw = spec_value
+                        elif dielectric_constant_raw is None and ("dielectric" in spec_name or "dk" in spec_name or "er" in spec_name):
+                            dielectric_constant_raw = spec_value
+                        elif material is None and "material" in spec_name:
+                            material = spec_value
+                        elif copper_thickness_raw is None and ("copper" in spec_name and "thick" in spec_name):
+                            copper_thickness_raw = spec_value
+                
+                # Phase 2 & 5: Safe float conversion with graceful fallback
+                def _safe_float(v: Any) -> float | None:
+                    if v is None:
+                        return None
+                    try:
+                        return float(str(v).strip())
+                    except (ValueError, TypeError):
+                        return None
+                
+                thickness = _safe_float(thickness_raw)
+                dielectric_constant = _safe_float(dielectric_constant_raw)
+                copper_thickness = _safe_float(copper_thickness_raw)
+                
+                stack.append({
+                    "name": name,
+                    "sequence": e.attrib.get('sequence') or e.attrib.get('order'),
+                    "material": material.strip() if isinstance(material, str) else material,
+                    "thickness": thickness,
+                    "dielectric_constant": dielectric_constant,
+                    "copper_thickness": copper_thickness
+                })
+
+    # Task 1: Auto-generate stackup sequences if missing
+    # Downstream impedance calculators require strictly ordered 1-based sequences
+    for idx, layer in enumerate(stack, start=1):
+        if layer.get('sequence') is None:
+            layer['sequence'] = idx
 
     vias=[]; drills=[]; routes=[]; outline=[]
     # Strict board profile extraction only: Profile -> Polygon -> PolyBegin/PolyStepSegment
@@ -1928,17 +2943,106 @@ def parse_ipc2581(project_root: Path, files: list[ClassifiedFile]) -> dict[str, 
     def _norm_layer(v: str | None) -> str:
         return (v or "").upper()
     analysis={"layer_count":len(layers),"layers_used":[l['name'] for l in layers],"ground_plane_layers":[l['name'] for l in layers if _norm_layer(l.get('function') or l.get('type')) in {"PLANE", "GROUND"} or ('GND' in (l['name'] or '').upper())],"signal_layers":[l['name'] for l in layers if _norm_layer(l.get('function') or l.get('type')) in {"CONDUCTOR", "SIGNAL", "INTERNAL"}]}
-    return {"source_file":src.relative_path,"parser_version":IPC_PARSER_VERSION,"ipc_root":ipc_root,"ipc_revision":rev,"namespace":ns,"units":units,"components":components,"nets":nets,"physical_nets":physical_nets,"layers":layers,"stackup_layers":stack,"stackup_data_quality":stackup_data_quality,"outline":outline,"vias":vias,"drills":drills,"holes":holes,"via_holes":via_holes,"plated_holes":plated_holes,"nonplated_holes":nonplated_holes,"drill_hole_summary":drill_hole_summary,"package_geometry_summary":package_geometry_summary,"package_land_patterns":package_land_patterns,"route_segments":routes,"analysis":analysis,"warnings":warnings,"extraction_counts":counts,**geometry}
+
+    # --- KB Gap Analysis: DFM / Thermal / SMPS / Chassis Ground ---
+    routing_geometry = geometry.get("routing_geometry", {})
+    all_pads = routing_geometry.get("pads", [])
+    all_polygons = routing_geometry.get("polygons", [])
+    all_routes_geom = routing_geometry.get("routes", [])
+    pad_prim_by_id = {p["id"]: p for p in geometry.get("pad_primitives", [])}
+
+    # DFM: Annular ring computation (Appendix G.2)
+    dfm_annular_rings = _compute_annular_rings(holes, all_pads, units)
+
+    # DFM: Board edge clearance (Appendix G.8 / G.10)
+    dfm_board_edge_clearances = _compute_board_edge_clearances(outline, components, all_pads, units)
+
+    # DFM: Fiducial detection (Appendix G.7)
+    dfm_fiducials = _detect_fiducials(all_pads, package_land_patterns, units)
+
+    # Thermal: Identify thermal pads and count thermal vias (Section 2.2)
+    thermal_pads_identified = _identify_thermal_pads(package_land_patterns, root)
+    thermal_via_analysis = _count_thermal_vias_in_pad(thermal_pads_identified, via_holes, pad_prim_by_id, units)
+
+    # SMPS: Polygon area computation for switching nodes (Appendix C)
+    smps_polygon_areas = _compute_smps_polygon_areas(all_polygons, units)
+
+    # Chassis Ground: NPTH keepout analysis (Appendix K.6)
+    npth_keepout_analysis = _analyze_npth_keepouts(nonplated_holes, all_pads, all_polygons, all_routes_geom, units)
+
+    # Bundle all KB-driven analyses into a dedicated section
+    kb_driven_analysis = {
+        "dfm": {
+            "annular_rings": dfm_annular_rings,
+            "board_edge_clearances": dfm_board_edge_clearances,
+            "fiducials": dfm_fiducials,
+        },
+        "thermal": {
+            "thermal_pads": thermal_pads_identified,
+            "thermal_via_arrays": thermal_via_analysis,
+            "thermal_pad_count": len(thermal_pads_identified),
+        },
+        "smps_layout": smps_polygon_areas,
+        "chassis_ground": npth_keepout_analysis,
+    }
+
+    return {"source_file":src.relative_path,"parser_version":IPC_PARSER_VERSION,"ipc_root":ipc_root,"ipc_revision":rev,"namespace":ns,"units":units,"components":components,"nets":nets,"physical_nets":physical_nets,"pin_to_net_map":pin_to_net_map,"layers":layers,"stackup_layers":stack,"stackup_data_quality":stackup_data_quality,"outline":outline,"vias":vias,"drills":drills,"holes":holes,"via_holes":via_holes,"plated_holes":plated_holes,"nonplated_holes":nonplated_holes,"drill_hole_summary":drill_hole_summary,"package_geometry_summary":package_geometry_summary,"package_land_patterns":package_land_patterns,"route_segments":routes,"analysis":analysis,"warnings":warnings,"extraction_counts":counts,"kb_driven_analysis":kb_driven_analysis,**geometry}
 
 
-def build_board_export(project_name:str, project_root:Path, ipc:dict[str,Any])->dict[str,Any]:
-    return {
+def filter_board_components_to_geometry(components: list[dict[str, Any]], schematic_components: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Filter board components to retain only geometric/physical parameters.
+    
+    Removes schematic-specific fields (value, tolerance, attributes, source)
+    to keep board JSON focused on physical layout data.
+    Cross-references part_number from schematic components.
+    
+    Keeps: refdes, footprint, layer, x, y, rotation, part_number
+    """
+    # Build schematic lookup map for part_number cross-reference
+    sch_lookup = {}
+    if schematic_components:
+        sch_lookup = {
+            c.get("refdes", "").upper(): c.get("part_number")
+            for c in schematic_components if c.get("refdes")
+        }
+    
+    filtered = []
+    for comp in components:
+        refdes = comp.get("refdes")
+        if not refdes:
+            continue
+        
+        # Build new component dict with only geometric fields
+        # Cross-reference part_number from schematic if available
+        part_number = sch_lookup.get(refdes.upper()) if sch_lookup else comp.get("part_number")
+        
+        filtered_comp = {
+            "refdes": refdes,
+            "footprint": comp.get("footprint"),
+            "part_number": part_number,
+            "layer": comp.get("layer") or comp.get("placement_layer") or "TOP",
+            "x": comp.get("x") or comp.get("x_loc") or "0.0",
+            "y": comp.get("y") or comp.get("y_loc") or "0.0",
+            "rotation": comp.get("rotation", 0.0)
+        }
+        
+        filtered.append(filtered_comp)
+    
+    return filtered
+
+
+def build_board_export(project_name:str, project_root:Path, ipc:dict[str,Any], cross_extraction: dict[str, Any] | None = None, schematic_components: list[dict[str, Any]] | None = None)->dict[str,Any]:
+    # Filter components to geometric fields only and cross-reference part_number from schematic
+    raw_components = ipc.get("components", [])
+    filtered_components = filter_board_components_to_geometry(raw_components, schematic_components)
+    
+    result = {
         "project_name": project_name,
         "source": {"project_root": str(project_root), "layout_file": ipc.get("source_file"), "format": "ipc2581", "ipc_root": ipc.get("ipc_root"), "ipc_revision": ipc.get("ipc_revision"), "namespace": ipc.get("namespace"), "units": ipc.get("units")},
         "units": ipc.get("units"),
         "parser_version": ipc.get("parser_version"),
-        "components": ipc.get("components", []),
-        "placements": ipc.get("components", []),
+        "components": filtered_components,
+        "placements": filtered_components,
         "nets": ipc.get("nets", []),
         "physical_nets": ipc.get("physical_nets", []),
         "layers": ipc.get("layers", []),
@@ -1975,13 +3079,46 @@ def build_board_export(project_name:str, project_root:Path, ipc:dict[str,Any])->
         "review_geometry_summary": ipc.get("review_geometry_summary", {}),
         "candidate_differential_or_paired_nets": ipc.get("candidate_differential_or_paired_nets", []),
         "geometry_review_limitations": ipc.get("geometry_review_limitations", GEOMETRY_REVIEW_LIMITATIONS),
+        "kb_driven_analysis": ipc.get("kb_driven_analysis", {
+            "dfm": {"annular_rings": {}, "board_edge_clearances": {}, "fiducials": {}},
+            "thermal": {"thermal_pads": [], "thermal_via_arrays": [], "thermal_pad_count": 0},
+            "smps_layout": {},
+            "chassis_ground": {},
+        }),
         "warnings": ipc.get("warnings", []),
         "extraction_counts": ipc.get("extraction_counts", {}),
     }
+    if cross_extraction:
+        result["cross_extraction_summary"] = cross_extraction.get("enrichment_stats", {})
+    return result
 
 
 def build_stack_export(project_name:str, project_root:Path, ipc:dict[str,Any])->dict[str,Any]:
-    return {"project_name":project_name,"source":{"project_root":str(project_root),"layout_file":ipc.get('source_file'),"format":"ipc2581"},"parser_version":ipc.get('parser_version'),"units":ipc.get('units'),"layer_stack":ipc.get('stackup_layers',[]),"layers":ipc.get('stackup_layers',[]),"stackup_data_quality":ipc.get("stackup_data_quality",{}),"warnings":ipc.get('warnings',[]),"extraction_counts":{"stackup_layer_count":ipc.get('extraction_counts',{}).get('stackup_layer_count',0),"layer_count":ipc.get('extraction_counts',{}).get('layer_count',0)}}
+    from parse_tcfx_stackup import merge_tcfx_if_available
+    
+    stack_data = {
+        "project_name": project_name,
+        "source": {
+            "project_root": str(project_root),
+            "layout_file": ipc.get('source_file'),
+            "format": "ipc2581"
+        },
+        "parser_version": ipc.get('parser_version'),
+        "units": ipc.get('units'),
+        "layer_stack": ipc.get('stackup_layers', []),
+        "layers": ipc.get('stackup_layers', []),
+        "stackup_data_quality": ipc.get("stackup_data_quality", {}),
+        "warnings": ipc.get('warnings', []),
+        "extraction_counts": {
+            "stackup_layer_count": ipc.get('extraction_counts', {}).get('stackup_layer_count', 0),
+            "layer_count": ipc.get('extraction_counts', {}).get('layer_count', 0)
+        }
+    }
+    
+    # Automatically merge TCFX data if available
+    stack_data = merge_tcfx_if_available(project_root, stack_data)
+    
+    return stack_data
 
 
 def render_pdf_images(args: argparse.Namespace, project_root: Path, output_root: Path, project_name: str, files: list[ClassifiedFile]) -> dict[str, Any]:
@@ -2222,6 +3359,50 @@ def report_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def cleanup_bom_schema(bom: dict[str, Any]) -> dict[str, Any]:
+    """Remove redundant and empty fields from BOM JSON to reduce file size.
+    
+    Filters out:
+    - Entire aerospace_hi_rel block (empty for industrial designs)
+    - Empty vendor/vendor_pn/package from fields
+    - Diagnostic REV/UOM/ITEM NUM from custom_metadata
+    - placement_source from placement_data entries
+    """
+    items = bom.get("items", [])
+    for item in items:
+        # 1. Remove entire aerospace_hi_rel block
+        if "aerospace_hi_rel" in item:
+            del item["aerospace_hi_rel"]
+        
+        # 2. Remove vendor/vendor_pn/package from fields
+        fields = item.get("fields", {})
+        for key in ["vendor", "vendor_pn", "package"]:
+            if key in fields:
+                del fields[key]
+        
+        # 3. Remove REV/UOM/ITEM NUM from custom_metadata
+        custom = item.get("custom_metadata", {})
+        if custom:
+            for key in ["REV", "UOM", "ITEM NUM"]:
+                if key in custom:
+                    del custom[key]
+            # If custom_metadata is now empty, set to None
+            if not custom:
+                item["custom_metadata"] = None
+        
+        # 4. Remove placement_source from placement_data entries
+        placements = item.get("placement_data", {})
+        for refdes, placement in placements.items():
+            if "placement_source" in placement:
+                del placement["placement_source"]
+    
+    # Also remove aerospace summary from top-level metadata if present
+    if "aerospace_hi_rel_summary" in bom:
+        del bom["aerospace_hi_rel_summary"]
+    
+    return bom
+
+
 def main() -> int:
     args = parse_args()
     project_root = Path(args.project_root).resolve()
@@ -2235,9 +3416,14 @@ def main() -> int:
 
     bom = parse_bom(project_name, project_root, files)
     pads = parse_pads(project_root, files, bom)
-    sch = build_schematic_export(project_name, project_root, pads)
     ipc = parse_ipc2581(project_root, files)
-    brd = build_board_export(project_name, project_root, ipc)
+
+    # Cross-extraction pipeline: merge datasets to eliminate nulls
+    cross_extraction = cross_extract_and_enrich(bom, pads, ipc)
+    top_warnings.extend(cross_extraction.get("warnings", []))
+
+    sch = build_schematic_export(project_name, project_root, pads, cross_extraction)
+    brd = build_board_export(project_name, project_root, ipc, cross_extraction, schematic_components=sch.get("components", []))
     stack = build_stack_export(project_name, project_root, ipc)
     if not args.dry_run:
         output_root.mkdir(parents=True, exist_ok=True)
@@ -2264,6 +3450,9 @@ def main() -> int:
     else:
         output_root.mkdir(parents=True, exist_ok=True)
         if not args.report_only:
+            # Clean up BOM schema before serialization
+            bom = cleanup_bom_schema(bom)
+            
             with bom_json.open("w", encoding="utf-8") as f:
                 json.dump(bom, f, indent=2 if args.pretty else None)
             with sch_json.open("w", encoding="utf-8") as f:

@@ -49,3 +49,14 @@ exports_backup_*/
 # Python cache
 __pycache__/
 *.pyc
+
+# Local test-project scratch files
+TestProject/*
+!TestProject/README.md
+
+# Local environment
+.env.local
+
+# Local agent/runtime artifacts
+.agents_tmp/
+exports/

@@ -31,7 +31,8 @@ echo "== Ensuring checkpoint for phase $PHASE =="
 python3 scripts/ensure_phase_checkpoint.py \
   --project "$PROJECT" \
   --phase "$PHASE" \
-  --exports exports
+  --exports exports \
+  --mode replace
 
 echo "== Auditing phase $PHASE =="
 python3 scripts/audit_phase.py \
