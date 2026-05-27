@@ -20,16 +20,18 @@ PHASES = {
     8: "Review Schematic Evidence FULL",
     9: "Full Board/Layout JSON Evaluation",
     10: "Review Stackup and Manufacturing Evidence FULL",
-    11: "Review BOM and Component Evidence FULL",
-    12: "Review Image Evidence FULL",
-    13: "Review Datasheet Evidence FULL",
-    14: "Cross-Source Consistency Review",
-    15: "Pre-Findings Gate Check",
-    16: "Candidate Finding Development",
-    17: "Write Findings JSON",
-    18: "Validate and Repair Findings",
-    19: "Generate Report",
-    20: "Final Summary",
+    11: "Review DFM and Manufacturing Specifications",
+    12: "Review BOM and Component Evidence FULL",
+    13: "Review Image Evidence FULL",
+    14: "Review Datasheet Evidence FULL",
+    15: "Review Aerospace and Process Metadata",
+    16: "Cross-Source Consistency Review",
+    17: "Pre-Findings Gate Check",
+    18: "Candidate Finding Development",
+    19: "Write Findings JSON",
+    20: "Validate and Repair Findings",
+    21: "Generate Report",
+    22: "Final Summary",
 }
 
 
@@ -100,6 +102,7 @@ def audit_checkpoint(exports: Path, project: str, phase: int) -> None:
         "validation_passed",
         "blockers",
         "phase_passed",
+        "repair_required",
     ]
     for key in required_keys:
         if key not in row:
@@ -112,7 +115,11 @@ def audit_checkpoint(exports: Path, project: str, phase: int) -> None:
 def audit_phase(exports: Path, project: str, phase: int) -> None:
     audit_checkpoint(exports, project, phase)
 
-    if phase == 3:
+    # Phases 1, 2, 5 have no external artifacts — checkpoint row itself is the deliverable
+    if phase in (1, 2, 5):
+        pass  # checkpoint validation above is sufficient
+
+    elif phase == 3:
         require_true(exports / "tool-preflight-status.json", "overall_pass")
 
     elif phase == 4:
@@ -236,7 +243,7 @@ def audit_phase(exports: Path, project: str, phase: int) -> None:
                 if row.get("local_file_exists") is not True:
                     fail(f"row {idx} status={status} local_file_exists is not true")
 
-    elif phase in (7, 12):
+    elif phase == 7:
         img = exports / f"{project}-image-evidence-inventory.json"
         data = load_json(img)
         if not isinstance(data, dict):
@@ -255,17 +262,53 @@ def audit_phase(exports: Path, project: str, phase: int) -> None:
             if field not in data:
                 fail(f"{img} missing field {field}")
 
+    elif phase == 8:
+        require_file(exports / f"{project}-schematic-evidence-inventory.json")
+        require_true(exports / f"{project}-schematic-evidence-inventory-validation.json", "overall_pass")
+
+    elif phase == 10:
+        require_file(exports / f"{project}-stackup-evidence-review.json")
+        require_true(exports / f"{project}-stackup-evidence-review-validation.json", "overall_pass")
+
+    elif phase == 11:
+        require_file(exports / f"{project}-dfm-evidence-inventory.json")
+        require_true(exports / f"{project}-dfm-evidence-inventory-validation.json", "overall_pass")
+
+    elif phase == 12:
+        require_file(exports / f"{project}-bom-evidence-inventory.json")
+        require_true(exports / f"{project}-bom-evidence-inventory-validation.json", "overall_pass")
+
+    elif phase == 13:
+        require_file(exports / f"{project}-image-evidence-inventory.json")
+        require_file(exports / f"{project}-image-evidence-review.json")
+        require_true(exports / f"{project}-image-evidence-review-validation.json", "overall_pass")
+
     elif phase == 9:
         require_file(exports / f"{project}-board-evidence-inventory.json")
         require_true(exports / f"{project}-board-evidence-inventory-validation.json", "overall_pass")
 
+    elif phase == 14:
+        require_file(exports / f"{project}-datasheet-evidence-review.json")
+        require_true(exports / f"{project}-datasheet-evidence-review-validation.json", "overall_pass")
+
     elif phase == 15:
-        require_true(exports / f"{project}-pre-findings-gate.json", "overall_gate_pass")
+        require_file(exports / f"{project}-aerospace-evidence-inventory.json")
+        require_true(exports / f"{project}-aerospace-evidence-inventory-validation.json", "overall_pass")
+
+    elif phase == 16:
+        require_file(exports / f"{project}-cross-source-review.json")
+        require_true(exports / f"{project}-cross-source-review-validation.json", "overall_pass")
 
     elif phase == 17:
-        require_file(exports / f"{project}-findings.json")
+        require_true(exports / f"{project}-pre-findings-gate.json", "overall_gate_pass")
 
     elif phase == 18:
+        require_file(exports / f"{project}-candidate-findings.json")
+
+    elif phase == 19:
+        require_file(exports / f"{project}-findings.json")
+
+    elif phase == 20:
         findings = exports / f"{project}-findings.json"
         require_file(findings)
         result = subprocess.run(
@@ -278,12 +321,12 @@ def audit_phase(exports: Path, project: str, phase: int) -> None:
             print(result.stderr, file=sys.stderr)
             fail("tools/validate_findings.py failed")
 
-    elif phase == 19:
+    elif phase == 21:
         require_file(exports / f"{project}-review.html")
         require_true(exports / f"{project}-report-generation-validation.json", "overall_pass")
 
-    elif phase == 20:
-        for p in range(1, 21):
+    elif phase == 22:
+        for p in range(1, 22):
             audit_checkpoint(exports, project, p)
         require_true(exports / "tool-preflight-status.json", "overall_pass")
         # Phase 6 policy is audited by the strict external audit.
@@ -298,7 +341,7 @@ def audit_phase(exports: Path, project: str, phase: int) -> None:
         if result.returncode != 0:
             print(result.stdout)
             print(result.stderr, file=sys.stderr)
-            fail("strict Phase 6 datasheet audit failed during Phase 20")
+            fail("strict Phase 6 datasheet audit failed during Phase 22")
         require_true(exports / f"{project}-board-evidence-inventory-validation.json", "overall_pass")
         require_true(exports / f"{project}-image-evidence-inventory.json", "overall_pass")
         require_true(exports / f"{project}-pre-findings-gate.json", "overall_gate_pass")

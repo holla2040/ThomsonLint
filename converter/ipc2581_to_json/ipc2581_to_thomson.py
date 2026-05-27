@@ -155,7 +155,26 @@ def extract_ipc2581_tracks_or_segments(root: ET.Element) -> list[dict[str, Any]]
 
 
 def build_board_export(metadata, components, nets, layers, placements, vias, segments):
-    return {"metadata": metadata, "components": components, "nets": nets, "layers": layers, "placements": placements, "vias": vias, "segments": segments}
+    return {
+        "metadata": metadata,
+        "components": components,
+        "nets": nets,
+        "layers": layers,
+        "placements": placements,
+        "vias": vias,
+        "segments": segments,
+        "kb_driven_analysis": {
+            "dfm": {
+                "annular_rings": {"available": False, "reason": "standalone ipc2581_to_thomson does not perform full geometry extraction; use thomson_bundle_converter for KB-driven analysis"},
+                "board_edge_clearances": {"available": False},
+                "fiducials": {"available": False},
+            },
+            "thermal": {"thermal_pads": [], "thermal_via_arrays": [], "thermal_pad_count": 0},
+            "smps_layout": {"available": False},
+            "chassis_ground": {"available": False},
+            "note": "Full KB-driven analysis requires thomson_bundle_converter.py with LayerFeature geometry extraction.",
+        },
+    }
 
 
 def build_stack_export(metadata, stackup):
