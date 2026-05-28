@@ -1,0 +1,7 @@
+# Project-scoped Codex CLI config for ThomsonLint.
+# Codex discovers this when run from this repository.
+
+# Keep command execution local to this repository workflow.
+approval_policy = "on-request"
+
+# Use repo instructions from AGENTS.md and run focused tests.
