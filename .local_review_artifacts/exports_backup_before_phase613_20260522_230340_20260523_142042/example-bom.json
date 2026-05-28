@@ -1,0 +1,1139 @@
+{
+  "project_name": "example",
+  "source_file": "example_bom.csv",
+  "parser_version": "bom-v1",
+  "raw_headers": [
+    "ITEM NUM",
+    "ITEM NAME",
+    "REV",
+    "DESCRIPTION",
+    "UOM",
+    "line number",
+    "QTY",
+    "REF DES",
+    "NOTES",
+    "MFG_1",
+    "MFG P/N_1",
+    "MFG_2",
+    "MFG P/N_2",
+    "MFG_3",
+    "MFG P/N_3",
+    "file supplier",
+    "file name"
+  ],
+  "normalized_headers": {
+    "ITEM NUM": "unknown",
+    "ITEM NAME": "unknown",
+    "REV": "unknown",
+    "DESCRIPTION": "description",
+    "UOM": "unknown",
+    "line number": "unknown",
+    "QTY": "quantity",
+    "REF DES": "refdes",
+    "NOTES": "unknown",
+    "MFG_1": "manufacturer",
+    "MFG P/N_1": "mpn",
+    "MFG_2": "manufacturer",
+    "MFG P/N_2": "mpn",
+    "MFG_3": "manufacturer",
+    "MFG P/N_3": "mpn",
+    "file supplier": "unknown",
+    "file name": "unknown"
+  },
+  "row_count": 38,
+  "expanded_refdes_count": 90,
+  "duplicate_refdes": [],
+  "warnings": [],
+  "items": [
+    {
+      "refdes": [],
+      "fields": {
+        "value": null,
+        "description": "PCA_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": null,
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [],
+      "raw_row_index": 1
+    },
+    {
+      "refdes": [
+        "C40",
+        "C41",
+        "C42",
+        "C43",
+        "C44",
+        "C45",
+        "C46",
+        "C47",
+        "C48",
+        "C51",
+        "C53",
+        "C55",
+        "C57",
+        "C59"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_0.1UF_50V_10%_X7R_0402",
+        "manufacturer": "Murata",
+        "mpn": "GRM155R71H104KE14D",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "14",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Murata",
+          "mpn": "GRM155R71H104KE14D",
+          "rank": 1
+        },
+        {
+          "manufacturer": "AVX",
+          "mpn": "04025C104KAT2A",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Samsung",
+          "mpn": "CL05B104KB5NNNC",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 2
+    },
+    {
+      "refdes": [
+        "C58"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_1UF_10V_20%_X5R_0402",
+        "manufacturer": "AVX",
+        "mpn": "0402ZD105MAT2A",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "AVX",
+          "mpn": "0402ZD105MAT2A",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Kemet",
+          "mpn": "C0402C105M8PACTU",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Murata",
+          "mpn": "GRM153R61A105ME95D",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 3
+    },
+    {
+      "refdes": [
+        "C50",
+        "C56"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_10UF_10V_20%_X5R_0402",
+        "manufacturer": "AVX",
+        "mpn": "0402ZD106MAT2A",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "AVX",
+          "mpn": "0402ZD106MAT2A",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Samsung",
+          "mpn": "CL05A106MP5NRNC",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Murata",
+          "mpn": "GRM155R61A106ME11D",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 4
+    },
+    {
+      "refdes": [
+        "C52",
+        "C54"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_10UF_50V_10%_X5R_0805",
+        "manufacturer": "TDK",
+        "mpn": "C2012X5R1H106K125AC",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "TDK",
+          "mpn": "C2012X5R1H106K125AC",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Samsung",
+          "mpn": "CL21A106KBYQNNE",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Murata",
+          "mpn": "GRM21BR61H106KE43L",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 5
+    },
+    {
+      "refdes": [
+        "P8_COM2"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X5_2MM54_TH_VER_LATCH_BLK",
+        "manufacturer": "TE Connectivity",
+        "mpn": "1761608-3",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "TE Connectivity",
+          "mpn": "1761608-3",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 6
+    },
+    {
+      "refdes": [
+        "P5"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X5_2MM54_TH_VER_LATCH_BLU",
+        "manufacturer": "TE Connectivity",
+        "mpn": "2-1761608-3",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "TE Connectivity",
+          "mpn": "2-1761608-3",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 7
+    },
+    {
+      "refdes": [
+        "P2",
+        "P7_COM3"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X5_2MM54_TH_VER",
+        "manufacturer": "Harwin",
+        "mpn": "M20-9980545",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Harwin",
+          "mpn": "M20-9980545",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 8
+    },
+    {
+      "refdes": [
+        "P20"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X2_3MM0_TH_VER_PWR_5A",
+        "manufacturer": "Molex",
+        "mpn": "043045-0414",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Molex",
+          "mpn": "043045-0414",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 9
+    },
+    {
+      "refdes": [
+        "J4"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_ZIF_1X20_1MM0_SM_VER",
+        "manufacturer": "Amphenol",
+        "mpn": "SFW20S-2STE1LF",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Amphenol",
+          "mpn": "SFW20S-2STE1LF",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 10
+    },
+    {
+      "refdes": [
+        "J1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_ZIF_1X10_1MM0_SM_VER",
+        "manufacturer": "Amphenol",
+        "mpn": "SFW10S-2STE1LF",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Amphenol",
+          "mpn": "SFW10S-2STE1LF",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 11
+    },
+    {
+      "refdes": [
+        "J5"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_ZIF_1X10_1MM0_SM_RA",
+        "manufacturer": "Amphenol",
+        "mpn": "SFW10R-1STE1LF",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Amphenol",
+          "mpn": "SFW10R-1STE1LF",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 12
+    },
+    {
+      "refdes": [
+        "P3"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_1X3_1MM_SM_VER_JST",
+        "manufacturer": "JST",
+        "mpn": "BM03B-SRSS-TB (LF)(SN)",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "JST",
+          "mpn": "BM03B-SRSS-TB (LF)(SN)",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 13
+    },
+    {
+      "refdes": [
+        "P4"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_1X2_2MM5_TH_RA",
+        "manufacturer": "JST",
+        "mpn": "S2B-XH-A (LF)(SN)",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "JST",
+          "mpn": "S2B-XH-A (LF)(SN)",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 14
+    },
+    {
+      "refdes": [
+        "J3"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_DB44_FEM_TH_VER",
+        "manufacturer": "Amphenol",
+        "mpn": "10090929-S444VLF",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Amphenol",
+          "mpn": "10090929-S444VLF",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Kycon",
+          "mpn": "K86X-BD-44S-BRJ",
+          "rank": 2
+        }
+      ],
+      "raw_row_index": 15
+    },
+    {
+      "refdes": [
+        "J27",
+        "J28"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_RECP_2X25_2MM_TH_VER",
+        "manufacturer": "Samtec",
+        "mpn": "ESQT-125-02-F-D-500",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Samtec",
+          "mpn": "ESQT-125-02-F-D-500",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 16
+    },
+    {
+      "refdes": [
+        "JP1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_1X3_2MM54_TH_VER",
+        "manufacturer": "TE Connectivity",
+        "mpn": "87224-3",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "TE Connectivity",
+          "mpn": "87224-3",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Molex",
+          "mpn": "0022285034",
+          "rank": 2
+        }
+      ],
+      "raw_row_index": 17
+    },
+    {
+      "refdes": [
+        "U44"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_REPEATER_I2C_2CH_TSSOP8",
+        "manufacturer": "NXP",
+        "mpn": "PCA9515ADP,118",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "NXP",
+          "mpn": "PCA9515ADP,118",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Texas Instruments",
+          "mpn": "PCA9515BDGKR",
+          "rank": 2
+        }
+      ],
+      "raw_row_index": 18
+    },
+    {
+      "refdes": [
+        "U40",
+        "U41",
+        "U42",
+        "U43"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_MUX_2TO1_4G_74LVC157APW_TSSOP16",
+        "manufacturer": "Nexperia",
+        "mpn": "74LVC157APW,118",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "4",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Nexperia",
+          "mpn": "74LVC157APW,118",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Texas Instruments",
+          "mpn": "SN74LVC157APWR",
+          "rank": 2
+        }
+      ],
+      "raw_row_index": 19
+    },
+    {
+      "refdes": [
+        "U51"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_BUF_1G_74LVC1G125_SC70",
+        "manufacturer": "Texas Instruments",
+        "mpn": "SN74AHCT1G125DCKR",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Texas Instruments",
+          "mpn": "SN74AHCT1G125DCKR",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Nexperia",
+          "mpn": "74AHCT1G125GW,125",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Diodes Incorporated",
+          "mpn": "74AHCT1G125SE-7",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 20
+    },
+    {
+      "refdes": [
+        "U46"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_MUX_2TO1_2G_ANA_VSSOP10",
+        "manufacturer": "Texas Instruments",
+        "mpn": "TS5A22362DGSR",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Texas Instruments",
+          "mpn": "TS5A22362DGSR",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 21
+    },
+    {
+      "refdes": [
+        "U45"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_XCVR_CAN_1G_3V_SOIC8",
+        "manufacturer": "Texas Instruments",
+        "mpn": "TCAN3413DR",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Texas Instruments",
+          "mpn": "TCAN3413DR",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 22
+    },
+    {
+      "refdes": [
+        "TP1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "TP_LOOP_COLLAR_RED_TH",
+        "manufacturer": "Keystone",
+        "mpn": "5000",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Keystone",
+          "mpn": "5000",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 23
+    },
+    {
+      "refdes": [
+        "TP5"
+      ],
+      "fields": {
+        "value": null,
+        "description": "TP_LOOP_COLLAR_BLK_TH",
+        "manufacturer": "Keystone",
+        "mpn": "5001",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Keystone",
+          "mpn": "5001",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 24
+    },
+    {
+      "refdes": [
+        "TP2",
+        "TP3",
+        "TP4"
+      ],
+      "fields": {
+        "value": null,
+        "description": "TP_LOOP_COLLAR_ORN_TH",
+        "manufacturer": "Keystone",
+        "mpn": "5003",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "3",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Keystone",
+          "mpn": "5003",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 25
+    },
+    {
+      "refdes": [
+        "U50"
+      ],
+      "fields": {
+        "value": null,
+        "description": "PWR_LIN_3V3_300MA_AP2127_SOT235",
+        "manufacturer": "Diodes Incorporated",
+        "mpn": "AP2127K-3.3TRG1",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Diodes Incorporated",
+          "mpn": "AP2127K-3.3TRG1",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 26
+    },
+    {
+      "refdes": [
+        "R40",
+        "R41"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_4K7_1%_1/16_0402_100PPM",
+        "manufacturer": "Stackpole",
+        "mpn": "RMCF0402FT4K70",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Stackpole",
+          "mpn": "RMCF0402FT4K70",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Vishay Dale",
+          "mpn": "CRCW04024K70FKED",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Yageo",
+          "mpn": "RC0402FR-074K7L",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 27
+    },
+    {
+      "refdes": [
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R30",
+        "R31",
+        "R32",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38",
+        "R39",
+        "R43",
+        "R44",
+        "R45",
+        "R46"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_0R00_1%_1/16_0402_100PPM",
+        "manufacturer": "Stackpole",
+        "mpn": "RMCF0402ZT0R00",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "18",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Stackpole",
+          "mpn": "RMCF0402ZT0R00",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Vishay Dale",
+          "mpn": "CRCW04020000Z0ED",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Yageo",
+          "mpn": "RC0402JR-070RL",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 28
+    },
+    {
+      "refdes": [
+        "R42"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_120R_1%_1/4W_0603_100PPM",
+        "manufacturer": "Stackpole",
+        "mpn": "RMCP0603FT120R",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Stackpole",
+          "mpn": "RMCP0603FT120R",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Vishay Dale",
+          "mpn": "RCS0603120RFKEA",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Yageo",
+          "mpn": "SR0603FR-7T120RL",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 29
+    },
+    {
+      "refdes": [
+        "R60",
+        "R61",
+        "R62",
+        "R63",
+        "R64",
+        "R65",
+        "R66",
+        "R67",
+        "R68",
+        "R69",
+        "R70",
+        "R71",
+        "R72"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_5K1_5%_1/4W_0402_200PPM",
+        "manufacturer": "Panasonic",
+        "mpn": "ERJ-PA2J512X",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "13",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Panasonic",
+          "mpn": "ERJ-PA2J512X",
+          "rank": 1
+        },
+        {
+          "manufacturer": "KOA Speer",
+          "mpn": "SG73P1EWTTP512J",
+          "rank": 2
+        }
+      ],
+      "raw_row_index": 30
+    },
+    {
+      "refdes": [
+        "R50",
+        "R51"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_0R00_1%_1/4W_1206_200PPM",
+        "manufacturer": "Littelfuse",
+        "mpn": "WJC1206LJUMPFNR",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Littelfuse",
+          "mpn": "WJC1206LJUMPFNR",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Stackpole",
+          "mpn": "RMCF1206ZT0R00",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Yageo",
+          "mpn": "RC1206JR-070RL",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 31
+    },
+    {
+      "refdes": [
+        "Q2"
+      ],
+      "fields": {
+        "value": null,
+        "description": "XTR_MOSFET_PCH_30V_8.8A_SOIC8",
+        "manufacturer": "ONSEMI",
+        "mpn": "FDS4435BZ",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "ONSEMI",
+          "mpn": "FDS4435BZ",
+          "rank": 1
+        }
+      ],
+      "raw_row_index": 32
+    },
+    {
+      "refdes": [
+        "Q1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "XTR_MOSFET_NCH_50V_200MA_BSS138_SOT323",
+        "manufacturer": "Diodes Incorporated",
+        "mpn": "BSS138W-7-F",
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [
+        {
+          "manufacturer": "Diodes Incorporated",
+          "mpn": "BSS138W-7-F",
+          "rank": 1
+        },
+        {
+          "manufacturer": "Nexperia",
+          "mpn": "NX138BKWX",
+          "rank": 2
+        },
+        {
+          "manufacturer": "Infineon",
+          "mpn": "BSS138WH6327XTSA1",
+          "rank": 3
+        }
+      ],
+      "raw_row_index": 33
+    },
+    {
+      "refdes": [
+        "1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "LBL_SERIALNUM_WHT_6MMX15MM - MARK AS APPROPRIATE",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [],
+      "raw_row_index": 34
+    },
+    {
+      "refdes": [
+        "SCH1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "SCH_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [],
+      "raw_row_index": 35
+    },
+    {
+      "refdes": [
+        "PCB1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "PCB_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [],
+      "raw_row_index": 36
+    },
+    {
+      "refdes": [
+        "FAB1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "FAB_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [],
+      "raw_row_index": 37
+    },
+    {
+      "refdes": [
+        "ASM1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ASY_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "manufacturers": [],
+      "raw_row_index": 38
+    }
+  ]
+}

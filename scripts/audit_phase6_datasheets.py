@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import re
@@ -9,14 +10,6 @@ import sys
 from pathlib import Path
 from typing import Any
 from datasheet_smart_match import score_best_pdf_match
-
-
-RAW_BOM = Path("input/example_bom.csv")
-DATASHEET_DIR = Path("exports/datasheets")
-ROOT_DATASHEET_DIR = Path("datasheets")
-MANIFEST_JSONL = DATASHEET_DIR / "datasheet_manifest.jsonl"
-MANIFEST_JSON = DATASHEET_DIR / "datasheet_manifest.json"
-VALIDATION_JSON = DATASHEET_DIR / "datasheet_manifest_validation.json"
 
 ALLOWED_STATUSES = {
     "local",
@@ -43,18 +36,92 @@ def norm(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
 
 
-def read_bom_rows() -> list[dict[str, str]]:
-    if not RAW_BOM.exists():
-        fail(f"missing raw BOM: {RAW_BOM}")
+APPROVED_EQUIVALENT_PREFIXES = {
+    "active",
+    "capacitor",
+    "connector",
+    "crystal",
+    "diode",
+    "ferrite",
+    "fuse",
+    "ic",
+    "inductor",
+    "led",
+    "mosfet",
+    "relay",
+    "resistor",
+    "switch",
+    "transistor",
+}
 
-    with RAW_BOM.open("r", encoding="utf-8-sig", newline="") as f:
+
+def strip_approved_equivalent_prefix(value: Any) -> str | None:
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    prefix, sep, rest = text.partition(":")
+    if sep and prefix.strip().lower() in APPROVED_EQUIVALENT_PREFIXES:
+        stripped = rest.strip()
+        return stripped or None
+
+    return text
+
+
+def is_unresolved_status_requiring_search(status: Any) -> bool:
+    return status in {"ambiguous", "missing", "error"}
+
+
+def bom_candidate_paths(project: str, input_dir: Path) -> list[Path]:
+    candidates = [
+        input_dir / f"{project}_bom.csv",
+        input_dir / project / "bom.csv",
+        input_dir / project / "BOM.csv",
+    ]
+    candidates.extend(sorted((input_dir / project / "bom").glob("*.csv")))
+
+    if project == "example":
+        candidates.append(input_dir / "example_bom.csv")
+
+    deduped: list[Path] = []
+    seen = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(candidate)
+    return deduped
+
+
+def find_raw_bom(project: str, input_dir: Path) -> Path:
+    candidates = bom_candidate_paths(project, input_dir)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    fail(
+        "missing raw BOM for project "
+        f"{project!r}; searched: {', '.join(str(path) for path in candidates)}"
+    )
+
+
+def read_bom_rows(raw_bom: Path) -> list[dict[str, str]]:
+    if not raw_bom.exists():
+        fail(f"missing raw BOM: {raw_bom}")
+
+    with raw_bom.open("r", encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
 
 
-def load_manifest_rows() -> tuple[Path, list[dict[str, Any]]]:
-    if MANIFEST_JSONL.exists():
+def load_manifest_rows(datasheet_dir: Path) -> tuple[Path, list[dict[str, Any]]]:
+    manifest_jsonl = datasheet_dir / "datasheet_manifest.jsonl"
+    manifest_json = datasheet_dir / "datasheet_manifest.json"
+
+    if manifest_jsonl.exists():
         rows = []
-        for line_no, line in enumerate(MANIFEST_JSONL.read_text(encoding="utf-8").splitlines(), 1):
+        for line_no, line in enumerate(manifest_jsonl.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip():
                 continue
             try:
@@ -63,21 +130,29 @@ def load_manifest_rows() -> tuple[Path, list[dict[str, Any]]]:
                 fail(f"invalid JSONL row {line_no}: {exc}")
             if not isinstance(row, dict):
                 fail(f"manifest row {line_no} is not an object")
+            row["approved_equivalent_or_family_match"] = strip_approved_equivalent_prefix(
+                row.get("approved_equivalent_or_family_match")
+            )
             rows.append(row)
-        return MANIFEST_JSONL, rows
+        return manifest_jsonl, rows
 
-    if MANIFEST_JSON.exists():
+    if manifest_json.exists():
         try:
-            data = json.loads(MANIFEST_JSON.read_text(encoding="utf-8"))
+            data = json.loads(manifest_json.read_text(encoding="utf-8"))
         except Exception as exc:
             fail(f"invalid legacy JSON manifest: {exc}")
         rows = data.get("rows")
         if not isinstance(rows, list):
-            fail(f"legacy JSON manifest has no rows[]: {MANIFEST_JSON}")
+            fail(f"legacy JSON manifest has no rows[]: {manifest_json}")
         # Strict new phase should produce JSONL, but keep this readable so it can fail with useful details.
-        return MANIFEST_JSON, rows
+        for row in rows:
+            if isinstance(row, dict):
+                row["approved_equivalent_or_family_match"] = strip_approved_equivalent_prefix(
+                    row.get("approved_equivalent_or_family_match")
+                )
+        return manifest_json, rows
 
-    fail(f"missing manifest: expected {MANIFEST_JSONL}")
+    fail(f"missing manifest: expected {manifest_jsonl}")
 
 
 def has_concrete_mpn_from_raw(raw: dict[str, Any]) -> bool:
@@ -116,7 +191,7 @@ def is_clear_non_device_without_mpn(raw: dict[str, Any]) -> bool:
     )
 
 
-def resolve_local_path(row: dict[str, Any]) -> Path | None:
+def resolve_local_path(row: dict[str, Any], datasheet_dir: Path, root_datasheet_dir: Path) -> Path | None:
     value = row.get("local_saved_path") or row.get("local_file")
     if not value:
         return None
@@ -128,7 +203,7 @@ def resolve_local_path(row: dict[str, Any]) -> Path | None:
     if p.exists():
         return p
 
-    for base in [DATASHEET_DIR, ROOT_DATASHEET_DIR]:
+    for base in [datasheet_dir, root_datasheet_dir]:
         candidate = base / p
         if candidate.exists():
             return candidate
@@ -187,10 +262,47 @@ def mpn_candidates(row: dict[str, Any], raw: dict[str, Any]) -> list[str]:
     return deduped
 
 
+def mpn_candidate_pairs(row: dict[str, Any], raw: dict[str, Any]) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+
+    selected_mpn = row.get("selected_mpn") or row.get("mpn")
+    selected_manufacturer = row.get("selected_manufacturer")
+    if selected_mpn:
+        pairs.append((str(selected_mpn), str(selected_manufacturer or "")))
+
+    row_mpns = row.get("mpn_candidates")
+    row_mfgs = row.get("manufacturer_candidates")
+    if isinstance(row_mpns, list):
+        for index, mpn in enumerate(row_mpns):
+            manufacturer = ""
+            if isinstance(row_mfgs, list) and index < len(row_mfgs):
+                manufacturer = str(row_mfgs[index] or "")
+            if str(mpn or "").strip():
+                pairs.append((str(mpn), manufacturer))
+
+    for n in ("1", "2", "3"):
+        mpn = raw.get(f"MFG P/N_{n}")
+        manufacturer = raw.get(f"MFG_{n}")
+        if mpn:
+            pairs.append((str(mpn), str(manufacturer or "")))
+
+    deduped: list[tuple[str, str]] = []
+    seen = set()
+    for mpn, manufacturer in pairs:
+        mpn = mpn.strip()
+        manufacturer = manufacturer.strip()
+        key = (norm(mpn), norm(manufacturer))
+        if not key[0] or key in seen:
+            continue
+        seen.add(key)
+        deduped.append((mpn, manufacturer))
+    return deduped
+
+
 def pdf_contains_mpn(row: dict[str, Any], raw: dict[str, Any], text: str) -> tuple[bool, str | None]:
     text_n = norm(text)
 
-    approved = row.get("approved_equivalent_or_family_match")
+    approved = strip_approved_equivalent_prefix(row.get("approved_equivalent_or_family_match"))
     approved_n = norm(approved)
     if approved and approved_n and len(approved_n) >= 5 and approved_n in text_n:
         return True, str(approved)
@@ -208,26 +320,29 @@ def pdf_contains_mpn(row: dict[str, Any], raw: dict[str, Any], text: str) -> tup
             return True, mpn
 
     # Smart-family fallback for connector/passive family datasheets.
-    manufacturer = (
-        row.get("selected_manufacturer")
-        or raw.get("MFG_1")
-        or raw.get("MFG_2")
-        or raw.get("MFG_3")
-        or ""
-    )
     description = row.get("description") or raw.get("DESCRIPTION") or ""
     source_url = row.get("selected_url") or row.get("local_saved_path") or ""
 
-    smart = score_best_pdf_match(
-        mpns=candidates,
-        description=description,
-        manufacturer=manufacturer,
-        pdf_text=text,
-        url=source_url,
+    smart_results = [
+        score_best_pdf_match(
+            mpns=[mpn],
+            description=description,
+            manufacturer=manufacturer,
+            pdf_text=text,
+            url=source_url,
+        )
+        for mpn, manufacturer in mpn_candidate_pairs(row, raw)
+    ]
+
+    order = {"accept": 2, "needs_review": 1, "reject": 0}
+    smart = (
+        sorted(smart_results, key=lambda r: (order.get(r.get("decision"), 0), r.get("score") or 0), reverse=True)[0]
+        if smart_results
+        else {"decision": "reject", "matched": None}
     )
 
     if smart.get("decision") == "accept":
-        return True, str(smart.get("matched"))
+        return True, str(strip_approved_equivalent_prefix(smart.get("matched")))
 
     return False, None
 
@@ -265,11 +380,27 @@ def validate_pdf_for_row(path: Path, row: dict[str, Any], raw: dict[str, Any]) -
 
 
 def main() -> int:
-    bom_rows = read_bom_rows()
+    parser = argparse.ArgumentParser(description="Strict Phase 6 datasheet manifest audit")
+    parser.add_argument("--project", default="example")
+    parser.add_argument("--exports", default="exports")
+    parser.add_argument("--input-dir", default="input")
+    parser.add_argument("--datasheets", default="datasheets")
+    args = parser.parse_args()
+
+    exports = Path(args.exports)
+    input_dir = Path(args.input_dir)
+    datasheet_dir = exports / "datasheets"
+    root_datasheet_dir = Path(args.datasheets)
+    validation_json = datasheet_dir / "datasheet_manifest_validation.json"
+    raw_bom = find_raw_bom(args.project, input_dir)
+
+    bom_rows = read_bom_rows(raw_bom)
     bom_count = len(bom_rows)
-    manifest_path, rows = load_manifest_rows()
+    manifest_path, rows = load_manifest_rows(datasheet_dir)
 
     print("== Phase 6 strict datasheet audit ==")
+    print(f"project: {args.project}")
+    print(f"raw_bom: {raw_bom}")
     print(f"bom_rows: {bom_count}")
     print(f"manifest_path: {manifest_path}")
     print(f"manifest_rows: {len(rows)}")
@@ -281,6 +412,7 @@ def main() -> int:
         "extra_bom_row_indexes": [],
         "invalid_statuses": [],
         "forbidden_statuses": [],
+        "error_status_rows": [],
         "concrete_mpn_rows_not_found_or_local": [],
         "concrete_mpn_rows_not_searched": [],
         "concrete_mpn_rows_marked_not_applicable": [],
@@ -321,6 +453,8 @@ def main() -> int:
             failures["invalid_statuses"].append((idx, status))
         if status in FORBIDDEN_STATUSES:
             failures["forbidden_statuses"].append((idx, status))
+        if status == "error":
+            failures["error_status_rows"].append((idx, status, raw.get("DESCRIPTION")))
 
         has_mpn = has_concrete_mpn_from_raw(raw)
         clear_non_device = is_clear_non_device_without_mpn(raw)
@@ -344,13 +478,13 @@ def main() -> int:
                 (idx, status, raw.get("DESCRIPTION"), [raw.get("MFG P/N_1"), raw.get("MFG P/N_2"), raw.get("MFG P/N_3")])
             )
 
-        if status != "local" and row.get("search_attempted") is not True:
+        if is_unresolved_status_requiring_search(status) and row.get("search_attempted") is not True:
             failures["concrete_mpn_rows_not_searched"].append(
                 (idx, status, raw.get("DESCRIPTION"), [raw.get("MFG P/N_1"), raw.get("MFG P/N_2"), raw.get("MFG P/N_3")])
             )
 
         if status in {"found", "local"}:
-            path = resolve_local_path(row)
+            path = resolve_local_path(row, datasheet_dir, root_datasheet_dir)
             if path is None:
                 failures["concrete_mpn_rows_missing_verified_pdf"].append((idx, status, "no local_saved_path/local_file"))
             else:
@@ -377,9 +511,9 @@ def main() -> int:
         if len(items) > 40:
             print(f"  ... {len(items) - 40} more")
 
-    if VALIDATION_JSON.exists():
+    if validation_json.exists():
         try:
-            validation = json.loads(VALIDATION_JSON.read_text(encoding="utf-8"))
+            validation = json.loads(validation_json.read_text(encoding="utf-8"))
             if validation.get("overall_pass") is not True:
                 any_failures = True
                 print(f"\nvalidation overall_pass is not true: {validation.get('overall_pass')!r}")
@@ -388,7 +522,7 @@ def main() -> int:
             print(f"\nvalidation JSON parse failed: {exc}")
     else:
         any_failures = True
-        print(f"\nmissing validation JSON: {VALIDATION_JSON}")
+        print(f"\nmissing validation JSON: {validation_json}")
 
     if any_failures:
         fail("strict Phase 6 datasheet audit failed")

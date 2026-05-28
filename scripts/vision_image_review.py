@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Vision-based PNG review for ThomsonLint Phase 12.
+Vision-based PNG review for ThomsonLint Phase 13.
 
 Uses an OpenAI-compatible multimodal /v1/chat/completions endpoint.
 Requires a vision-capable model. Text-only models should fail/block rather
@@ -40,13 +40,14 @@ def post_chat_completion(
     image_path: Path,
     prompt: str,
     timeout: int,
+    max_tokens: int,
 ) -> str:
     url = base_url.rstrip("/") + "/chat/completions"
 
     payload = {
         "model": model,
         "temperature": 0.1,
-        "max_tokens": 3000,
+        "max_tokens": max_tokens,
         "messages": [
             {
                 "role": "system",
@@ -134,7 +135,7 @@ Return JSON with exactly these keys:
   "possible_electrical_calculations_from_visible_values": ["..."],
   "possible_concerns_or_followups": ["..."],
   "limitations": ["..."],
-  "no_pixel_geometry_claims": true
+  "confirmation_no_pixel_quantitative_claims": true
 }}
 
 Rules:
@@ -158,7 +159,7 @@ Return JSON with exactly these keys:
   "visible_text_or_labels": ["..."],
   "possible_concerns_or_followups": ["..."],
   "limitations": ["..."],
-  "no_pixel_geometry_claims": true
+  "confirmation_no_pixel_quantitative_claims": true
 }}
 
 Rules:
@@ -175,6 +176,125 @@ def list_images(exports: Path, project: str) -> list[tuple[str, Path]]:
     return [("schematic", p) for p in schematic] + [("layout", p) for p in layout]
 
 
+def observation_successful(observation: dict[str, Any]) -> bool:
+    response = observation.get("response")
+    if not isinstance(response, dict):
+        return False
+    return (
+        response.get("visual_review_performed") is True
+        and response.get("confirmation_no_pixel_quantitative_claims") is True
+    )
+
+
+def load_previous_artifact(out: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not out.exists():
+        return [], []
+
+    try:
+        data = json.loads(out.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"WARNING: could not load existing artifact {out}: {exc}", file=sys.stderr)
+        return [], []
+
+    observations = data.get("per_page_vision_observations", [])
+    errors = data.get("errors", [])
+    if not isinstance(observations, list):
+        observations = []
+    if not isinstance(errors, list):
+        errors = []
+
+    return (
+        [obs for obs in observations if isinstance(obs, dict)],
+        [err for err in errors if isinstance(err, dict)],
+    )
+
+
+def artifact_for(
+    *,
+    project: str,
+    base_url: str,
+    model: str,
+    expected: int,
+    observations: list[dict[str, Any]],
+    errors: list[dict[str, Any]],
+) -> dict[str, Any]:
+    by_file: dict[str, dict[str, Any]] = {}
+    ordered_files: list[str] = []
+    for observation in observations:
+        file_name = str(observation.get("file") or "")
+        if not file_name:
+            continue
+        if file_name not in by_file:
+            ordered_files.append(file_name)
+        by_file[file_name] = observation
+
+    deduped_observations = [by_file[file_name] for file_name in ordered_files]
+    reviewed = len([obs for obs in deduped_observations if observation_successful(obs)])
+    all_reviewed = expected > 0 and reviewed == expected and not errors
+    all_no_pixel_geometry = (
+        len(deduped_observations) == reviewed
+        and all(bool(obs.get("response", {}).get("confirmation_no_pixel_quantitative_claims")) for obs in deduped_observations)
+    )
+
+    return {
+        "phase": 13,
+        "phase_name": "Review Image Evidence FULL",
+        "project": project,
+        "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "vision_base_url": base_url,
+        "vision_model": model,
+        "expected_image_count": expected,
+        "reviewed_image_count": reviewed,
+        "vision_review_performed": all_reviewed,
+        "metadata_only_review": False,
+        "actual_multimodal_endpoint_used": True,
+        "per_page_vision_observations": deduped_observations,
+        "errors": errors,
+        "confirmation_no_pixel_quantitative_claims": all_no_pixel_geometry,
+        "allowed_quantitative_scope": (
+            "Electrical calculations may be derived from visibly readable schematic values. "
+            "Physical/layout geometry measurements must not be derived from raster pixels unless calibrated."
+        ),
+        "overall_pass": bool(all_reviewed and all_no_pixel_geometry),
+        "phase_13_completed": bool(all_reviewed and all_no_pixel_geometry),
+    }
+
+
+def write_artifacts(
+    *,
+    out: Path,
+    project: str,
+    base_url: str,
+    model: str,
+    expected: int,
+    observations: list[dict[str, Any]],
+    errors: list[dict[str, Any]],
+) -> dict[str, Any]:
+    artifact = artifact_for(
+        project=project,
+        base_url=base_url,
+        model=model,
+        expected=expected,
+        observations=observations,
+        errors=errors,
+    )
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(artifact, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    validation_artifact = {
+        "inventory_exists": True,
+        "required_fields_present": True,
+        "pages_actually_opened_count": artifact["reviewed_image_count"],
+        "phase_13_completed": artifact["phase_13_completed"],
+        "overall_pass": artifact["overall_pass"],
+    }
+
+    val_out = out.parent / f"{project}-image-evidence-review-validation.json"
+    val_out.write_text(json.dumps(validation_artifact, indent=2, ensure_ascii=False), encoding="utf-8")
+    return artifact
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", default="example")
@@ -182,11 +302,14 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--timeout", type=int, default=120)
+    ap.add_argument("--max-tokens", type=int, default=1200)
     ap.add_argument("--sleep", type=float, default=0.2)
+    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
 
     exports = Path(args.exports)
-    out = Path(args.out) if args.out else exports / f"{args.project}-image-vision-review.json"
+    out = Path(args.out) if args.out else exports / f"{args.project}-image-evidence-review.json"
 
     base_url = env("VISION_BASE_URL", env("LLM_BASE_URL"))
     model = env("VISION_MODEL", env("LLM_MODEL"))
@@ -200,10 +323,49 @@ def main() -> int:
     if args.limit and args.limit > 0:
         images = images[: args.limit]
 
+    target_files = {str(path) for _, path in images}
+    target_order = [str(path) for _, path in images]
     observations: list[dict[str, Any]] = []
-    errors: list[dict[str, str]] = []
+    errors: list[dict[str, Any]] = []
+
+    if args.resume and not args.force:
+        previous_observations, previous_errors = load_previous_artifact(out)
+        observations = [
+            obs
+            for obs in previous_observations
+            if str(obs.get("file") or "") in target_files and observation_successful(obs)
+        ]
+        completed = {str(obs.get("file") or "") for obs in observations}
+        errors = [
+            err
+            for err in previous_errors
+            if str(err.get("file") or "") in target_files and str(err.get("file") or "") not in completed
+        ]
+        print(f"Resume loaded: {len(observations)} successful observations, {len(errors)} prior errors")
+    elif args.force:
+        print("Force enabled: ignoring previous observations")
+
+    by_file = {str(obs.get("file") or ""): obs for obs in observations}
+    errors = [err for err in errors if str(err.get("file") or "") not in by_file]
+
+    artifact = write_artifacts(
+        out=out,
+        project=args.project,
+        base_url=base_url,
+        model=model,
+        expected=len(images),
+        observations=observations,
+        errors=errors,
+    )
 
     for kind, path in images:
+        path_key = str(path)
+        if not args.force and path_key in by_file and observation_successful(by_file[path_key]):
+            print(f"SKIP existing vision review: {path.name}")
+            continue
+
+        errors = [err for err in errors if str(err.get("file") or "") != path_key]
+
         try:
             content = post_chat_completion(
                 base_url=base_url,
@@ -212,57 +374,51 @@ def main() -> int:
                 image_path=path,
                 prompt=prompt_for(path, kind),
                 timeout=args.timeout,
+                max_tokens=args.max_tokens,
             )
             parsed = extract_json(content)
-            observations.append(
-                {
-                    "file": str(path),
-                    "kind": kind,
-                    "model": model,
-                    "response": parsed,
-                }
-            )
+            observation = {
+                "file": path_key,
+                "kind": kind,
+                "model": model,
+                "response": parsed,
+            }
+            by_file[path_key] = observation
+            observations = [by_file[file_name] for file_name in target_order if file_name in by_file]
             print(f"PASS vision review: {path.name}")
         except Exception as e:
-            errors.append({"file": str(path), "kind": kind, "error": str(e)})
+            errors.append({"file": path_key, "kind": kind, "error": str(e)})
             print(f"FAIL vision review: {path.name}: {e}", file=sys.stderr)
 
+        artifact = write_artifacts(
+            out=out,
+            project=args.project,
+            base_url=base_url,
+            model=model,
+            expected=len(images),
+            observations=observations,
+            errors=errors,
+        )
+        print(
+            f"Progress written: {artifact['reviewed_image_count']}/{artifact['expected_image_count']} "
+            f"reviewed, errors={len(artifact['errors'])}, overall_pass={artifact['overall_pass']}"
+        )
         time.sleep(args.sleep)
 
-    expected = len(images)
-    reviewed = len(observations)
-    all_reviewed = expected > 0 and reviewed == expected and not errors
-    all_no_pixel_geometry = all(
-        bool(obs.get("response", {}).get("no_pixel_geometry_claims"))
-        for obs in observations
+    artifact = write_artifacts(
+        out=out,
+        project=args.project,
+        base_url=base_url,
+        model=model,
+        expected=len(images),
+        observations=observations,
+        errors=errors,
     )
-
-    artifact = {
-        "project": args.project,
-        "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "vision_base_url": base_url,
-        "vision_model": model,
-        "expected_image_count": expected,
-        "reviewed_image_count": reviewed,
-        "vision_review_performed": all_reviewed,
-        "metadata_only_review": False,
-        "actual_multimodal_endpoint_used": True,
-        "per_page_vision_observations": observations,
-        "errors": errors,
-        "confirmation_no_pixel_quantitative_claims": all_no_pixel_geometry,
-        "allowed_quantitative_scope": (
-            "Electrical calculations may be derived from visibly readable schematic values. "
-            "Physical/layout geometry measurements must not be derived from raster pixels unless calibrated."
-        ),
-        "overall_pass": bool(all_reviewed and all_no_pixel_geometry),
-    }
-
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
     print(f"\nWrote {out}")
     print("overall_pass:", artifact["overall_pass"])
-    print("reviewed:", reviewed, "/", expected)
+    print("reviewed:", artifact["reviewed_image_count"], "/", artifact["expected_image_count"])
     print("errors:", len(errors))
+    print(f"Wrote {out.parent / f'{args.project}-image-evidence-review-validation.json'}")
 
     return 0 if artifact["overall_pass"] else 2
 

@@ -1,0 +1,784 @@
+{
+  "project_name": "example",
+  "source_file": "example_bom.csv",
+  "parser_version": "bom-v1",
+  "raw_headers": [
+    "ITEM NUM",
+    "ITEM NAME",
+    "REV",
+    "DESCRIPTION",
+    "UOM",
+    "line number",
+    "QTY",
+    "REF DES",
+    "NOTES",
+    "MFG_1",
+    "MFG P/N_1",
+    "MFG_2",
+    "MFG P/N_2",
+    "MFG_3",
+    "MFG P/N_3",
+    "file supplier",
+    "file name"
+  ],
+  "normalized_headers": {
+    "ITEM NUM": "unknown",
+    "ITEM NAME": "unknown",
+    "REV": "unknown",
+    "DESCRIPTION": "description",
+    "UOM": "unknown",
+    "line number": "unknown",
+    "QTY": "quantity",
+    "REF DES": "refdes",
+    "NOTES": "unknown",
+    "MFG_1": "unknown",
+    "MFG P/N_1": "unknown",
+    "MFG_2": "unknown",
+    "MFG P/N_2": "unknown",
+    "MFG_3": "unknown",
+    "MFG P/N_3": "unknown",
+    "file supplier": "unknown",
+    "file name": "unknown"
+  },
+  "row_count": 38,
+  "expanded_refdes_count": 90,
+  "duplicate_refdes": [],
+  "warnings": [],
+  "items": [
+    {
+      "refdes": [],
+      "fields": {
+        "value": null,
+        "description": "PCA_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": null,
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 1
+    },
+    {
+      "refdes": [
+        "C40",
+        "C41",
+        "C42",
+        "C43",
+        "C44",
+        "C45",
+        "C46",
+        "C47",
+        "C48",
+        "C51",
+        "C53",
+        "C55",
+        "C57",
+        "C59"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_0.1UF_50V_10%_X7R_0402",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "14",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 2
+    },
+    {
+      "refdes": [
+        "C58"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_1UF_10V_20%_X5R_0402",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 3
+    },
+    {
+      "refdes": [
+        "C50",
+        "C56"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_10UF_10V_20%_X5R_0402",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 4
+    },
+    {
+      "refdes": [
+        "C52",
+        "C54"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CAP_CER_10UF_50V_10%_X5R_0805",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 5
+    },
+    {
+      "refdes": [
+        "P8_COM2"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X5_2MM54_TH_VER_LATCH_BLK",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 6
+    },
+    {
+      "refdes": [
+        "P5"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X5_2MM54_TH_VER_LATCH_BLU",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 7
+    },
+    {
+      "refdes": [
+        "P2",
+        "P7_COM3"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X5_2MM54_TH_VER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 8
+    },
+    {
+      "refdes": [
+        "P20"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_2X2_3MM0_TH_VER_PWR_5A",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 9
+    },
+    {
+      "refdes": [
+        "J4"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_ZIF_1X20_1MM0_SM_VER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 10
+    },
+    {
+      "refdes": [
+        "J1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_ZIF_1X10_1MM0_SM_VER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 11
+    },
+    {
+      "refdes": [
+        "J5"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_ZIF_1X10_1MM0_SM_RA",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 12
+    },
+    {
+      "refdes": [
+        "P3"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_1X3_1MM_SM_VER_JST",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 13
+    },
+    {
+      "refdes": [
+        "P4"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_1X2_2MM5_TH_RA",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 14
+    },
+    {
+      "refdes": [
+        "J3"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_DB44_FEM_TH_VER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 15
+    },
+    {
+      "refdes": [
+        "J27",
+        "J28"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_RECP_2X25_2MM_TH_VER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 16
+    },
+    {
+      "refdes": [
+        "JP1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "CON_HDR_1X3_2MM54_TH_VER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 17
+    },
+    {
+      "refdes": [
+        "U44"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_REPEATER_I2C_2CH_TSSOP8",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 18
+    },
+    {
+      "refdes": [
+        "U40",
+        "U41",
+        "U42",
+        "U43"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_MUX_2TO1_4G_74LVC157APW_TSSOP16",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "4",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 19
+    },
+    {
+      "refdes": [
+        "U51"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_BUF_1G_74LVC1G125_SC70",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 20
+    },
+    {
+      "refdes": [
+        "U46"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_MUX_2TO1_2G_ANA_VSSOP10",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 21
+    },
+    {
+      "refdes": [
+        "U45"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ICS_XCVR_CAN_1G_3V_SOIC8",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 22
+    },
+    {
+      "refdes": [
+        "TP1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "TP_LOOP_COLLAR_RED_TH",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 23
+    },
+    {
+      "refdes": [
+        "TP5"
+      ],
+      "fields": {
+        "value": null,
+        "description": "TP_LOOP_COLLAR_BLK_TH",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 24
+    },
+    {
+      "refdes": [
+        "TP2",
+        "TP3",
+        "TP4"
+      ],
+      "fields": {
+        "value": null,
+        "description": "TP_LOOP_COLLAR_ORN_TH",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "3",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 25
+    },
+    {
+      "refdes": [
+        "U50"
+      ],
+      "fields": {
+        "value": null,
+        "description": "PWR_LIN_3V3_300MA_AP2127_SOT235",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 26
+    },
+    {
+      "refdes": [
+        "R40",
+        "R41"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_4K7_1%_1/16_0402_100PPM",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "2",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 27
+    },
+    {
+      "refdes": [
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R30",
+        "R31",
+        "R32",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38",
+        "R39",
+        "R43",
+        "R44",
+        "R45",
+        "R46"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_0R00_1%_1/16_0402_100PPM",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "18",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 28
+    },
+    {
+      "refdes": [
+        "R42"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_120R_1%_1/4W_0603_100PPM",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 29
+    },
+    {
+      "refdes": [
+        "R60",
+        "R61",
+        "R62",
+        "R63",
+        "R64",
+        "R65",
+        "R66",
+        "R67",
+        "R68",
+        "R69",
+        "R70",
+        "R71",
+        "R72"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_5K1_5%_1/4W_0402_200PPM",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "13",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 30
+    },
+    {
+      "refdes": [
+        "R50",
+        "R51"
+      ],
+      "fields": {
+        "value": null,
+        "description": "RES_0R00_1%_1/4W_1206_200PPM",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 31
+    },
+    {
+      "refdes": [
+        "Q2"
+      ],
+      "fields": {
+        "value": null,
+        "description": "XTR_MOSFET_PCH_30V_8.8A_SOIC8",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 32
+    },
+    {
+      "refdes": [
+        "Q1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "XTR_MOSFET_NCH_50V_200MA_BSS138_SOT323",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 33
+    },
+    {
+      "refdes": [
+        "1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "LBL_SERIALNUM_WHT_6MMX15MM - MARK AS APPROPRIATE",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "1",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 34
+    },
+    {
+      "refdes": [
+        "SCH1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "SCH_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 35
+    },
+    {
+      "refdes": [
+        "PCB1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "PCB_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 36
+    },
+    {
+      "refdes": [
+        "FAB1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "FAB_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 37
+    },
+    {
+      "refdes": [
+        "ASM1"
+      ],
+      "fields": {
+        "value": null,
+        "description": "ASY_SUNRISE_TEST_ADAPTER",
+        "manufacturer": null,
+        "mpn": null,
+        "vendor": null,
+        "vendor_pn": null,
+        "quantity": "0",
+        "footprint": null,
+        "package": null,
+        "dnp": null
+      },
+      "raw_row_index": 38
+    }
+  ]
+}

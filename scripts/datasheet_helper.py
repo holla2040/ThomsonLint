@@ -21,9 +21,9 @@ from datasheet_smart_match import score_best_pdf_match
 
 
 ROOT = Path.cwd()
-PROJECT = "example"
+PROJECT = os.environ.get("THOMSLINT_PROJECT", "sunrise")
 
-INPUT_BOM = ROOT / "input" / "example_bom.csv"
+INPUT_BOM = ROOT / "exports" / f"{PROJECT}-bom.json"
 ROOT_DATASHEETS = ROOT / "datasheets"
 EXPORT_DATASHEETS = ROOT / "exports" / "datasheets"
 MANIFEST_JSONL = EXPORT_DATASHEETS / "datasheet_manifest.jsonl"
@@ -114,6 +114,42 @@ def norm(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
 
 
+APPROVED_EQUIVALENT_PREFIXES = {
+    "active",
+    "capacitor",
+    "connector",
+    "crystal",
+    "diode",
+    "ferrite",
+    "fuse",
+    "ic",
+    "inductor",
+    "led",
+    "mosfet",
+    "relay",
+    "resistor",
+    "switch",
+    "transistor",
+}
+
+
+def strip_approved_equivalent_prefix(value: Any) -> str | None:
+    """Remove helper category prefixes from approved equivalent MPN tokens."""
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    prefix, sep, rest = text.partition(":")
+    if sep and prefix.strip().lower() in APPROVED_EQUIVALENT_PREFIXES:
+        stripped = rest.strip()
+        return stripped or None
+
+    return text
+
+
 def safe_filename(value: str) -> str:
     value = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value or "").strip())
     value = value.strip("._-")
@@ -159,16 +195,36 @@ def request_bytes(url: str, timeout: int = FETCH_TIMEOUT) -> tuple[bytes | None,
 
 def bom_rows(path: Path = INPUT_BOM) -> list[dict[str, Any]]:
     if not path.exists():
-        raise FileNotFoundError(f"missing BOM: {path}")
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
-        rows = []
-        reader = csv.DictReader(f)
-        for idx, row in enumerate(reader, 1):
-            rows.append({
-                "bom_row_index": idx,
-                "raw": {k: (v or "").strip() for k, v in row.items()},
-            })
-        return rows
+        raise FileNotFoundError(f"missing BOM JSON: {path}")
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    rows = []
+    # Support standard converter JSON structure (both "rows" and "items")
+    if isinstance(data, list):
+        bom_items = data
+    else:
+        bom_items = data.get("rows", []) or data.get("items", [])
+    for idx, row in enumerate(bom_items, 1):
+        raw_data = row.get("raw", row) # Fallback if 'raw' key is missing
+        enriched_raw = {k: (str(v) or "").strip() for k, v in raw_data.items()}
+
+        # If the item uses converter format with fields/manufacturers,
+        # also populate the flat MFG_N / MFG P/N_N keys expected by mpn_pairs().
+        if "manufacturers" in row and isinstance(row["manufacturers"], list) and row["manufacturers"]:
+            for n, mfr_info in enumerate(row["manufacturers"], 1):
+                mfg = (mfr_info.get("manufacturer") or "").strip()
+                mpn = (mfr_info.get("mpn") or "").strip()
+                if mfg:
+                    enriched_raw[f"MFG_{n}"] = mfg
+                if mpn:
+                    enriched_raw[f"MFG P/N_{n}"] = mpn
+
+        rows.append({
+            "bom_row_index": idx,
+            "raw": enriched_raw,
+        })
+    return rows
 
 
 def mpn_pairs(raw: dict[str, str]) -> list[dict[str, Any]]:
@@ -642,7 +698,7 @@ def validate_pdf_for_mpn(pdf_path: Path, mpns: list[str], description: str = "",
 
     if smart_match.get("decision") == "accept":
         out["mpn_text_verified"] = True
-        out["matched_mpn"] = smart_match.get("matched")
+        out["matched_mpn"] = strip_approved_equivalent_prefix(smart_match.get("matched"))
         out["error"] = None
         return out
 
@@ -702,7 +758,7 @@ def find_existing_export_datasheet(row: dict[str, Any]) -> dict[str, Any] | None
                 "selected_url": str(pdf),
                 "pdf_validation": result,
                 "mpn_text_verified": True,
-                "approved_equivalent_or_family_match": result.get("matched_mpn"),
+                "approved_equivalent_or_family_match": strip_approved_equivalent_prefix(result.get("matched_mpn")),
                 "status_reason": f"reused verified exported datasheet matched {result.get('matched_mpn')}",
             }
 
@@ -1129,7 +1185,7 @@ def retrieve_for_row(row: dict[str, Any]) -> dict[str, Any]:
         out["pdf_magic_valid"] = True
         out["pdftotext_succeeded"] = True
         out["mpn_text_verified"] = True
-        out["approved_equivalent_or_family_match"] = v["matched_mpn"]
+        out["approved_equivalent_or_family_match"] = strip_approved_equivalent_prefix(v["matched_mpn"])
         return out
 
     exported = find_existing_export_datasheet(out)
@@ -1248,7 +1304,7 @@ def retrieve_for_row(row: dict[str, Any]) -> dict[str, Any]:
             out["pdf_magic_valid"] = True
             out["pdftotext_succeeded"] = True
             out["mpn_text_verified"] = True
-            out["approved_equivalent_or_family_match"] = meta["matched_mpn"]
+            out["approved_equivalent_or_family_match"] = strip_approved_equivalent_prefix(meta["matched_mpn"])
             return out
 
         if attempts >= MAX_DOWNLOAD_ATTEMPTS_PER_ROW:
@@ -1268,6 +1324,7 @@ def write_manifest(rows: list[dict[str, Any]]) -> None:
     EXPORT_DATASHEETS.mkdir(parents=True, exist_ok=True)
     with MANIFEST_JSONL.open("w", encoding="utf-8") as f:
         for row in rows:
+            row = normalize_manifest_row(row)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
@@ -1275,10 +1332,24 @@ def read_manifest() -> list[dict[str, Any]]:
     if not MANIFEST_JSONL.exists():
         return []
     return [
-        json.loads(x)
+        normalize_manifest_row(json.loads(x))
         for x in MANIFEST_JSONL.read_text(encoding="utf-8").splitlines()
         if x.strip()
     ]
+
+
+def normalize_manifest_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(row)
+    normalized["approved_equivalent_or_family_match"] = strip_approved_equivalent_prefix(
+        normalized.get("approved_equivalent_or_family_match")
+    )
+    pdf_validation = normalized.get("pdf_validation")
+    if isinstance(pdf_validation, dict) and "matched_mpn" in pdf_validation:
+        normalized["pdf_validation"] = dict(pdf_validation)
+        normalized["pdf_validation"]["matched_mpn"] = strip_approved_equivalent_prefix(
+            pdf_validation.get("matched_mpn")
+        )
+    return normalized
 
 
 
@@ -1494,7 +1565,11 @@ def replace_phase6_checkpoint(validation: dict[str, Any], started_at: str) -> No
         "started_at_utc": started_at,
         "completed_at_utc": now_utc(),
         "required_artifacts": [str(MANIFEST_JSONL), str(VALIDATION_JSON), str(MANUAL_DOWNLOADS_JSON)],
-        "artifacts_verified": MANIFEST_JSONL.exists() and VALIDATION_JSON.exists(),
+        "artifacts_verified": [
+            str(path)
+            for path in [MANIFEST_JSONL, VALIDATION_JSON, MANUAL_DOWNLOADS_JSON]
+            if path.exists()
+        ],
         "validation_artifacts": [str(VALIDATION_JSON)],
         "validation_passed": validation["overall_pass"],
         "blockers": [] if validation["overall_pass"] else [
@@ -1508,7 +1583,7 @@ def replace_phase6_checkpoint(validation: dict[str, Any], started_at: str) -> No
 
     existing.append(checkpoint)
     CHECKPOINTS_JSONL.write_text(
-        "".join(json.dumps(x, ensure_ascii=False) + "\n" for x in existing),
+        "".join(json.dumps(x, ensure_ascii=False, separators=(",", ":")) + "\n" for x in existing),
         encoding="utf-8",
     )
 
