@@ -4,6 +4,12 @@ set -euo pipefail
 PHASE="${1:?Usage: run_openhands_phase.sh PHASE [PROJECT]}"
 PROJECT="${2:-example}"
 
+if [[ "$PHASE" == "13" ]]; then
+  echo "== Running Phase 13 locally; OpenHands is bypassed for slow vision review =="
+  ./scripts/run_phase13_vision_review.sh "$PROJECT"
+  exit 0
+fi
+
 PROMPT_DIR=".agents_tmp/prompts"
 LOG_DIR=".agents_tmp/logs"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"

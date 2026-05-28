@@ -1,0 +1,4137 @@
+{
+  "project_name": "example",
+  "source": {
+    "project_root": "/home/qreed/projects/ipc2581_to_json/examples",
+    "layout_file": "example_ipc.xml",
+    "format": "ipc2581",
+    "ipc_root": "IPC-2581",
+    "ipc_revision": "B",
+    "namespace": "http://webstds.ipc.org/2581"
+  },
+  "parser_version": "ipc2581-v1",
+  "components": [
+    {
+      "refdes": "J3",
+      "footprint": "CON_DB44_FEM_TH_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U51",
+      "footprint": "SC70",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "Q1",
+      "footprint": "SOT323",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R51",
+      "footprint": "R1206",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R50",
+      "footprint": "R1206",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P20",
+      "footprint": "CON_HDR_2X2_3MM0_TH_VER_PWR_5A",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R42",
+      "footprint": "R0603",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "Q2",
+      "footprint": "SOIC8",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U45",
+      "footprint": "SOIC8",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U44",
+      "footprint": "TSSOP8",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U43",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U41",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U42",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U40",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R72",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R71",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R70",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R69",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R68",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R67",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R66",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R65",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R64",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R63",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R60",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R61",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R62",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R39",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R38",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R37",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R36",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R35",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R34",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R33",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R32",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R31",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R30",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R23",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R22",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R21",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R20",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R41",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R40",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R46",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R45",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R44",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R43",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U46",
+      "footprint": "VSSOP10",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C59",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C55",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C43",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C42",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C41",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C40",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C47",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C46",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C45",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C44",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C48",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C58",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C57",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C56",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C51",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C50",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C53",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C52",
+      "footprint": "C0805",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C54",
+      "footprint": "C0805",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U50",
+      "footprint": "SOT235",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP1",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP2",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP3",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP5",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP4",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "JP1",
+      "footprint": "CON_HDR_1X3_2MM54_TH_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P4",
+      "footprint": "CON_HDR_1X2_2MM5_TH_RA",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J5",
+      "footprint": "CON_ZIF_1X10_1MM0_SM_RA",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J4",
+      "footprint": "CON_ZIF_1X20_1MM0_SM_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J1",
+      "footprint": "CON_ZIF_1X10_1MM0_SM_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P3",
+      "footprint": "CON_HDR_1X3_1MM_SM_VER_MOLEX",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P7_COM3",
+      "footprint": "CON_HDR_2X5_2MM54_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P2",
+      "footprint": "CON_HDR_2X5_2MM54_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P8_COM2",
+      "footprint": "CON_HDR_2X5_2MM54_TH_VER_LATCH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P5",
+      "footprint": "CON_HDR_2X5_2MM54_TH_VER_LATCH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J28",
+      "footprint": "CON_RECP_2X25_2MM_TH_VER",
+      "layer": "BOTTOM",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J27",
+      "footprint": "CON_RECP_2X25_2MM_TH_VER",
+      "layer": "BOTTOM",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    }
+  ],
+  "placements": [
+    {
+      "refdes": "J3",
+      "footprint": "CON_DB44_FEM_TH_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U51",
+      "footprint": "SC70",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "Q1",
+      "footprint": "SOT323",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R51",
+      "footprint": "R1206",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R50",
+      "footprint": "R1206",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P20",
+      "footprint": "CON_HDR_2X2_3MM0_TH_VER_PWR_5A",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R42",
+      "footprint": "R0603",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "Q2",
+      "footprint": "SOIC8",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U45",
+      "footprint": "SOIC8",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U44",
+      "footprint": "TSSOP8",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U43",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U41",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U42",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U40",
+      "footprint": "TSSOP16",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R72",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R71",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R70",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R69",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R68",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R67",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R66",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R65",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R64",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R63",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R60",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R61",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R62",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R39",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R38",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R37",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R36",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R35",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R34",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R33",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R32",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R31",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R30",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R23",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R22",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R21",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R20",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R41",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R40",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R46",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R45",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R44",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "R43",
+      "footprint": "R0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U46",
+      "footprint": "VSSOP10",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C59",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C55",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C43",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C42",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C41",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C40",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C47",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C46",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C45",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C44",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C48",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C58",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C57",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C56",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C51",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C50",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C53",
+      "footprint": "C0402",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C52",
+      "footprint": "C0805",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "C54",
+      "footprint": "C0805",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "U50",
+      "footprint": "SOT235",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP1",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP2",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP3",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP5",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "TP4",
+      "footprint": "TP_LOOP_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "JP1",
+      "footprint": "CON_HDR_1X3_2MM54_TH_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P4",
+      "footprint": "CON_HDR_1X2_2MM5_TH_RA",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J5",
+      "footprint": "CON_ZIF_1X10_1MM0_SM_RA",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J4",
+      "footprint": "CON_ZIF_1X20_1MM0_SM_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J1",
+      "footprint": "CON_ZIF_1X10_1MM0_SM_VER",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P3",
+      "footprint": "CON_HDR_1X3_1MM_SM_VER_MOLEX",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P7_COM3",
+      "footprint": "CON_HDR_2X5_2MM54_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P2",
+      "footprint": "CON_HDR_2X5_2MM54_TH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P8_COM2",
+      "footprint": "CON_HDR_2X5_2MM54_TH_VER_LATCH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "P5",
+      "footprint": "CON_HDR_2X5_2MM54_TH_VER_LATCH",
+      "layer": "TOP",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J28",
+      "footprint": "CON_RECP_2X25_2MM_TH_VER",
+      "layer": "BOTTOM",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    },
+    {
+      "refdes": "J27",
+      "footprint": "CON_RECP_2X25_2MM_TH_VER",
+      "layer": "BOTTOM",
+      "x": null,
+      "y": null,
+      "rotation": null,
+      "source": {
+        "format": "ipc2581",
+        "file": "example_ipc.xml"
+      }
+    }
+  ],
+  "nets": [],
+  "layers": [
+    {
+      "name": "TOP",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "LAYER2",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "LAYER3",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "LAYER4",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "LAYER5",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "BOTTOM",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "SMTP",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "SMBT",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "fabrication",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "NCLEGEND-1-6",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "DRILL_1-6",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "ASSYTP",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "SSTP",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "SPTP",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "ASSYBT",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "SSBT",
+      "type": null,
+      "side": null
+    },
+    {
+      "name": "outline",
+      "type": null,
+      "side": null
+    }
+  ],
+  "board_outline": [],
+  "vias": [],
+  "drills": [
+    {
+      "x": "3.32900",
+      "y": "0.93600",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.37900",
+      "y": "0.93600",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.42900",
+      "y": "0.93600",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.27900",
+      "y": "0.93600",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.31779",
+      "y": "1.58026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.24500",
+      "y": "0.86400",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.66110",
+      "y": "0.40136",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.63910",
+      "y": "0.59916",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.59000",
+      "y": "0.60926",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.08000",
+      "y": "0.62026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.22500",
+      "y": "1.14526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.47750",
+      "y": "1.07276",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.40610",
+      "y": "1.41136",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.24500",
+      "y": "1.61026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.48465",
+      "y": "1.64326",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.06900",
+      "y": "1.34900",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.64724",
+      "y": "1.88000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.64724",
+      "y": "1.72024",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.91000",
+      "y": "1.30000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.89000",
+      "y": "1.43000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.43220",
+      "y": "1.53746",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.41000",
+      "y": "1.57026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.42000",
+      "y": "1.22526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.42000",
+      "y": "1.17526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.63473",
+      "y": "1.59999",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.76000",
+      "y": "0.70526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.88754",
+      "y": "1.02980",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.33500",
+      "y": "0.13076",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.34500",
+      "y": "-0.05474",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.41000",
+      "y": "0.12926",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.33000",
+      "y": "-0.04974",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.45500",
+      "y": "0.13026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.29000",
+      "y": "-0.06974",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.53500",
+      "y": "0.13026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.06000",
+      "y": "0.52026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.72000",
+      "y": "0.52126",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "-0.04300",
+      "y": "0.65026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.75000",
+      "y": "0.67026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.80941",
+      "y": "1.19967",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.94959",
+      "y": "1.19967",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.63000",
+      "y": "1.58026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.83000",
+      "y": "1.72026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.54000",
+      "y": "1.72026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.08453",
+      "y": "1.72073",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.88000",
+      "y": "1.72026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.03955",
+      "y": "1.69026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.99457",
+      "y": "1.68026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.73920",
+      "y": "0.27946",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.15748",
+      "y": "0.27974",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.12500",
+      "y": "0.65026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.84200",
+      "y": "0.65126",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.09000",
+      "y": "0.69026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.87900",
+      "y": "0.69526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.17000",
+      "y": "0.21026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.85000",
+      "y": "0.21026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "-1.20000",
+      "y": "1.91000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.78996",
+      "y": "0.25996",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.07874",
+      "y": "0.26000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.65882",
+      "y": "0.31908",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.55118",
+      "y": "0.31908",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.05000",
+      "y": "0.71026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.84000",
+      "y": "0.71026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.00006",
+      "y": "1.06020",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.73006",
+      "y": "1.06020",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.69870",
+      "y": "0.29896",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.39370",
+      "y": "0.29896",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.20000",
+      "y": "0.18026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.88000",
+      "y": "0.18026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.64000",
+      "y": "0.36526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.47500",
+      "y": "0.36026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.58000",
+      "y": "0.43626",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.51300",
+      "y": "0.34626",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.35000",
+      "y": "0.53926",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.20750",
+      "y": "0.62276",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.36000",
+      "y": "0.49426",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.20500",
+      "y": "0.59026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "-0.22000",
+      "y": "0.45026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.72000",
+      "y": "0.48026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.81700",
+      "y": "1.28000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.80100",
+      "y": "1.32500",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.34500",
+      "y": "0.46186",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.56000",
+      "y": "0.34026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.46700",
+      "y": "0.34026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.42900",
+      "y": "1.24900",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.37900",
+      "y": "1.24800",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.42900",
+      "y": "1.13000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.37900",
+      "y": "1.13000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.32900",
+      "y": "1.13000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.30000",
+      "y": "1.59200",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.00000",
+      "y": "1.56800",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.05500",
+      "y": "1.56900",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.11000",
+      "y": "1.56800",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.16400",
+      "y": "1.56800",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.22000",
+      "y": "1.56800",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "-0.85000",
+      "y": "0.10026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.34000",
+      "y": "0.54026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.36000",
+      "y": "0.69026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.60000",
+      "y": "0.36626",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.51300",
+      "y": "0.36626",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.31900",
+      "y": "0.19026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.19000",
+      "y": "0.16026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.35000",
+      "y": "0.23026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.26000",
+      "y": "0.19126",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.56000",
+      "y": "0.21526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.27000",
+      "y": "0.23026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.60500",
+      "y": "0.24026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.31066",
+      "y": "0.23092",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "-1.14900",
+      "y": "0.14026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "-0.75000",
+      "y": "0.16026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.56000",
+      "y": "0.18026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.60000",
+      "y": "0.18026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.84000",
+      "y": "0.50026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.24700",
+      "y": "0.61826",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.66100",
+      "y": "0.22226",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.97500",
+      "y": "0.67026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.35100",
+      "y": "0.59026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.29900",
+      "y": "0.74126",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.51000",
+      "y": "1.62026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.76967",
+      "y": "1.63993",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.63500",
+      "y": "0.18526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.07150",
+      "y": "0.49876",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.71300",
+      "y": "0.50226",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.07500",
+      "y": "0.44026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.67900",
+      "y": "0.48026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.80000",
+      "y": "0.70526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.25921",
+      "y": "0.82447",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.30750",
+      "y": "0.82100",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.42500",
+      "y": "0.97200",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.06900",
+      "y": "1.22400",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.37210",
+      "y": "1.42590",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.30000",
+      "y": "1.42550",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.00000",
+      "y": "1.46200",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.05500",
+      "y": "1.46300",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.11000",
+      "y": "1.46200",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.16400",
+      "y": "1.46200",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.07000",
+      "y": "0.59926",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.22540",
+      "y": "0.41066",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.66510",
+      "y": "0.43916",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.63910",
+      "y": "0.56136",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.28700",
+      "y": "0.37026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.59000",
+      "y": "0.51526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.78600",
+      "y": "0.38026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.15150",
+      "y": "0.10876",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.62000",
+      "y": "0.13026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.10990",
+      "y": "0.54136",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.22500",
+      "y": "1.24926",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.74000",
+      "y": "0.90026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.02067",
+      "y": "0.90026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.35500",
+      "y": "1.07026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.31535",
+      "y": "1.48561",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.82802",
+      "y": "1.78000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "3.22100",
+      "y": "1.46260",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.48000",
+      "y": "1.68000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.76000",
+      "y": "1.15000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.70000",
+      "y": "1.68000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.70000",
+      "y": "1.81000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.80000",
+      "y": "1.55000",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.45000",
+      "y": "0.18026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.07000",
+      "y": "0.54026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.96220",
+      "y": "0.48746",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.95500",
+      "y": "1.24526",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.36000",
+      "y": "0.70026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.89400",
+      "y": "0.71186",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.07000",
+      "y": "0.46026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.96040",
+      "y": "0.41066",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.43000",
+      "y": "0.15026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.10280",
+      "y": "0.51306",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.73280",
+      "y": "0.51306",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.12000",
+      "y": "0.47026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.73000",
+      "y": "0.45026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.73000",
+      "y": "1.66026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.84000",
+      "y": "0.53826",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.84000",
+      "y": "0.46126",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "2.56500",
+      "y": "0.57026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.92000",
+      "y": "1.22026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "0.99400",
+      "y": "1.22026",
+      "diameter": "0.01300"
+    },
+    {
+      "x": "1.75924",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.94959",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.85963",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.76967",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.67971",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.58975",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.49979",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.80422",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.71426",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.62430",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.53434",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.66928",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.44437",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.35441",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.26445",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.17449",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.08453",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.99457",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.90461",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.81465",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.72469",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.63473",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.57932",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.54477",
+      "y": "1.40026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.75924",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.66928",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.57932",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.48935",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.39939",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.30943",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.21947",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.12951",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.03955",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.48935",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.94959",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.85963",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.76967",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.67971",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.58975",
+      "y": "1.32226",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.39939",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.30943",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.21947",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.12951",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "1.03955",
+      "y": "1.47821",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.22302",
+      "y": "1.40026",
+      "diameter": "0.12000"
+    },
+    {
+      "x": "2.07498",
+      "y": "1.40026",
+      "diameter": "0.12000"
+    },
+    {
+      "x": "3.25906",
+      "y": "1.69020",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.14094",
+      "y": "1.69020",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.25906",
+      "y": "1.80832",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.14094",
+      "y": "1.80832",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.02284",
+      "y": "1.84532",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.37716",
+      "y": "1.84532",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.40000",
+      "y": "1.53700",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "2.90000",
+      "y": "1.90000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "2.40000",
+      "y": "1.76200",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "2.85700",
+      "y": "0.22300",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.30400",
+      "y": "0.40900",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.17800",
+      "y": "0.62100",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "3.27800",
+      "y": "0.62100",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "3.37800",
+      "y": "0.62100",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "3.20079",
+      "y": "0.22441",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "3.29921",
+      "y": "0.22441",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.20000",
+      "y": "0.60000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.80000",
+      "y": "0.70000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.20000",
+      "y": "0.70000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.10000",
+      "y": "0.60000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.10000",
+      "y": "0.70000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.00000",
+      "y": "0.60000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.00000",
+      "y": "0.70000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.90000",
+      "y": "0.60000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.90000",
+      "y": "0.70000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.80000",
+      "y": "0.60000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.20000",
+      "y": "1.05000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.80000",
+      "y": "1.15000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.20000",
+      "y": "1.15000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.10000",
+      "y": "1.05000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.10000",
+      "y": "1.15000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.00000",
+      "y": "1.05000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-1.00000",
+      "y": "1.15000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.90000",
+      "y": "1.05000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.90000",
+      "y": "1.15000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.80000",
+      "y": "1.05000",
+      "diameter": "0.04000"
+    },
+    {
+      "x": "-0.70000",
+      "y": "1.65000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-0.70000",
+      "y": "1.55000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-0.80000",
+      "y": "1.65000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-0.80000",
+      "y": "1.55000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-0.90000",
+      "y": "1.65000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-0.90000",
+      "y": "1.55000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-1.00000",
+      "y": "1.65000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-1.00000",
+      "y": "1.55000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-1.10000",
+      "y": "1.65000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "-1.10000",
+      "y": "1.55000",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.71300",
+      "y": "0.65026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.71300",
+      "y": "0.55026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.61300",
+      "y": "0.65026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.61300",
+      "y": "0.55026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.51300",
+      "y": "0.65026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.51300",
+      "y": "0.55026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.41300",
+      "y": "0.65026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.41300",
+      "y": "0.55026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.31300",
+      "y": "0.65026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "2.31300",
+      "y": "0.55026",
+      "diameter": "0.03600"
+    },
+    {
+      "x": "0.0",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.0",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.07874",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.07874",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.15748",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.15748",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.23622",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.23622",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.31496",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.31496",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.39370",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.39370",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.47244",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.47244",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.55118",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.55118",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.62992",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.62992",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.70866",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.70866",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.78740",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.78740",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.86614",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.86614",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.94488",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.94488",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.02362",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.02362",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.10236",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.10236",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.18110",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.18110",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.25984",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.25984",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.33858",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.33858",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.41732",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.41732",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.49606",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.49606",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.57480",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.57480",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.65354",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.65354",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.73228",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.73228",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.81102",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.81102",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.88976",
+      "y": "0.0",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.88976",
+      "y": "0.07874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.25000",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.25000",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.32874",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.32874",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.40748",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.40748",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.48622",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.48622",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.56496",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.56496",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.64370",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.64370",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.72244",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.72244",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.80118",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.80118",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.87992",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.87992",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.95866",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "0.95866",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.03740",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.03740",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.11614",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.11614",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.19488",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.19488",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.27362",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.27362",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.35236",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.35236",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.43110",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.43110",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.50984",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.50984",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.58858",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.58858",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.66732",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.66732",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.74606",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.74606",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.82480",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.82480",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.90354",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.90354",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.98228",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "1.98228",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "2.06102",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "2.06102",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "2.13976",
+      "y": "1.80000",
+      "diameter": "0.03200"
+    },
+    {
+      "x": "2.13976",
+      "y": "1.87874",
+      "diameter": "0.03200"
+    }
+  ],
+  "routes": [
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    },
+    {
+      "x1": null,
+      "y1": null,
+      "x2": null,
+      "y2": null,
+      "net": null
+    }
+  ],
+  "analysis": {
+    "layer_count": 17,
+    "layers_used": [
+      "TOP",
+      "LAYER2",
+      "LAYER3",
+      "LAYER4",
+      "LAYER5",
+      "BOTTOM",
+      "SMTP",
+      "SMBT",
+      "fabrication",
+      "NCLEGEND-1-6",
+      "DRILL_1-6",
+      "ASSYTP",
+      "SSTP",
+      "SPTP",
+      "ASSYBT",
+      "SSBT",
+      "outline"
+    ],
+    "ground_plane_layers": [],
+    "signal_layers": []
+  },
+  "warnings": [
+    {
+      "code": "WARN_IPC_STACKUP_UNAVAILABLE",
+      "message": "Stackup details unavailable or not reliably extractable."
+    }
+  ],
+  "extraction_counts": {
+    "board_component_count": 85,
+    "placement_count": 85,
+    "board_net_count": 0,
+    "layer_count": 17,
+    "stackup_layer_count": 0,
+    "via_count": 0,
+    "drill_count": 378,
+    "route_segment_count": 8,
+    "outline_point_count": 0
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "project_name": "test_board",
+  "source_format": "synthetic_test",
+  "schematic": {
+    "sheet_count": 1
+  },
+  "components": [
+    {
+      "ref": "U1",
+      "value": "LDO_REGULATOR",
+      "lib_id": "Device:LDO",
+      "footprint": "SOT-223",
+      "pins": [
+        {"number": "1", "name": "IN", "type": "power_in"},
+        {"number": "2", "name": "GND", "type": "power_in"},
+        {"number": "3", "name": "OUT", "type": "power_out"}
+      ]
+    },
+    {
+      "ref": "C1",
+      "value": "10uF",
+      "lib_id": "Device:C",
+      "footprint": "C_0805",
+      "pins": [
+        {"number": "1", "name": "1", "type": "passive"},
+        {"number": "2", "name": "2", "type": "passive"}
+      ]
+    },
+    {
+      "ref": "J1",
+      "value": "POWER_IN",
+      "lib_id": "Connector:Conn_01x02",
+      "footprint": "TerminalBlock_2Pin",
+      "pins": [
+        {"number": "1", "name": "VIN", "type": "power_out"},
+        {"number": "2", "name": "GND", "type": "power_out"}
+      ]
+    }
+  ],
+  "nets": [
+    {
+      "name": "VIN",
+      "pins": [
+        {"component": "J1", "pin": "1"},
+        {"component": "U1", "pin": "1"}
+      ]
+    },
+    {
+      "name": "GND",
+      "pins": [
+        {"component": "J1", "pin": "2"},
+        {"component": "U1", "pin": "2"},
+        {"component": "C1", "pin": "2"}
+      ]
+    },
+    {
+      "name": "+3V3",
+      "pins": [
+        {"component": "U1", "pin": "3"},
+        {"component": "C1", "pin": "1"}
+      ]
+    }
+  ],
+  "analysis": {
+    "power_nets": ["VIN", "+3V3"],
+    "ground_nets": ["GND"],
+    "single_pin_nets": []
+  }
+}

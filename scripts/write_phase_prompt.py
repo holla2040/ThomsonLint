@@ -76,7 +76,7 @@ Required:
 2. Perform only the tasks required by Phase {args.phase}.
 3. Produce Phase {args.phase}'s required artifact(s).
 4. Validate Phase {args.phase}'s required artifact(s).
-5. Append exactly one row for phase_number={args.phase} to exports/{project}-phase-checkpoints.jsonl.
+5. Append exactly one checkpoint row for phase_number={args.phase} to exports/{project}-phase-checkpoints.jsonl as compact single-line JSONL.
 6. Set phase_passed=true only if the phase-local gate passed.
 7. Stop after Phase {args.phase}. Do not continue.
 
@@ -91,13 +91,24 @@ Checkpoint row requirements:
 - validation_passed
 - blockers
 - phase_passed
-- repair_required (set to true when phase_passed=false)
+- failed_phase_number
+- repair_required (false when phase_passed=true; true when phase_passed=false)
+
+Checkpoint JSONL format requirements:
+- The checkpoint file is JSONL: exactly one complete JSON object per physical line.
+- Append exactly one row for Phase {args.phase}; do not append multiple checkpoint rows for one phase.
+- Write compact single-line JSON using double-quoted JSON keys and values.
+- Do not write Markdown in checkpoint files.
+- Do not write code fences in checkpoint files.
+- Do not write Python dict syntax in checkpoint files.
+- Do not write pretty-printed multi-line JSON in checkpoint files.
+- For a passing phase, set blockers=[], validation_passed=true, phase_passed=true, failed_phase_number=null, and repair_required=false.
 
 If the phase-local gate fails:
 - repair only this phase's artifact/work product, or report BLOCKED
 - do not advance to the next phase
 - do not defer the failure to a later phase
-- checkpoint phase_passed=false and repair_required=true if blocked
+- checkpoint phase_passed=false, failed_phase_number={args.phase}, and repair_required=true if blocked
 
 Project prefix:
 {project}
@@ -716,12 +727,33 @@ Required Phase 11 artifacts:
 
 The DFM evidence inventory must include:
 geometry_helpers_dfm_results (containing: annular_ring, acid_traps, board_edge_clearance,
-copper_balance check outputs).
+copper_balance, and voltage_spacing check outputs).
+Also write summary.geometry_helpers_dfm_executed=true and, for compatibility, a top-level
+geometry_helpers_dfm_executed=true when all required DFM helper checks ran.
 
 Validation requirements:
 - Both artifacts exist and parse.
 - geometry_helpers_dfm_executed=true.
-- overall_pass=true.
+- Required checks executed and recorded: annular_ring, acid_traps, board_edge_clearance,
+  copper_balance, and voltage_spacing.
+- The Phase 11 execution gate passes when the required checks ran and their results are
+  recorded, even if the checks found real DFM/manufacturing violations.
+- Use separate validation fields where possible:
+  - execution_pass=true when required checks executed
+  - artifact_validation_pass=true when artifacts exist, parse, and required sections are present
+  - required_checks_executed=true
+  - checks_recorded=true
+  - dfm_compliance_pass=false if real DFM violations were found
+  - violations_found=true if acid traps, copper balance warnings, clearance violations, or
+    other DFM issues were found
+  - phase_gate_passed=true when execution/artifact validation passed
+- The validation artifact should also include enough check-record detail for audit compatibility:
+  required_checks or required_checks_recorded may list annular_ring, acid_traps,
+  board_edge_clearance, copper_balance, and voltage_spacing.
+- Do not use compliance failures alone to fail the Phase 11 checkpoint.
+- If an existing overall_pass field is present, it may represent DFM compliance, not phase
+  execution. Do not set overall_pass=true merely to hide violations.
+- Preserve all DFM violation details for later findings/report phases.
 
 Do not write findings in Phase 11.
 """
@@ -1066,10 +1098,9 @@ Required artifacts:
 
 ARTIFACT SCHEMA RULES — IMPORTANT:
 - The review artifact (exports/{project}-cross-source-review.json) contains a nested `gate` object.
-  Set gate.overall_pass=true inside the review artifact when review checks pass.
+  gate.overall_pass may represent cross-source consistency/compliance, not phase execution.
 - The validation artifact (exports/{project}-cross-source-review-validation.json) must have
-  `overall_pass` at the TOP LEVEL (NOT nested under gate). The auditor checks the top-level
-  `overall_pass` field in the validation artifact, not gate.overall_pass.
+  separate execution/artifact fields. Do not use compliance failures alone to fail Phase 16.
 
 Use these top-level keys in the review artifact:
 - phase
@@ -1086,7 +1117,14 @@ Use these top-level keys in the review artifact:
 
 Validation artifact (cross-source-review-validation.json) required fields:
 - phase
-- overall_pass (bool — TOP LEVEL, not nested; true only when all review checks pass)
+- phase_gate_passed (bool; true when review executed, artifacts are valid, and required checks are recorded)
+- execution_pass (bool; true when required cross-source checks executed)
+- artifact_validation_pass (bool; true when artifacts parse and required schema fields are present)
+- required_checks_executed (bool)
+- review_executed (bool)
+- cross_source_consistency_pass (bool; false when discrepancies are found)
+- discrepancies_found (bool)
+- overall_pass (optional bool; may remain false when consistency/compliance discrepancies are found)
 
 Allowed terminology:
 - cross-source check
@@ -1156,8 +1194,13 @@ Required validation:
 - No key named rule_id exists anywhere.
 - No key named issue or issues exists anywhere.
 - Cross-source conclusions are evidence-backed.
+- Required cross-source checks are recorded: refdes_reconciliation, package_mismatches,
+  netlist_integrity, and voltage_derating.
 - Limitations are explicit where evidence is incomplete.
-- gate.overall_pass=true only when these checks pass.
+- phase_gate_passed=true when the review ran, artifacts are valid, and required checks are recorded.
+- execution_pass=true when required checks executed.
+- cross_source_consistency_pass=false and discrepancies_found=true when real discrepancies are found.
+- Do not set consistency/compliance fields to pass merely to advance the phase.
 
 Do not execute Phase 17.
 """
@@ -1191,18 +1234,25 @@ Required top-level fields in pre-findings-gate.json:
 - blockers (list — empty if all pass)
 - overall_gate_pass (bool — TOP LEVEL; true only when all upstream validations pass)
 
-Gate criteria to check (read these artifacts and verify overall_pass=true in each):
+Gate criteria to check:
 - exports/{project}-schematic-evidence-inventory-validation.json overall_pass
 - exports/{project}-board-evidence-inventory-validation.json overall_pass
 - exports/{project}-stackup-evidence-review-validation.json overall_pass
-- exports/{project}-dfm-evidence-inventory-validation.json overall_pass
+- exports/{project}-dfm-evidence-inventory-validation.json phase_gate_passed or execution_pass
+  (do not require DFM compliance overall_pass=true; real DFM violations are allowed here
+  when checks executed and were recorded)
 - exports/{project}-bom-evidence-inventory-validation.json overall_pass
 - exports/{project}-image-evidence-review-validation.json overall_pass (if images provided)
 - exports/{project}-datasheet-evidence-review-validation.json overall_pass
 - exports/{project}-aerospace-evidence-inventory-validation.json overall_pass
-- exports/{project}-cross-source-review-validation.json overall_pass
+- exports/{project}-cross-source-review-validation.json phase_gate_passed or execution_pass
+  (do not require cross-source consistency overall_pass=true; real discrepancies are allowed here
+  when checks executed and were recorded)
 
-overall_gate_pass=true ONLY when ALL applicable upstream validations have overall_pass=true.
+overall_gate_pass=true ONLY when all upstream phase gates pass under their phase-specific semantics.
+For Phase 16, accept phase_gate_passed=true, execution_pass=true, or a passing Phase 16 checkpoint.
+Do NOT require cross_source_consistency_pass=true and do NOT require cross-source validation
+overall_pass=true; that field may remain false when real discrepancies were found and preserved.
 
 If any blocker exists, set overall_gate_pass=false and list each blocker artifact and field.
 
@@ -1378,13 +1428,15 @@ VALIDATION GATES (all must pass before writing a completion summary):
 - exports/datasheets/datasheet_manifest_validation.json overall_pass=true
 - exports/{project}-schematic-evidence-inventory-validation.json overall_pass=true
 - exports/{project}-board-evidence-inventory-validation.json overall_pass=true
-- exports/{project}-dfm-evidence-inventory-validation.json overall_pass=true
+- exports/{project}-dfm-evidence-inventory-validation.json phase_gate_passed=true or execution_pass=true
+  (DFM compliance may be false when real violations were found and preserved)
 - exports/{project}-bom-evidence-inventory-validation.json overall_pass=true
 - exports/{project}-image-evidence-inventory.json overall_pass=true (when PDFs/images provided)
 - exports/{project}-image-evidence-review-validation.json overall_pass=true (when PDFs/images provided)
 - exports/{project}-datasheet-evidence-review-validation.json overall_pass=true
 - exports/{project}-aerospace-evidence-inventory-validation.json overall_pass=true
-- exports/{project}-cross-source-review-validation.json overall_pass=true
+- exports/{project}-cross-source-review-validation.json phase_gate_passed=true or execution_pass=true
+  (cross-source consistency may be false when real discrepancies were found and preserved)
 - exports/{project}-pre-findings-gate.json overall_gate_pass=true
 - exports/{project}-findings.json exists and validator passed
 - exports/{project}-report-generation-validation.json overall_pass=true
@@ -1404,7 +1456,7 @@ Board:
   - board evidence inventory validation path, overall_pass
 
 DFM:
-  - DFM evidence inventory validation path, overall_pass
+  - DFM evidence inventory validation path, phase gate pass, compliance pass/fail, violations found
 
 BOM:
   - BOM evidence inventory validation path, overall_pass

@@ -1,0 +1,21 @@
+{
+  "project_name": "example",
+  "source": {
+    "project_root": "/home/qreed/projects/ipc2581_to_json/examples",
+    "layout_file": "example_ipc.xml",
+    "format": "ipc2581"
+  },
+  "parser_version": "ipc2581-v1",
+  "units": null,
+  "layer_stack": [],
+  "warnings": [
+    {
+      "code": "WARN_IPC_STACKUP_UNAVAILABLE",
+      "message": "Stackup details unavailable or not reliably extractable."
+    }
+  ],
+  "extraction_counts": {
+    "stackup_layer_count": 0,
+    "layer_count": 17
+  }
+}
