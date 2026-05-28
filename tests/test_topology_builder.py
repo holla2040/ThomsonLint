@@ -75,26 +75,52 @@ def part_info_index(path: str = "exports/part_info/stm32f407vgt6.json") -> dict:
 
 
 def converter_part_info_index(path: str = "exports/part_info/grm155r71h104ke14d.json") -> dict:
+    files = [
+        {
+            "file": path,
+            "mpn": "GRM155R71H104KE14D",
+            "manufacturer": "Murata",
+            "normalized_mpn": "grm155r71h104ke14d",
+            "component_category": "capacitor",
+            "confidence_overall": 0.9,
+        },
+        {
+            "file": "exports/part_info/tps7a2033pdqnr.json",
+            "mpn": "TPS7A2033PDQNR",
+            "manufacturer": "Texas Instruments",
+            "normalized_mpn": "tps7a2033pdqnr",
+            "component_category": "ldo_regulator",
+            "confidence_overall": 0.86,
+        },
+        {
+            "file": "exports/part_info/sn65hvd230dr.json",
+            "mpn": "SN65HVD230DR",
+            "manufacturer": "Texas Instruments",
+            "normalized_mpn": "sn65hvd230dr",
+            "component_category": "transceiver",
+            "confidence_overall": 0.82,
+        },
+        {
+            "file": "exports/part_info/0430450414.json",
+            "mpn": "043045-0414",
+            "manufacturer": "Molex",
+            "normalized_mpn": "0430450414",
+            "component_category": "connector",
+            "confidence_overall": 0.78,
+        },
+    ]
     return {
         "schema_version": "1.0",
         "project": "test",
         "mpns": {
-            "grm155r71h104ke14d": {
-                "normalized_mpn": "grm155r71h104ke14d",
+            record["normalized_mpn"]: {
+                "normalized_mpn": record["normalized_mpn"],
                 "ambiguous": False,
-                "files": [
-                    {
-                        "file": path,
-                        "mpn": "GRM155R71H104KE14D",
-                        "manufacturer": "Murata",
-                        "normalized_mpn": "grm155r71h104ke14d",
-                        "component_category": "capacitor",
-                        "confidence_overall": 0.9,
-                    }
-                ],
+                "files": [record],
                 "bom_rows": [],
                 "refdes": [],
             }
+            for record in files
         },
         "refdes": {},
     }
@@ -115,49 +141,125 @@ def converter_schematic(node_count_mismatch: bool = False) -> dict:
                 "dnp": None,
             },
             "part_number": "GRM155R71H104KE14D",
-        }
-    ]
-    components.extend(
+        },
         {
-            "refdes": f"U{i}",
-            "value": "IC",
-            "footprint": "QFN",
+            "refdes": "U50",
+            "value": "3.3V LDO",
+            "footprint": "X2SON",
             "bom": {
-                "description": f"Synthetic IC {i}",
-                "manufacturer": "ExampleSemi",
-                "mpn": f"EXAMPLE-U{i}",
+                "description": "LDO_REG_3V3",
+                "manufacturer": "Texas Instruments",
+                "mpn": "TPS7A2033PDQNR",
                 "quantity": "1",
                 "dnp": None,
             },
-            "part_number": f"EXAMPLE-U{i}",
+            "part_number": "TPS7A2033PDQNR",
+        },
+        {
+            "refdes": "U45",
+            "value": "CAN",
+            "footprint": "SOIC8",
+            "bom": {
+                "description": "CAN_TRANSCEIVER",
+                "manufacturer": "Texas Instruments",
+                "mpn": "SN65HVD230DR",
+                "quantity": "1",
+                "dnp": None,
+            },
+            "part_number": "SN65HVD230DR",
+        },
+        {
+            "refdes": "R50",
+            "value": "0R",
+            "footprint": "R0402",
+            "bom": {
+                "description": "ZERO_OHM_JUMPER",
+                "manufacturer": None,
+                "mpn": None,
+                "quantity": "1",
+                "dnp": True,
+            },
+            "part_number": None,
+        },
+        {
+            "refdes": "P20",
+            "value": "CONN",
+            "footprint": "HDR_4",
+            "bom": {
+                "description": "POWER_CONNECTOR",
+                "manufacturer": "Molex",
+                "mpn": "043045-0414",
+                "quantity": "1",
+                "dnp": None,
+            },
+            "part_number": "043045-0414",
+        },
+    ]
+    used_refdes = {"C40", "U50", "U45", "R50", "P20"}
+    filler_refdes = [f"U{i}" for i in range(1, 83) if f"U{i}" not in used_refdes]
+    components.extend(
+        {
+            "refdes": refdes,
+            "value": "IC",
+            "footprint": "QFN",
+            "bom": {
+                "description": f"Synthetic IC {refdes}",
+                "manufacturer": "ExampleSemi",
+                "mpn": f"EXAMPLE-{refdes}",
+                "quantity": "1",
+                "dnp": None,
+            },
+            "part_number": f"EXAMPLE-{refdes}",
         }
-        for i in range(1, 85)
+        for refdes in filler_refdes
     )
 
-    component_refdes = ["C40", *[f"U{i}" for i in range(1, 85)]]
-    net_names = [
-        "V24P0",
-        "V3P3",
-        "V5P0",
-        "VCC",
-        "VN24P0",
-        "GND",
-        "J3_LASER_GND",
-        "P3_LASER_GND",
-        "MOTION_CLK",
-        *[f"SIG_{i:03d}" for i in range(1, 123)],
+    component_refdes = [component["refdes"] for component in components]
+    nets = [
+        {"name": "V24P0", "node_count": 1, "nodes": [{"refdes": "P20", "pin_number": "1", "pin_name": "VIN+"}]},
+        {
+            "name": "V3P3",
+            "node_count": 4 if node_count_mismatch else 3,
+            "nodes": [
+                {"refdes": "U50", "pin_number": "2", "pin_name": "VOUT"},
+                {"refdes": "U45", "pin_number": "1", "pin_name": "VDD"},
+                {"refdes": "C40", "pin_number": "2", "pin_name": None},
+            ],
+        },
+        {
+            "name": "V5P0",
+            "node_count": 3,
+            "nodes": [
+                {"refdes": "P20", "pin_number": "3", "pin_name": "5V"},
+                {"refdes": "U50", "pin_number": "1", "pin_name": "VIN"},
+                {"refdes": "R50", "pin_number": "2", "pin_name": None},
+            ],
+        },
+        {"name": "VCC", "node_count": 1, "nodes": [{"refdes": "R50", "pin_number": "1", "pin_name": None}]},
+        {"name": "VN24P0", "node_count": 1, "nodes": [{"refdes": "P20", "pin_number": "2", "pin_name": "VIN-"}]},
+        {
+            "name": "GND",
+            "node_count": 4,
+            "nodes": [
+                {"refdes": "P20", "pin_number": "4", "pin_name": "GND"},
+                {"refdes": "U50", "pin_number": "3", "pin_name": "GND"},
+                {"refdes": "U45", "pin_number": "2", "pin_name": "GND"},
+                {"refdes": "C40", "pin_number": "1", "pin_name": None},
+            ],
+        },
+        {"name": "J3_LASER_GND", "node_count": 1, "nodes": [{"refdes": "P20", "pin_number": "5", "pin_name": "GND"}]},
+        {"name": "P3_LASER_GND", "node_count": 1, "nodes": [{"refdes": "P20", "pin_number": "6", "pin_name": "GND"}]},
+        {"name": "MOTION_CLK", "node_count": 1, "nodes": [{"refdes": "U45", "pin_number": "3", "pin_name": "CLK"}]},
     ]
-    nets = []
-    pin_index = 1
-    for net_index, net_name in enumerate(net_names):
-        expected_nodes = 4 if net_index < 20 else 3
+    pin_index = 100
+    for net_index in range(1, 123):
+        expected_nodes = 4 if net_index <= 31 else 3
         nodes = []
         for offset in range(expected_nodes):
             refdes = component_refdes[(net_index + offset) % len(component_refdes)]
             nodes.append({"refdes": refdes, "pin_number": str(pin_index), "pin_name": None})
             pin_index += 1
-        node_count = expected_nodes + 1 if node_count_mismatch and net_name == "V3P3" else expected_nodes
-        nets.append({"name": net_name, "node_count": node_count, "nodes": nodes})
+        nets.append({"name": f"SIG_{net_index:03d}", "node_count": expected_nodes, "nodes": nodes})
 
     return {
         "project_name": "TestProject",
@@ -396,7 +498,7 @@ def test_converter_node_count_mismatch_warns_without_crash(tmp_path: Path) -> No
 
     assert result.returncode == 0, result.stderr + result.stdout
     warnings = read_json(out)["validation"]["warnings"]
-    assert any("node_count=5 does not match nodes length=4" in warning for warning in warnings)
+    assert any("node_count=4 does not match nodes length=3" in warning for warning in warnings)
 
 
 def test_converter_output_validates_against_topology_schema(tmp_path: Path) -> None:
@@ -412,3 +514,112 @@ def test_converter_output_validates_against_topology_schema(tmp_path: Path) -> N
     jsonschema.Draft7Validator.check_schema(schema)
     errors = list(jsonschema.Draft7Validator(schema).iter_errors(topology))
     assert errors == []
+
+
+def test_power_rails_are_created_from_converter_power_nets(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    topology = read_json(out)
+    rail_names = {rail["net_name"] for rail in topology["power_rails"]}
+    assert {"V24P0", "VN24P0", "V5P0", "V3P3", "VCC"} <= rail_names
+    assert topology["graph_summary"]["power_rail_count"] == 5
+
+
+def test_power_rail_voltage_parsing_and_unknown_voltage(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    rails = {rail["net_name"]: rail for rail in read_json(out)["power_rails"]}
+    assert rails["V3P3"]["nominal_voltage_v"] == 3.3
+    assert rails["V5P0"]["nominal_voltage_v"] == 5.0
+    assert rails["V24P0"]["nominal_voltage_v"] == 24.0
+    assert rails["VN24P0"]["nominal_voltage_v"] == -24.0
+    assert rails["VCC"]["nominal_voltage_v"] is None
+    assert "voltage_unknown" in rails["VCC"]["unresolved_flags"]
+
+
+def test_voltage_and_rail_current_models_are_created_unresolved(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    topology = read_json(out)
+    voltage_models = {model["model_id"]: model for model in topology["voltage_models"]}
+    current_models = {model["model_id"]: model for model in topology["current_models"]}
+    assert voltage_models["vm_v3p3"]["nominal_voltage_v"] == 3.3
+    assert voltage_models["vm_v3p3"]["basis"] == "net_name"
+    rail_model = current_models["cm_v3p3"]
+    assert rail_model["type"] == "rail_total"
+    assert rail_model["basis"] == "unresolved"
+    assert rail_model["nominal_current_a"] is None
+    assert rail_model["max_current_a"] is None
+
+
+def test_missing_source_creates_power_net_no_source_unresolved(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    topology = read_json(out)
+    assert any(item["type"] == "power_net_no_source" and item["net"] == "VCC" for item in topology["unresolved"])
+
+
+def test_active_sink_without_current_creates_sink_current_unknown(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    topology = read_json(out)
+    current_models = {model["model_id"]: model for model in topology["current_models"]}
+    assert current_models["cm_u45_v3p3"]["type"] == "sink_load"
+    assert current_models["cm_u45_v3p3"]["basis"] == "unresolved"
+    assert any(item["type"] == "sink_current_unknown" and item["net"] == "V3P3" for item in topology["unresolved"])
+
+
+def test_capacitors_are_not_counted_as_current_sinks(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    rails = {rail["net_name"]: rail for rail in read_json(out)["power_rails"]}
+    assert "C40" not in rails["V3P3"]["sink_components"]
+
+
+def test_dnp_pass_through_parts_are_not_counted_live(tmp_path: Path) -> None:
+    result, out, _ = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    rails = {rail["net_name"]: rail for rail in read_json(out)["power_rails"]}
+    assert "R50" not in rails["V5P0"]["pass_through_components"]
+    assert "R50" not in rails["VCC"]["pass_through_components"]
+
+
+def test_zero_ohm_resistor_classifies_as_pass_through_with_low_confidence(tmp_path: Path) -> None:
+    schematic = {
+        "components": [
+            {
+                "refdes": "R1",
+                "value": "0R00",
+                "bom": {"description": "zero ohm jumper", "dnp": None},
+            }
+        ],
+        "nets": [{"name": "V5P0", "nodes": [{"refdes": "R1", "pin_number": "1", "pin_name": None}]}],
+        "analysis": {"power_nets": ["V5P0"], "ground_nets": [], "clock_nets": []},
+    }
+    result, out, _ = invoke(tmp_path, schematic, index={"mpns": {}, "refdes": {}})
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    device = read_json(out)["devices"][0]
+    assert device["device_role"] == "pass_through"
+    assert device["confidence"] < 0.5
+    assert "heuristic_role" in device["unresolved"]
+
+
+def test_power_summary_includes_power_topology_counts(tmp_path: Path) -> None:
+    result, _, power = invoke(tmp_path, converter_schematic(), converter_part_info_index())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    summary = read_json(power)
+    assert summary["summary"]["power_rail_count"] == 5
+    assert summary["summary"]["source_component_count"] >= 2
+    assert summary["summary"]["sink_component_count"] >= 2
+    assert summary["summary"]["unresolved_current_model_count"] >= 5
+    assert summary["summary"]["voltage_unknown_count"] == 1
+    assert "VCC" in summary["unresolved_power_rails"]

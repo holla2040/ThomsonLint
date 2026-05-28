@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""Build a deterministic topology-map skeleton from schematic evidence.
+"""Build a deterministic topology map from schematic evidence.
 
-PR 5 scope only:
+PR 6 scope:
 - Parse schematic nets/components/pins.
 - Optionally enrich devices from part_info_index.json.
-- Emit a schema-valid topology map skeleton.
+- Emit schema-valid net-level power topology scaffolding.
 - Emit a compact power-topology summary.
 
 The primary target input is the ThomsonLint converter's pads-v1 schematic
 export: components/nets/nodes with analysis, extraction_counts, and bom_merge
 metadata. Board and stackup paths may point to ipc2581-v1 converter exports but
-are only recorded as sources in PR 5.
+are only recorded as sources in PR 6.
 
-This script does not perform AI extraction, current aggregation, rail
-propagation, copper geometry mapping, thermal checks, workflow integration, or
-final findings generation.
+This script does not perform AI extraction, copper geometry mapping, board-route
+branch extraction, thermal checks, workflow integration, or final findings
+generation. Current models remain unresolved unless backed by deterministic
+board/load data.
 """
 from __future__ import annotations
 
@@ -39,6 +40,9 @@ POWER_PATTERNS = [
     re.compile(r"^\d+V\d+$", re.IGNORECASE),
     re.compile(r"^V\d+P\d+$", re.IGNORECASE),
 ]
+OUTPUT_PIN_NAMES = {"out", "vout", "sw", "lx", "phase", "ph"}
+INPUT_PIN_NAMES = {"in", "vin", "pvin", "avin", "vbat", "vbus"}
+CONNECTOR_PREFIXES = ("J", "P", "JP")
 
 SOURCE_CATEGORIES = {
     "buck_regulator",
@@ -51,6 +55,8 @@ PASS_THROUGH_CATEGORIES = {
     "connector",
     "fuse",
     "ferrite_bead",
+    "zero_ohm_resistor",
+    "jumper",
     "switch",
     "current_sense_resistor",
 }
@@ -321,8 +327,67 @@ def component_is_dnp(component: dict[str, Any]) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y", "dnp", "no_pop", "nopop", "do not populate"}
 
 
+def component_value(component: dict[str, Any]) -> str | None:
+    value = first_by_alias(component, {"value", "val", "resistance", "capacitance"})
+    if value is not None:
+        return str(value).strip()
+    return None
+
+
+def component_description(component: dict[str, Any]) -> str:
+    values: list[str] = []
+    for source in [component, as_dict(component.get("bom")), as_dict(component.get("fields"))]:
+        for alias in ("description", "desc", "footprint", "value", "partnumber", "mpn"):
+            value = first_by_alias(source, {alias})
+            if value not in (None, ""):
+                values.append(str(value))
+    return " ".join(values).lower()
+
+
 def normalize_mpn(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
+
+
+def safe_id(value: Any) -> str:
+    text = re.sub(r"[^a-z0-9]+", "_", str(value or "").lower()).strip("_")
+    return text or "unknown"
+
+
+def parse_voltage_from_net_name(net_name: str | None) -> float | None:
+    if not net_name:
+        return None
+    text = str(net_name).strip().upper()
+    sign = 1.0
+    if text.startswith("+"):
+        text = text[1:]
+    elif text.startswith("-"):
+        sign = -1.0
+        text = text[1:]
+    elif text.startswith("VN") and re.fullmatch(r"VN\d+P\d+", text):
+        sign = -1.0
+        text = "V" + text[2:]
+
+    match = re.fullmatch(r"V(\d+)P(\d+)", text)
+    if match:
+        return sign * float(f"{int(match.group(1))}.{match.group(2)}")
+    match = re.fullmatch(r"(\d+)V(\d+)", text)
+    if match:
+        return sign * float(f"{int(match.group(1))}.{match.group(2)}")
+    match = re.fullmatch(r"(\d+)V", text)
+    if match:
+        return sign * float(match.group(1))
+    return None
+
+
+def looks_zero_ohm(value: str | None, description: str = "") -> bool:
+    text = f"{value or ''} {description}".lower().replace("ω", "ohm")
+    compact = re.sub(r"[\s_-]+", "", text)
+    return any(token in compact for token in ("0r", "0r0", "0r00", "0ohm", "zeroohm", "jumper"))
+
+
+def refdes_prefix(refdes: str) -> str:
+    match = re.match(r"^[A-Za-z]+", refdes or "")
+    return match.group(0).upper() if match else ""
 
 
 def first_file_record(mpn_entry: dict[str, Any]) -> dict[str, Any] | None:
@@ -368,6 +433,8 @@ def part_info_for_refdes(refdes: str, component: dict[str, Any], index: dict[str
 
 
 def role_from_category(category: str | None) -> str:
+    if category == "connector":
+        return "mixed"
     if category in SOURCE_CATEGORIES:
         return "source"
     if category in PASS_THROUGH_CATEGORIES:
@@ -377,6 +444,36 @@ def role_from_category(category: str | None) -> str:
     if category in PASSIVE_CATEGORIES:
         return "passive"
     return "unknown"
+
+
+def classify_device(refdes: str, component: dict[str, Any], category: str | None, base_confidence: float) -> tuple[str, float, list[str]]:
+    value = component_value(component)
+    description = component_description(component)
+    if category in {"resistor", "passive"} and looks_zero_ohm(value, description):
+        return "pass_through", max(base_confidence, 0.55), ["heuristic_role"]
+    if isinstance(category, str) and category:
+        return role_from_category(category), max(base_confidence, 0.65), []
+
+    prefix = refdes_prefix(refdes)
+    flags = ["heuristic_role"]
+
+    if prefix == "C":
+        return "passive", 0.45, flags
+    if prefix == "R":
+        if looks_zero_ohm(value, description):
+            return "pass_through", 0.45, flags
+        return "passive", 0.45, flags
+    if prefix in {"L", "FB"}:
+        if any(token in description for token in ("ferrite", "bead", "emi")) or prefix == "FB":
+            return "pass_through", 0.45, flags
+        return "passive", 0.4, flags
+    if prefix.startswith(CONNECTOR_PREFIXES):
+        return "mixed", 0.4, flags
+    if prefix == "U":
+        return "unknown", 0.35, flags
+    if prefix == "Q":
+        return "unknown", 0.35, flags
+    return "unknown", 0.3, flags
 
 
 def device_nets(refdes: str, pins: list[ParsedPin], net_type_by_name: dict[str, str]) -> dict[str, list[str]]:
@@ -396,6 +493,53 @@ def device_nets(refdes: str, pins: list[ParsedPin], net_type_by_name: dict[str, 
         if pin.net_name not in groups[key]:
             groups[key].append(pin.net_name)
     return groups
+
+
+def pins_for_device_net(refdes: str, net_name: str, pins: list[ParsedPin]) -> list[ParsedPin]:
+    return [pin for pin in pins if pin.refdes == refdes and pin.net_name == net_name]
+
+
+def first_pin_ref(refdes: str, net_name: str, pins: list[ParsedPin]) -> str | None:
+    matches = pins_for_device_net(refdes, net_name, pins)
+    return matches[0].pin_ref if matches else None
+
+
+def pin_name_key(pin: ParsedPin) -> str:
+    return key_name(pin.pin_name or pin.pin)
+
+
+def has_output_pin_on_net(refdes: str, net_name: str, pins: list[ParsedPin]) -> bool:
+    return any(pin_name_key(pin) in OUTPUT_PIN_NAMES for pin in pins_for_device_net(refdes, net_name, pins))
+
+
+def has_input_pin_on_net(refdes: str, net_name: str, pins: list[ParsedPin]) -> bool:
+    return any(pin_name_key(pin) in INPUT_PIN_NAMES for pin in pins_for_device_net(refdes, net_name, pins))
+
+
+def is_connector_like(refdes: str, category: str | None) -> bool:
+    if category == "connector":
+        return True
+    return refdes_prefix(refdes).startswith(CONNECTOR_PREFIXES)
+
+
+def source_type_for_device(role: str, category: str | None, refdes: str) -> str:
+    if category in SOURCE_CATEGORIES:
+        return "regulator_output"
+    if is_connector_like(refdes, category):
+        return "external_connector"
+    if role == "source":
+        return "unknown"
+    return "unknown"
+
+
+def sink_type_for_device(role: str, category: str | None, refdes: str, is_regulator_input: bool = False) -> str:
+    if is_regulator_input:
+        return "regulator_input"
+    if category in SINK_CATEGORIES or role == "sink":
+        return "ic_supply"
+    if is_connector_like(refdes, category):
+        return "connector_output"
+    return "unknown"
 
 
 def unresolved_item(
@@ -459,6 +603,7 @@ def build_topology(
     devices: list[dict[str, Any]] = []
     pin_records: list[dict[str, Any]] = []
     part_info_by_refdes: dict[str, dict[str, Any] | None] = {}
+    device_meta: dict[str, dict[str, Any]] = {}
 
     for refdes in sorted(parsed.components):
         component = parsed.components[refdes]
@@ -469,7 +614,18 @@ def build_topology(
         confidence = part_info.get("confidence_overall") if isinstance(part_info, dict) else None
         confidence_value = float(confidence) if isinstance(confidence, (int, float)) else 0.3
         unresolved_flags = list(flags)
-        if component_is_dnp(component):
+        device_role, role_confidence, role_flags = classify_device(
+            refdes,
+            component,
+            category if isinstance(category, str) else None,
+            confidence_value,
+        )
+        confidence_value = max(confidence_value, role_confidence)
+        unresolved_flags.extend(role_flags)
+        if role_flags:
+            warnings.append(f"{refdes} role classified by schematic/BOM heuristic")
+        is_dnp = component_is_dnp(component)
+        if is_dnp:
             unresolved_flags.append("dnp_component")
             warnings.append(f"{refdes} is marked DNP in schematic BOM metadata")
         if "missing_part_info" in unresolved_flags:
@@ -494,13 +650,22 @@ def build_topology(
             ))
 
         net_groups = device_nets(refdes, parsed.pins, net_type_by_name)
+        device_meta[refdes] = {
+            "category": category if isinstance(category, str) else None,
+            "role": device_role,
+            "confidence": confidence_value,
+            "part_info_ref": part_info_ref if isinstance(part_info_ref, str) else None,
+            "dnp": is_dnp,
+            "nets": net_groups,
+            "component": component,
+        }
         devices.append({
             "refdes": refdes,
             "mpn": (part_info.get("mpn") or component_mpn(component)) if isinstance(part_info, dict) else component_mpn(component),
             "manufacturer": (part_info.get("manufacturer") or component_manufacturer(component))
             if isinstance(part_info, dict)
             else component_manufacturer(component),
-            "device_role": role_from_category(category if isinstance(category, str) else None),
+            "device_role": device_role,
             "input_nets": net_groups["input_nets"],
             "output_nets": net_groups["output_nets"],
             "supply_nets": net_groups["supply_nets"],
@@ -540,6 +705,191 @@ def build_topology(
             "part_info_pin_ref": None,
             "unresolved_flags": flags,
         })
+
+    power_rails: list[dict[str, Any]] = []
+    voltage_models: list[dict[str, Any]] = []
+    current_models: list[dict[str, Any]] = []
+    source_nodes: list[dict[str, Any]] = []
+    sink_nodes: list[dict[str, Any]] = []
+    current_model_ids: set[str] = set()
+
+    net_records_by_name = {net["net_name"]: net for net in nets}
+    power_net_names = [net["net_name"] for net in nets if net["net_type"] == "power"]
+    for net_name in sorted(power_net_names):
+        voltage = parse_voltage_from_net_name(net_name)
+        voltage_flags = [] if voltage is not None else ["voltage_unknown"]
+        voltage_model_id = f"vm_{safe_id(net_name)}"
+        rail_current_model_id = f"cm_{safe_id(net_name)}"
+        voltage_source = "derived_from_net_name" if voltage is not None else "unknown"
+        voltage_basis = "net_name" if voltage is not None else "unknown"
+        voltage_confidence = 0.75 if voltage is not None else 0.3
+
+        if voltage is None:
+            unresolved.append(unresolved_item(
+                item_id=f"unres_{safe_id(net_name)}_voltage",
+                item_type="voltage_unknown",
+                net=net_name,
+                refdes=[],
+                part_info_ref=None,
+                required_for=["voltage_model", "clearance"],
+                notes="Power net voltage could not be safely parsed from the net name.",
+            ))
+
+        connected_refdes = sorted({pin.refdes for pin in parsed.pins if pin.net_name == net_name})
+        source_components: list[str] = []
+        pass_through_components: list[str] = []
+        sink_components: list[str] = []
+        active_sink_components: list[tuple[str, str]] = []
+
+        for refdes in connected_refdes:
+            meta = device_meta.get(refdes, {})
+            role = meta.get("role")
+            category = meta.get("category")
+            if meta.get("dnp"):
+                continue
+
+            if role == "pass_through":
+                pass_through_components.append(refdes)
+
+            is_regulator_input = bool(category in SOURCE_CATEGORIES and has_input_pin_on_net(refdes, net_name, parsed.pins))
+            is_regulator_output = bool(category in SOURCE_CATEGORIES and has_output_pin_on_net(refdes, net_name, parsed.pins))
+            if role == "source" and (is_regulator_output or not has_input_pin_on_net(refdes, net_name, parsed.pins)):
+                source_components.append(refdes)
+
+            active_unknown = role == "unknown" and refdes_prefix(refdes) in {"U", "IC"}
+            if role == "sink" or is_regulator_input or active_unknown:
+                sink_components.append(refdes)
+                sink_type = "regulator_input" if is_regulator_input else "sink_load"
+                active_sink_components.append((refdes, sink_type))
+
+        if not source_components:
+            connector_sources = [
+                refdes for refdes in connected_refdes
+                if not device_meta.get(refdes, {}).get("dnp")
+                and is_connector_like(refdes, device_meta.get(refdes, {}).get("category"))
+                and voltage is not None
+            ]
+            if connector_sources:
+                source_components.extend(connector_sources)
+                voltage_source = "external_connector"
+
+        source_components = sorted(set(source_components))
+        pass_through_components = sorted(set(pass_through_components))
+        sink_components = sorted(set(sink_components))
+
+        if not source_components:
+            unresolved.append(unresolved_item(
+                item_id=f"unres_{safe_id(net_name)}_no_source",
+                item_type="power_net_no_source",
+                net=net_name,
+                refdes=[],
+                part_info_ref=None,
+                required_for=["voltage_model", "current_model", "trace_current"],
+                notes="No deterministic source component was identified for this power rail.",
+            ))
+
+        voltage_models.append({
+            "model_id": voltage_model_id,
+            "target": f"net:{net_name}",
+            "nominal_voltage_v": voltage,
+            "min_voltage_v": None,
+            "max_voltage_v": None,
+            "basis": voltage_basis,
+            "confidence": voltage_confidence,
+            "unresolved_flags": voltage_flags,
+        })
+        current_models.append({
+            "model_id": rail_current_model_id,
+            "target": f"rail:{net_name}",
+            "type": "rail_total",
+            "basis": "unresolved",
+            "nominal_current_a": None,
+            "max_current_a": None,
+            "conservative_bound": False,
+            "confidence": 0.3,
+            "unresolved_flags": ["rail_current_unresolved"],
+        })
+        current_model_ids.add(rail_current_model_id)
+
+        for source_refdes in source_components:
+            meta = device_meta.get(source_refdes, {})
+            category = meta.get("category")
+            source_nodes.append({
+                "node_id": f"src_{safe_id(source_refdes)}_{safe_id(net_name)}",
+                "source_type": source_type_for_device(str(meta.get("role")), category if isinstance(category, str) else None, source_refdes),
+                "refdes": source_refdes,
+                "pin_ref": first_pin_ref(source_refdes, net_name, parsed.pins),
+                "net_name": net_name,
+                "confidence": 0.65 if category in SOURCE_CATEGORIES else 0.45,
+            })
+
+        for sink_refdes, sink_model_type in sorted(set(active_sink_components)):
+            meta = device_meta.get(sink_refdes, {})
+            category = meta.get("category")
+            sink_model_id = f"cm_{safe_id(sink_refdes)}_{safe_id(net_name)}"
+            if sink_model_id not in current_model_ids:
+                current_models.append({
+                    "model_id": sink_model_id,
+                    "target": f"device:{sink_refdes}",
+                    "type": "regulator_input" if sink_model_type == "regulator_input" else "sink_load",
+                    "basis": "unresolved",
+                    "nominal_current_a": None,
+                    "max_current_a": None,
+                    "conservative_bound": False,
+                    "confidence": 0.3,
+                    "unresolved_flags": ["sink_current_unknown"],
+                })
+                current_model_ids.add(sink_model_id)
+            sink_nodes.append({
+                "node_id": f"sink_{safe_id(sink_refdes)}_{safe_id(net_name)}",
+                "sink_type": sink_type_for_device(
+                    str(meta.get("role")),
+                    category if isinstance(category, str) else None,
+                    sink_refdes,
+                    is_regulator_input=sink_model_type == "regulator_input",
+                ),
+                "refdes": sink_refdes,
+                "pin_ref": first_pin_ref(sink_refdes, net_name, parsed.pins),
+                "net_name": net_name,
+                "current_model_ref": sink_model_id,
+                "confidence": 0.45 if sink_model_type == "regulator_input" else 0.5,
+                "unresolved_flags": ["sink_current_unknown"],
+            })
+            unresolved.append(unresolved_item(
+                item_id=f"unres_{safe_id(sink_refdes)}_{safe_id(net_name)}_current",
+                item_type="sink_current_unknown",
+                net=net_name,
+                refdes=[sink_refdes],
+                part_info_ref=meta.get("part_info_ref") if isinstance(meta.get("part_info_ref"), str) else None,
+                required_for=["current_model", "trace_current", "thermal"],
+                notes="No deterministic actual board current model is available for this sink on this rail.",
+            ))
+
+        rail_flags = ["rail_current_unresolved", *voltage_flags]
+        if not source_components:
+            rail_flags.append("power_net_no_source")
+        if sink_components:
+            rail_flags.append("sink_current_unknown")
+
+        power_rails.append({
+            "net_name": net_name,
+            "nominal_voltage_v": voltage,
+            "voltage_source": voltage_source,
+            "source_components": source_components,
+            "pass_through_components": pass_through_components,
+            "sink_components": sink_components,
+            "total_nominal_current_a": None,
+            "total_max_current_a": None,
+            "unresolved_current_a": None,
+            "confidence": 0.55 if voltage is not None else 0.3,
+            "current_model_ref": rail_current_model_id,
+            "voltage_model_ref": voltage_model_id,
+            "unresolved_flags": sorted(set(rail_flags)),
+        })
+
+        if net_name in net_records_by_name:
+            net_records_by_name[net_name]["nominal_voltage_v"] = voltage
+            net_records_by_name[net_name]["voltage_model_ref"] = voltage_model_id
 
     if not parsed.net_names:
         unresolved.append(unresolved_item(
@@ -584,21 +934,21 @@ def build_topology(
         "graph_summary": {
             "net_count": len(nets),
             "device_count": len(devices),
-            "power_rail_count": 0,
+            "power_rail_count": len(power_rails),
             "branch_count": 0,
             "unresolved_count": len(unresolved),
         },
         "nets": nets,
-        "power_rails": [],
+        "power_rails": power_rails,
         "devices": devices,
         "pins": pin_records,
         "pass_through_edges": [],
-        "source_nodes": [],
-        "sink_nodes": [],
+        "source_nodes": source_nodes,
+        "sink_nodes": sink_nodes,
         "branches": [],
         "copper_geometry_links": [],
-        "current_models": [],
-        "voltage_models": [],
+        "current_models": current_models,
+        "voltage_models": voltage_models,
         "unresolved": unresolved,
         "validation": {
             "execution_pass": True,
@@ -618,6 +968,21 @@ def build_power_summary(project: str, topology: dict[str, Any], warnings: list[s
     ground = [net for net in nets if isinstance(net, dict) and net.get("net_type") in {"ground", "chassis", "earth"}]
     pins = topology.get("pins") if isinstance(topology.get("pins"), list) else []
     devices = topology.get("devices") if isinstance(topology.get("devices"), list) else []
+    power_rails = topology.get("power_rails") if isinstance(topology.get("power_rails"), list) else []
+    source_nodes = topology.get("source_nodes") if isinstance(topology.get("source_nodes"), list) else []
+    sink_nodes = topology.get("sink_nodes") if isinstance(topology.get("sink_nodes"), list) else []
+    current_models = topology.get("current_models") if isinstance(topology.get("current_models"), list) else []
+    unresolved_power_rails = [
+        rail.get("net_name")
+        for rail in power_rails
+        if isinstance(rail, dict) and rail.get("unresolved_flags")
+    ]
+    pass_through_refs = {
+        refdes
+        for rail in power_rails
+        if isinstance(rail, dict)
+        for refdes in rail.get("pass_through_components", [])
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "project": project,
@@ -628,9 +993,24 @@ def build_power_summary(project: str, topology: dict[str, Any], warnings: list[s
             "pin_count": len(pins),
             "power_like_net_count": len(power_like),
             "ground_net_count": len(ground),
+            "power_rail_count": len(power_rails),
+            "unresolved_power_rail_count": len(unresolved_power_rails),
+            "source_component_count": len({node.get("refdes") for node in source_nodes if isinstance(node, dict) and node.get("refdes")}),
+            "sink_component_count": len({node.get("refdes") for node in sink_nodes if isinstance(node, dict) and node.get("refdes")}),
+            "pass_through_component_count": len(pass_through_refs),
+            "unresolved_current_model_count": len([
+                model for model in current_models
+                if isinstance(model, dict) and model.get("basis") == "unresolved"
+            ]),
+            "voltage_unknown_count": len([
+                rail for rail in power_rails
+                if isinstance(rail, dict) and "voltage_unknown" in rail.get("unresolved_flags", [])
+            ]),
         },
         "power_like_nets": [net.get("net_name") for net in power_like],
         "ground_nets": [net.get("net_name") for net in ground],
+        "power_rails": [rail.get("net_name") for rail in power_rails if isinstance(rail, dict)],
+        "unresolved_power_rails": unresolved_power_rails,
         "warnings": warnings,
         "errors": errors,
         "execution_pass": not errors,
