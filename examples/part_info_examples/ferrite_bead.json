@@ -1,0 +1,155 @@
+{
+  "schema_version": "1.0",
+  "mpn": "BLM18AG601SN1D",
+  "manufacturer": "Murata",
+  "normalized_mpn": "blm18ag601sn1d",
+  "component_category": "ferrite_bead",
+  "package": {
+    "name": "0603",
+    "pin_count": 2,
+    "thermal_pad": false,
+    "evidence_refs": ["ds:p1:ordering"]
+  },
+  "datasheet_sources": [
+    {
+      "source_id": "ds",
+      "local_path": "exports/datasheets/BLM18AG601SN1D.pdf",
+      "url": null,
+      "manufacturer_source": true,
+      "retrieved_at_utc": null
+    }
+  ],
+  "extraction_method": {
+    "type": "manual",
+    "model": null,
+    "prompt_version": null,
+    "extracted_at_utc": "2026-05-28T00:00:00Z",
+    "text_extraction_tool": null,
+    "human_reviewed": true
+  },
+  "pin_roles": [
+    {
+      "pin": "1",
+      "pin_name": "1",
+      "role": "power",
+      "direction": "bidirectional",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "pass_through_input",
+      "voltage_range_v": null,
+      "notes": "Two-terminal ferrite bead; direction is board-specific.",
+      "evidence_refs": ["ds:p1:ordering"]
+    },
+    {
+      "pin": "2",
+      "pin_name": "2",
+      "role": "power",
+      "direction": "bidirectional",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "pass_through_output",
+      "voltage_range_v": null,
+      "notes": "Two-terminal ferrite bead; direction is board-specific.",
+      "evidence_refs": ["ds:p1:ordering"]
+    }
+  ],
+  "power_behavior": {
+    "device_role": "pass_through",
+    "input_pins": ["1"],
+    "output_pins": ["2"],
+    "ground_pins": [],
+    "enable_pins": [],
+    "feedback_pins": [],
+    "nominal_current_by_rail": [],
+    "max_current_by_rail": [],
+    "quiescent_current_a": null,
+    "standby_current_a": null,
+    "peak_current_a": null,
+    "max_output_current_a": null,
+    "efficiency_data": [],
+    "assumptions_allowed": false
+  },
+  "load_behavior": {
+    "acts_as_load": false,
+    "load_type": null,
+    "notes": "Ferrite rated current and impedance are ratings, not actual rail load.",
+    "evidence_refs": ["ds:p1:ratings"]
+  },
+  "pass_through_behavior": {
+    "is_pass_through": true,
+    "pass_through_type": "ferrite",
+    "input_pins": ["1"],
+    "output_pins": ["2"],
+    "bidirectional": true,
+    "fuse_hold_current_a": null,
+    "fuse_trip_current_a": null,
+    "ferrite_rated_current_a": {
+      "max": 0.5,
+      "unit": "A",
+      "condition": "rated current; not actual board current",
+      "evidence_ref": "ds:p1:ratings",
+      "confidence": 0.92
+    },
+    "ferrite_impedance_ohm": {
+      "typ": 600.0,
+      "unit": "ohm",
+      "condition": "impedance at 100 MHz",
+      "evidence_ref": "ds:p1:ratings",
+      "confidence": 0.92
+    },
+    "zero_ohm_resistor_rating_a": null,
+    "jumper_rating_a": null,
+    "switch_current_rating_a": null,
+    "connector_pin_current_rating_a": null,
+    "current_sense_resistor_rating_w": null,
+    "evidence_refs": ["ds:p1:ratings"]
+  },
+  "signal_behavior": {
+    "signal_roles": ["unknown"],
+    "differential_pair_pins": [],
+    "evidence_refs": []
+  },
+  "voltage_limits": [],
+  "current_limits": [
+    {
+      "limit_type": "ferrite_rated_current",
+      "max": 0.5,
+      "unit": "A",
+      "condition": "rated current; not actual board current",
+      "evidence_ref": "ds:p1:ratings",
+      "confidence": 0.92
+    }
+  ],
+  "thermal_behavior": {
+    "junction_temp_c": null,
+    "ambient_temp_c": null,
+    "theta_ja_c_per_w": null,
+    "theta_jc_c_per_w": null,
+    "power_dissipation_w": null,
+    "notes": "Heating depends on actual DC current and AC ripple spectrum.",
+    "evidence_refs": []
+  },
+  "operating_modes": [],
+  "confidence": {
+    "overall": 0.9,
+    "pin_roles": 0.85,
+    "power_behavior": 0.88,
+    "limits": 0.92,
+    "notes": "Manual pass-through component example."
+  },
+  "unresolved_fields": ["actual_board_current", "actual_noise_spectrum"],
+  "evidence": [
+    {
+      "id": "ds:p1:ordering",
+      "source": "exports/datasheets/BLM18AG601SN1D.pdf",
+      "page": 1,
+      "locator": "part number and package"
+    },
+    {
+      "id": "ds:p1:ratings",
+      "source": "exports/datasheets/BLM18AG601SN1D.pdf",
+      "page": 1,
+      "locator": "impedance and rated current table"
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "project": "topology_example_connector_fuse_regulator",
+  "generated_at_utc": "2026-05-28T00:00:00Z",
+  "sources": {
+    "schematic": "exports/example-thomson-export-sch.json",
+    "board": "exports/example-thomson-export-brd.json",
+    "stackup": "exports/example-thomson-export-stack.json",
+    "bom": "exports/example-bom.json",
+    "part_info_index": "exports/part_info/part_info_index.json",
+    "datasheet_manifest": "exports/datasheets/datasheet_manifest.jsonl"
+  },
+  "assumptions": [
+    {
+      "id": "assume_vin_24v_from_connector_label",
+      "description": "VIN connector rail nominal voltage is derived from explicit connector/net labeling in the example fixture.",
+      "basis": "example fixture requirement",
+      "confidence": 0.7
+    }
+  ],
+  "graph_summary": {
+    "net_count": 3,
+    "device_count": 3,
+    "power_rail_count": 2,
+    "branch_count": 2,
+    "unresolved_count": 2
+  },
+  "nets": [
+    {"net_name": "VIN_CONN", "net_type": "power", "pin_refs": ["J1.1", "F1.1"], "nominal_voltage_v": 24.0, "voltage_model_ref": "vm_vin_conn", "confidence": 0.7, "unresolved_flags": []},
+    {"net_name": "VIN_FUSED", "net_type": "power", "pin_refs": ["F1.2", "U1.VIN"], "nominal_voltage_v": 24.0, "voltage_model_ref": "vm_vin_fused", "confidence": 0.7, "unresolved_flags": []},
+    {"net_name": "GND", "net_type": "ground", "pin_refs": ["U1.GND"], "nominal_voltage_v": 0.0, "voltage_model_ref": null, "confidence": 0.9, "unresolved_flags": []}
+  ],
+  "power_rails": [
+    {
+      "net_name": "VIN_CONN",
+      "nominal_voltage_v": 24.0,
+      "voltage_source": "external_connector",
+      "source_components": ["J1"],
+      "pass_through_components": ["F1"],
+      "sink_components": ["U1"],
+      "total_nominal_current_a": null,
+      "total_max_current_a": null,
+      "unresolved_current_a": null,
+      "confidence": 0.68,
+      "current_model_ref": "cm_vin_conn",
+      "voltage_model_ref": "vm_vin_conn",
+      "unresolved_flags": ["external_input_current_unknown"]
+    },
+    {
+      "net_name": "VIN_FUSED",
+      "nominal_voltage_v": 24.0,
+      "voltage_source": "pass_through_from_upstream",
+      "source_components": ["F1"],
+      "pass_through_components": [],
+      "sink_components": ["U1"],
+      "total_nominal_current_a": null,
+      "total_max_current_a": null,
+      "unresolved_current_a": null,
+      "confidence": 0.68,
+      "current_model_ref": "cm_vin_fused",
+      "voltage_model_ref": "vm_vin_fused",
+      "unresolved_flags": ["regulator_input_current_unknown"]
+    }
+  ],
+  "devices": [
+    {"refdes": "J1", "mpn": "043045-0414", "manufacturer": "Molex", "device_role": "source", "input_nets": [], "output_nets": ["VIN_CONN"], "supply_nets": [], "ground_nets": [], "signal_nets": [], "part_info_ref": "exports/part_info/0430450414.json", "current_model": {"model_id": "cm_j1_source", "type": "source", "basis": "unresolved", "confidence": 0.5}, "confidence": 0.68, "unresolved": ["external_source_current_unknown"]},
+    {"refdes": "F1", "mpn": "MF-FSMF110X", "manufacturer": "Bourns", "device_role": "pass_through", "input_nets": ["VIN_CONN"], "output_nets": ["VIN_FUSED"], "supply_nets": [], "ground_nets": [], "signal_nets": [], "part_info_ref": "exports/part_info/mffsmf110x.json", "current_model": {"model_id": "cm_f1_limit", "type": "pass_through_limit", "basis": "rating_limit_only", "confidence": 0.9}, "confidence": 0.86, "unresolved": []},
+    {"refdes": "U1", "mpn": "TPS54302DDCR", "manufacturer": "Texas Instruments", "device_role": "source", "input_nets": ["VIN_FUSED"], "output_nets": [], "supply_nets": ["VIN_FUSED"], "ground_nets": ["GND"], "signal_nets": [], "part_info_ref": "exports/part_info/tps54302ddcr.json", "current_model": {"model_id": "cm_u1_input", "type": "regulator_input", "basis": "unresolved", "confidence": 0.4}, "confidence": 0.75, "unresolved": ["downstream_regulator_load_unknown"]}
+  ],
+  "pins": [
+    {"pin_ref": "J1.1", "refdes": "J1", "pin": "1", "pin_name": "1", "net_name": "VIN_CONN", "role": "source_output", "confidence": 0.68, "part_info_pin_ref": "1", "unresolved_flags": []},
+    {"pin_ref": "F1.1", "refdes": "F1", "pin": "1", "pin_name": "1", "net_name": "VIN_CONN", "role": "pass_through_input", "confidence": 0.86, "part_info_pin_ref": "1", "unresolved_flags": []},
+    {"pin_ref": "F1.2", "refdes": "F1", "pin": "2", "pin_name": "2", "net_name": "VIN_FUSED", "role": "pass_through_output", "confidence": 0.86, "part_info_pin_ref": "2", "unresolved_flags": []},
+    {"pin_ref": "U1.VIN", "refdes": "U1", "pin": "5", "pin_name": "VIN", "net_name": "VIN_FUSED", "role": "source_input", "confidence": 0.75, "part_info_pin_ref": "VIN", "unresolved_flags": ["input_current_unknown"]},
+    {"pin_ref": "U1.GND", "refdes": "U1", "pin": "2", "pin_name": "GND", "net_name": "GND", "role": "return", "confidence": 0.9, "part_info_pin_ref": "GND", "unresolved_flags": []}
+  ],
+  "pass_through_edges": [
+    {"edge_id": "pte_f1", "refdes": "F1", "type": "fuse", "from_net": "VIN_CONN", "to_net": "VIN_FUSED", "current_limit_a": 1.1, "limit_basis": "hold_current", "confidence": 0.9, "unresolved_flags": []}
+  ],
+  "source_nodes": [
+    {"node_id": "src_j1_vin", "source_type": "external_connector", "refdes": "J1", "pin_ref": "J1.1", "net_name": "VIN_CONN", "confidence": 0.68},
+    {"node_id": "src_f1_out", "source_type": "pass_through_output", "refdes": "F1", "pin_ref": "F1.2", "net_name": "VIN_FUSED", "confidence": 0.86}
+  ],
+  "sink_nodes": [
+    {"node_id": "sink_u1_vin", "sink_type": "regulator_input", "refdes": "U1", "pin_ref": "U1.VIN", "net_name": "VIN_FUSED", "current_model_ref": "cm_u1_input", "confidence": 0.75, "unresolved_flags": ["regulator_input_current_unknown"]}
+  ],
+  "branches": [
+    {"branch_id": "br_j1_to_f1", "net": "VIN_CONN", "source_ref": "J1.1", "sink_refs": ["F1.1"], "upstream_branch_id": null, "downstream_branch_ids": ["br_f1_to_u1"], "pass_through_refdes": ["F1"], "estimated_current_a": null, "current_basis": "unresolved", "conservative_bound": false, "copper_geometry_refs": ["track:vin_conn_1"], "thermal_check_required": true, "unresolved_flags": ["external_input_current_unknown"]},
+    {"branch_id": "br_f1_to_u1", "net": "VIN_FUSED", "source_ref": "F1.2", "sink_refs": ["U1.VIN"], "upstream_branch_id": "br_j1_to_f1", "downstream_branch_ids": [], "pass_through_refdes": [], "estimated_current_a": null, "current_basis": "unresolved", "conservative_bound": false, "copper_geometry_refs": ["track:vin_fused_1"], "thermal_check_required": true, "unresolved_flags": ["downstream_regulator_load_unknown"]}
+  ],
+  "copper_geometry_links": [
+    {"link_id": "cgl_vin_conn", "net": "VIN_CONN", "branch_id": "br_j1_to_f1", "tracks": ["track:vin_conn_1"], "vias": [], "zones": [], "pads": ["J1.1", "F1.1"], "layer": "TOP", "source_proximity": {"ref": "J1.1", "distance_mm": 0.0}, "sink_proximity": {"ref": "F1.1", "distance_mm": 0.0}, "branch_assignment_confidence": 0.6},
+    {"link_id": "cgl_vin_fused", "net": "VIN_FUSED", "branch_id": "br_f1_to_u1", "tracks": ["track:vin_fused_1"], "vias": [], "zones": [], "pads": ["F1.2", "U1.VIN"], "layer": "TOP", "source_proximity": {"ref": "F1.2", "distance_mm": 0.0}, "sink_proximity": {"ref": "U1.VIN", "distance_mm": 0.0}, "branch_assignment_confidence": 0.6}
+  ],
+  "current_models": [
+    {"model_id": "cm_j1_source", "target": "device:J1", "type": "unresolved", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.5, "unresolved_flags": ["external_source_current_unknown"]},
+    {"model_id": "cm_f1_limit", "target": "pass_through:F1", "type": "pass_through_limit", "basis": "rating_limit_only", "nominal_current_a": null, "max_current_a": 1.1, "conservative_bound": false, "confidence": 0.9, "unresolved_flags": []},
+    {"model_id": "cm_u1_input", "target": "device:U1", "type": "regulator_input", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.4, "unresolved_flags": ["downstream_regulator_load_unknown"]},
+    {"model_id": "cm_vin_conn", "target": "rail:VIN_CONN", "type": "rail_total", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.4, "unresolved_flags": ["external_input_current_unknown"]},
+    {"model_id": "cm_vin_fused", "target": "rail:VIN_FUSED", "type": "rail_total", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.4, "unresolved_flags": ["regulator_input_current_unknown"]}
+  ],
+  "voltage_models": [
+    {"model_id": "vm_vin_conn", "target": "net:VIN_CONN", "nominal_voltage_v": 24.0, "min_voltage_v": null, "max_voltage_v": null, "basis": "connector_definition", "confidence": 0.7, "unresolved_flags": []},
+    {"model_id": "vm_vin_fused", "target": "net:VIN_FUSED", "nominal_voltage_v": 24.0, "min_voltage_v": null, "max_voltage_v": null, "basis": "pass_through_propagation", "confidence": 0.7, "unresolved_flags": []}
+  ],
+  "unresolved": [
+    {"id": "unres_external_current", "type": "sink_current_unknown", "net": "VIN_CONN", "affected_refdes": ["J1", "F1"], "part_info_ref": null, "required_for": ["trace_current", "fuse_validation"], "human_review_needed": true, "notes": "External input/load current is not specified."},
+    {"id": "unres_regulator_input_current", "type": "sink_current_unknown", "net": "VIN_FUSED", "affected_refdes": ["U1"], "part_info_ref": "exports/part_info/tps54302ddcr.json", "required_for": ["trace_current", "thermal"], "human_review_needed": true, "notes": "Regulator input current requires downstream output load and efficiency."}
+  ],
+  "validation": {
+    "execution_pass": true,
+    "artifact_validation_pass": true,
+    "topology_consistency_pass": false,
+    "unresolved_items_present": true,
+    "human_review_needed": true,
+    "errors": [],
+    "warnings": ["Current is intentionally unresolved, not zero."]
+  }
+}

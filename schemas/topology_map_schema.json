@@ -1,0 +1,474 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Topology Map",
+  "description": "Schema for deterministic board-specific topology. This artifact may reference validated part_info, schematic, board, BOM, stackup, and datasheet manifest inputs, but must not contain AI-derived calculations.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "generated_at_utc",
+    "sources",
+    "assumptions",
+    "graph_summary",
+    "nets",
+    "power_rails",
+    "devices",
+    "pins",
+    "pass_through_edges",
+    "source_nodes",
+    "sink_nodes",
+    "branches",
+    "copper_geometry_links",
+    "current_models",
+    "voltage_models",
+    "unresolved",
+    "validation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sources": {
+      "$ref": "#/definitions/sources"
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/assumption"}
+    },
+    "graph_summary": {
+      "$ref": "#/definitions/graphSummary"
+    },
+    "nets": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/net"}
+    },
+    "power_rails": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/powerRail"}
+    },
+    "devices": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/device"}
+    },
+    "pins": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/pin"}
+    },
+    "pass_through_edges": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/passThroughEdge"}
+    },
+    "source_nodes": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/sourceNode"}
+    },
+    "sink_nodes": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/sinkNode"}
+    },
+    "branches": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/branch"}
+    },
+    "copper_geometry_links": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/copperGeometryLink"}
+    },
+    "current_models": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/currentModel"}
+    },
+    "voltage_models": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/voltageModel"}
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/unresolvedItem"}
+    },
+    "validation": {
+      "$ref": "#/definitions/validation"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "sources": {
+      "type": "object",
+      "required": ["schematic", "board", "stackup", "bom", "part_info_index", "datasheet_manifest"],
+      "properties": {
+        "schematic": {"type": ["string", "null"]},
+        "board": {"type": ["string", "null"]},
+        "stackup": {"type": ["string", "null"]},
+        "bom": {"type": ["string", "null"]},
+        "part_info_index": {"type": ["string", "null"]},
+        "datasheet_manifest": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "assumption": {
+      "type": "object",
+      "required": ["id", "description", "basis"],
+      "properties": {
+        "id": {"type": "string"},
+        "description": {"type": "string"},
+        "basis": {"type": "string"},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "graphSummary": {
+      "type": "object",
+      "required": ["net_count", "device_count", "power_rail_count", "branch_count", "unresolved_count"],
+      "properties": {
+        "net_count": {"type": "integer", "minimum": 0},
+        "device_count": {"type": "integer", "minimum": 0},
+        "power_rail_count": {"type": "integer", "minimum": 0},
+        "branch_count": {"type": "integer", "minimum": 0},
+        "unresolved_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "net": {
+      "type": "object",
+      "required": ["net_name", "net_type", "pin_refs", "confidence"],
+      "properties": {
+        "net_name": {"type": "string"},
+        "net_type": {
+          "type": "string",
+          "enum": ["power", "ground", "signal", "chassis", "earth", "unknown"]
+        },
+        "pin_refs": {"$ref": "#/definitions/stringArray"},
+        "nominal_voltage_v": {"type": ["number", "null"]},
+        "voltage_model_ref": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "powerRail": {
+      "type": "object",
+      "required": [
+        "net_name",
+        "nominal_voltage_v",
+        "voltage_source",
+        "source_components",
+        "pass_through_components",
+        "sink_components",
+        "total_nominal_current_a",
+        "total_max_current_a",
+        "unresolved_current_a",
+        "confidence"
+      ],
+      "properties": {
+        "net_name": {"type": "string"},
+        "nominal_voltage_v": {"type": ["number", "null"]},
+        "voltage_source": {"$ref": "#/definitions/voltageSource"},
+        "source_components": {"$ref": "#/definitions/stringArray"},
+        "pass_through_components": {"$ref": "#/definitions/stringArray"},
+        "sink_components": {"$ref": "#/definitions/stringArray"},
+        "total_nominal_current_a": {"type": ["number", "null"], "minimum": 0},
+        "total_max_current_a": {"type": ["number", "null"], "minimum": 0},
+        "unresolved_current_a": {"type": ["number", "null"], "minimum": 0},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "current_model_ref": {"type": ["string", "null"]},
+        "voltage_model_ref": {"type": ["string", "null"]},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "device": {
+      "type": "object",
+      "required": [
+        "refdes",
+        "mpn",
+        "manufacturer",
+        "device_role",
+        "input_nets",
+        "output_nets",
+        "supply_nets",
+        "ground_nets",
+        "signal_nets",
+        "part_info_ref",
+        "current_model",
+        "confidence",
+        "unresolved"
+      ],
+      "properties": {
+        "refdes": {"type": "string"},
+        "mpn": {"type": ["string", "null"]},
+        "manufacturer": {"type": ["string", "null"]},
+        "device_role": {"$ref": "#/definitions/deviceRole"},
+        "input_nets": {"$ref": "#/definitions/stringArray"},
+        "output_nets": {"$ref": "#/definitions/stringArray"},
+        "supply_nets": {"$ref": "#/definitions/stringArray"},
+        "ground_nets": {"$ref": "#/definitions/stringArray"},
+        "signal_nets": {"$ref": "#/definitions/stringArray"},
+        "part_info_ref": {"type": ["string", "null"]},
+        "current_model": {
+          "anyOf": [
+            {"$ref": "#/definitions/currentModelRef"},
+            {"type": "null"}
+          ]
+        },
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "unresolved": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "pin": {
+      "type": "object",
+      "required": ["pin_ref", "refdes", "pin", "pin_name", "net_name", "role", "confidence"],
+      "properties": {
+        "pin_ref": {"type": "string"},
+        "refdes": {"type": "string"},
+        "pin": {"type": "string"},
+        "pin_name": {"type": ["string", "null"]},
+        "net_name": {"type": ["string", "null"]},
+        "role": {"type": "string"},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "part_info_pin_ref": {"type": ["string", "null"]},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "passThroughEdge": {
+      "type": "object",
+      "required": ["edge_id", "refdes", "type", "from_net", "to_net", "current_limit_a", "limit_basis", "confidence"],
+      "properties": {
+        "edge_id": {"type": "string"},
+        "refdes": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["fuse", "ferrite", "zero_ohm_resistor", "jumper", "switch", "connector", "current_sense_resistor", "relay", "unknown"]
+        },
+        "from_net": {"type": ["string", "null"]},
+        "to_net": {"type": ["string", "null"]},
+        "current_limit_a": {"type": ["number", "null"], "minimum": 0},
+        "limit_basis": {
+          "type": "string",
+          "enum": ["hold_current", "trip_current", "rated_current", "pin_rating", "switch_rating", "resistor_power_rating", "unknown"]
+        },
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "sourceNode": {
+      "type": "object",
+      "required": ["node_id", "source_type", "refdes", "pin_ref", "net_name", "confidence"],
+      "properties": {
+        "node_id": {"type": "string"},
+        "source_type": {
+          "type": "string",
+          "enum": ["external_connector", "regulator_output", "battery", "usb_vbus", "pass_through_output", "unknown"]
+        },
+        "refdes": {"type": ["string", "null"]},
+        "pin_ref": {"type": ["string", "null"]},
+        "net_name": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "sinkNode": {
+      "type": "object",
+      "required": ["node_id", "sink_type", "refdes", "pin_ref", "net_name", "current_model_ref", "confidence"],
+      "properties": {
+        "node_id": {"type": "string"},
+        "sink_type": {
+          "type": "string",
+          "enum": ["ic_supply", "passive_load", "connector_output", "regulator_input", "unknown"]
+        },
+        "refdes": {"type": ["string", "null"]},
+        "pin_ref": {"type": ["string", "null"]},
+        "net_name": {"type": ["string", "null"]},
+        "current_model_ref": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "branch": {
+      "type": "object",
+      "required": [
+        "branch_id",
+        "net",
+        "source_ref",
+        "sink_refs",
+        "upstream_branch_id",
+        "downstream_branch_ids",
+        "pass_through_refdes",
+        "estimated_current_a",
+        "current_basis",
+        "conservative_bound",
+        "copper_geometry_refs",
+        "thermal_check_required",
+        "unresolved_flags"
+      ],
+      "properties": {
+        "branch_id": {"type": "string"},
+        "net": {"type": ["string", "null"]},
+        "source_ref": {"type": ["string", "null"]},
+        "sink_refs": {"$ref": "#/definitions/stringArray"},
+        "upstream_branch_id": {"type": ["string", "null"]},
+        "downstream_branch_ids": {"$ref": "#/definitions/stringArray"},
+        "pass_through_refdes": {"$ref": "#/definitions/stringArray"},
+        "estimated_current_a": {"type": ["number", "null"], "minimum": 0},
+        "current_basis": {"$ref": "#/definitions/currentBasis"},
+        "conservative_bound": {"type": "boolean"},
+        "copper_geometry_refs": {"$ref": "#/definitions/stringArray"},
+        "thermal_check_required": {"type": "boolean"},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "copperGeometryLink": {
+      "type": "object",
+      "required": ["link_id", "net", "branch_id", "tracks", "vias", "zones", "pads", "layer", "branch_assignment_confidence"],
+      "properties": {
+        "link_id": {"type": "string"},
+        "net": {"type": ["string", "null"]},
+        "branch_id": {"type": ["string", "null"]},
+        "tracks": {"$ref": "#/definitions/stringArray"},
+        "vias": {"$ref": "#/definitions/stringArray"},
+        "zones": {"$ref": "#/definitions/stringArray"},
+        "pads": {"$ref": "#/definitions/stringArray"},
+        "layer": {"type": ["string", "null"]},
+        "source_proximity": {"$ref": "#/definitions/nullableProximity"},
+        "sink_proximity": {"$ref": "#/definitions/nullableProximity"},
+        "branch_assignment_confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "currentModel": {
+      "type": "object",
+      "required": ["model_id", "target", "type", "basis", "nominal_current_a", "max_current_a", "conservative_bound", "confidence"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "target": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["rail_total", "branch", "sink_load", "regulator_input", "regulator_output", "pass_through_limit", "plane_distributed", "unresolved"]
+        },
+        "basis": {"$ref": "#/definitions/currentBasis"},
+        "nominal_current_a": {"type": ["number", "null"], "minimum": 0},
+        "max_current_a": {"type": ["number", "null"], "minimum": 0},
+        "conservative_bound": {"type": "boolean"},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "currentModelRef": {
+      "type": "object",
+      "required": ["model_id", "type", "basis", "confidence"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "type": {"type": "string"},
+        "basis": {"$ref": "#/definitions/currentBasis"},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "voltageModel": {
+      "type": "object",
+      "required": ["model_id", "target", "nominal_voltage_v", "basis", "confidence"],
+      "properties": {
+        "model_id": {"type": "string"},
+        "target": {"type": "string"},
+        "nominal_voltage_v": {"type": ["number", "null"]},
+        "min_voltage_v": {"type": ["number", "null"]},
+        "max_voltage_v": {"type": ["number", "null"]},
+        "basis": {
+          "type": "string",
+          "enum": ["explicit_requirement", "net_name", "regulator_output", "pass_through_propagation", "connector_definition", "part_info_limit", "unknown"]
+        },
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "unresolved_flags": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "unresolvedItem": {
+      "type": "object",
+      "required": ["id", "type", "required_for", "human_review_needed"],
+      "properties": {
+        "id": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["missing_part_info", "power_net_no_source", "sink_current_unknown", "voltage_unknown", "pass_through_unresolved", "copper_mapping_unresolved", "circular_propagation", "pin_mapping_conflict", "other"]
+        },
+        "net": {"type": ["string", "null"]},
+        "affected_refdes": {"$ref": "#/definitions/stringArray"},
+        "part_info_ref": {"type": ["string", "null"]},
+        "required_for": {"$ref": "#/definitions/stringArray"},
+        "human_review_needed": {"type": "boolean"},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "required": ["execution_pass", "artifact_validation_pass", "topology_consistency_pass", "unresolved_items_present", "human_review_needed"],
+      "properties": {
+        "execution_pass": {"type": "boolean"},
+        "artifact_validation_pass": {"type": "boolean"},
+        "topology_consistency_pass": {"type": "boolean"},
+        "unresolved_items_present": {"type": "boolean"},
+        "human_review_needed": {"type": "boolean"},
+        "errors": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "voltageSource": {
+      "type": "string",
+      "enum": ["external_connector", "regulator_output", "pass_through_from_upstream", "battery", "usb_vbus", "derived_from_net_name", "explicit_requirement", "unknown"]
+    },
+    "deviceRole": {
+      "type": "string",
+      "enum": ["source", "sink", "pass_through", "transformer", "passive", "mixed", "unknown"]
+    },
+    "currentBasis": {
+      "type": "string",
+      "enum": ["explicit_requirement", "datasheet_typical", "datasheet_max", "calculated_passive_load", "downstream_aggregation", "rating_limit_only", "class_default_assumption", "unresolved"]
+    },
+    "proximity": {
+      "type": "object",
+      "required": ["ref", "distance_mm"],
+      "properties": {
+        "ref": {"type": "string"},
+        "distance_mm": {"type": ["number", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "nullableProximity": {
+      "anyOf": [
+        {"$ref": "#/definitions/proximity"},
+        {"type": "null"}
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

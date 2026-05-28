@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "project": "topology_example_unresolved_power_rail",
+  "generated_at_utc": "2026-05-28T00:00:00Z",
+  "sources": {
+    "schematic": "exports/example-thomson-export-sch.json",
+    "board": "exports/example-thomson-export-brd.json",
+    "stackup": "exports/example-thomson-export-stack.json",
+    "bom": "exports/example-bom.json",
+    "part_info_index": "exports/part_info/part_info_index.json",
+    "datasheet_manifest": "exports/datasheets/datasheet_manifest.jsonl"
+  },
+  "assumptions": [],
+  "graph_summary": {"net_count": 1, "device_count": 1, "power_rail_count": 1, "branch_count": 1, "unresolved_count": 2},
+  "nets": [
+    {"net_name": "V_AUX", "net_type": "power", "pin_refs": ["U9.VDD"], "nominal_voltage_v": null, "voltage_model_ref": "vm_vaux", "confidence": 0.2, "unresolved_flags": ["power_net_no_source", "voltage_unknown", "sink_current_unknown"]}
+  ],
+  "power_rails": [
+    {"net_name": "V_AUX", "nominal_voltage_v": null, "voltage_source": "unknown", "source_components": [], "pass_through_components": [], "sink_components": ["U9"], "total_nominal_current_a": null, "total_max_current_a": null, "unresolved_current_a": null, "confidence": 0.2, "current_model_ref": "cm_vaux", "voltage_model_ref": "vm_vaux", "unresolved_flags": ["power_net_no_source", "sink_current_unknown"]}
+  ],
+  "devices": [
+    {"refdes": "U9", "mpn": "UNKNOWN-IC", "manufacturer": null, "device_role": "unknown", "input_nets": ["V_AUX"], "output_nets": [], "supply_nets": ["V_AUX"], "ground_nets": [], "signal_nets": [], "part_info_ref": null, "current_model": {"model_id": "cm_u9_load", "type": "unresolved", "basis": "unresolved", "confidence": 0.1}, "confidence": 0.1, "unresolved": ["missing_part_info", "sink_current_unknown"]}
+  ],
+  "pins": [
+    {"pin_ref": "U9.VDD", "refdes": "U9", "pin": "1", "pin_name": "VDD", "net_name": "V_AUX", "role": "unknown_power_pin", "confidence": 0.2, "part_info_pin_ref": null, "unresolved_flags": ["missing_part_info", "voltage_unknown", "sink_current_unknown"]}
+  ],
+  "pass_through_edges": [],
+  "source_nodes": [],
+  "sink_nodes": [
+    {"node_id": "sink_u9_vdd", "sink_type": "unknown", "refdes": "U9", "pin_ref": "U9.VDD", "net_name": "V_AUX", "current_model_ref": "cm_u9_load", "confidence": 0.1, "unresolved_flags": ["sink_current_unknown"]}
+  ],
+  "branches": [
+    {"branch_id": "br_vaux_unresolved", "net": "V_AUX", "source_ref": null, "sink_refs": ["U9.VDD"], "upstream_branch_id": null, "downstream_branch_ids": [], "pass_through_refdes": [], "estimated_current_a": null, "current_basis": "unresolved", "conservative_bound": false, "copper_geometry_refs": [], "thermal_check_required": true, "unresolved_flags": ["power_net_no_source", "sink_current_unknown"]}
+  ],
+  "copper_geometry_links": [],
+  "current_models": [
+    {"model_id": "cm_u9_load", "target": "device:U9", "type": "unresolved", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.1, "unresolved_flags": ["missing_part_info", "sink_current_unknown"]},
+    {"model_id": "cm_vaux", "target": "rail:V_AUX", "type": "unresolved", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.1, "unresolved_flags": ["power_net_no_source", "sink_current_unknown"]}
+  ],
+  "voltage_models": [
+    {"model_id": "vm_vaux", "target": "net:V_AUX", "nominal_voltage_v": null, "min_voltage_v": null, "max_voltage_v": null, "basis": "unknown", "confidence": 0.1, "unresolved_flags": ["voltage_unknown"]}
+  ],
+  "unresolved": [
+    {"id": "unres_vaux_source", "type": "power_net_no_source", "net": "V_AUX", "affected_refdes": ["U9"], "part_info_ref": null, "required_for": ["voltage_clearance", "trace_current"], "human_review_needed": true, "notes": "Power rail has a sink but no deterministic source."},
+    {"id": "unres_u9_current", "type": "sink_current_unknown", "net": "V_AUX", "affected_refdes": ["U9"], "part_info_ref": null, "required_for": ["trace_current", "thermal"], "human_review_needed": true, "notes": "Missing part_info prevents current extraction."}
+  ],
+  "validation": {"execution_pass": true, "artifact_validation_pass": true, "topology_consistency_pass": false, "unresolved_items_present": true, "human_review_needed": true, "errors": [], "warnings": ["Missing current is represented as null plus unresolved records, never zero."]}
+}

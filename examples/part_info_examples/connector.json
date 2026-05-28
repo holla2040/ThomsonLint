@@ -1,0 +1,173 @@
+{
+  "schema_version": "1.0",
+  "mpn": "043045-0414",
+  "manufacturer": "Molex",
+  "normalized_mpn": "0430450414",
+  "component_category": "connector",
+  "package": {
+    "name": "2x2 through-hole header",
+    "pin_count": 4,
+    "thermal_pad": false,
+    "evidence_refs": ["ds:p1:mechanical"]
+  },
+  "datasheet_sources": [
+    {
+      "source_id": "ds",
+      "local_path": "exports/datasheets/043045-0414.pdf",
+      "url": null,
+      "manufacturer_source": true,
+      "retrieved_at_utc": null
+    }
+  ],
+  "extraction_method": {
+    "type": "manual",
+    "model": null,
+    "prompt_version": null,
+    "extracted_at_utc": "2026-05-28T00:00:00Z",
+    "text_extraction_tool": null,
+    "human_reviewed": true
+  },
+  "pin_roles": [
+    {
+      "pin": "1",
+      "pin_name": "1",
+      "role": "power",
+      "direction": "bidirectional",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "pass_through_input",
+      "voltage_range_v": null,
+      "notes": "Connector pin role is board-specific; example marks it as usable for power.",
+      "evidence_refs": ["ds:p2:ratings"]
+    },
+    {
+      "pin": "2",
+      "pin_name": "2",
+      "role": "power",
+      "direction": "bidirectional",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "pass_through_input",
+      "voltage_range_v": null,
+      "notes": "Connector pin role is board-specific; example marks it as usable for power.",
+      "evidence_refs": ["ds:p2:ratings"]
+    },
+    {
+      "pin": "3",
+      "pin_name": "3",
+      "role": "power",
+      "direction": "bidirectional",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "pass_through_output",
+      "voltage_range_v": null,
+      "notes": "Connector pin role is board-specific; example marks it as usable for power.",
+      "evidence_refs": ["ds:p2:ratings"]
+    },
+    {
+      "pin": "4",
+      "pin_name": "4",
+      "role": "power",
+      "direction": "bidirectional",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "pass_through_output",
+      "voltage_range_v": null,
+      "notes": "Connector pin role is board-specific; example marks it as usable for power.",
+      "evidence_refs": ["ds:p2:ratings"]
+    }
+  ],
+  "power_behavior": {
+    "device_role": "pass_through",
+    "input_pins": ["1", "2"],
+    "output_pins": ["3", "4"],
+    "ground_pins": [],
+    "enable_pins": [],
+    "feedback_pins": [],
+    "nominal_current_by_rail": [],
+    "max_current_by_rail": [],
+    "quiescent_current_a": null,
+    "standby_current_a": null,
+    "peak_current_a": null,
+    "max_output_current_a": null,
+    "efficiency_data": [],
+    "assumptions_allowed": false
+  },
+  "load_behavior": {
+    "acts_as_load": false,
+    "load_type": null,
+    "notes": "Connector rating is not actual board load current.",
+    "evidence_refs": ["ds:p2:ratings"]
+  },
+  "pass_through_behavior": {
+    "is_pass_through": true,
+    "pass_through_type": "connector",
+    "input_pins": ["1", "2"],
+    "output_pins": ["3", "4"],
+    "bidirectional": true,
+    "fuse_hold_current_a": null,
+    "fuse_trip_current_a": null,
+    "ferrite_rated_current_a": null,
+    "ferrite_impedance_ohm": null,
+    "zero_ohm_resistor_rating_a": null,
+    "jumper_rating_a": null,
+    "switch_current_rating_a": null,
+    "connector_pin_current_rating_a": {
+      "max": 5.0,
+      "unit": "A",
+      "condition": "per pin current rating; not actual board current",
+      "evidence_ref": "ds:p2:ratings",
+      "confidence": 0.85
+    },
+    "current_sense_resistor_rating_w": null,
+    "evidence_refs": ["ds:p2:ratings"]
+  },
+  "signal_behavior": {
+    "signal_roles": ["unknown"],
+    "differential_pair_pins": [],
+    "evidence_refs": []
+  },
+  "voltage_limits": [],
+  "current_limits": [
+    {
+      "limit_type": "connector_pin_current_rating",
+      "max": 5.0,
+      "unit": "A",
+      "condition": "per pin current rating; not actual board current",
+      "evidence_ref": "ds:p2:ratings",
+      "confidence": 0.85
+    }
+  ],
+  "thermal_behavior": {
+    "junction_temp_c": null,
+    "ambient_temp_c": null,
+    "theta_ja_c_per_w": null,
+    "theta_jc_c_per_w": null,
+    "power_dissipation_w": null,
+    "notes": "Connector derating depends on pin grouping, wire gauge, ambient temperature, and terminal rise.",
+    "evidence_refs": []
+  },
+  "operating_modes": [],
+  "confidence": {
+    "overall": 0.78,
+    "pin_roles": 0.55,
+    "power_behavior": 0.68,
+    "limits": 0.85,
+    "notes": "Datasheet rating is known; board-specific pin usage is unresolved."
+  },
+  "unresolved_fields": ["which_pins_are_power_on_board", "actual_current_per_pin", "temperature_derating"],
+  "evidence": [
+    {
+      "id": "ds:p1:mechanical",
+      "source": "exports/datasheets/043045-0414.pdf",
+      "page": 1,
+      "locator": "mechanical drawing and circuit count"
+    },
+    {
+      "id": "ds:p2:ratings",
+      "source": "exports/datasheets/043045-0414.pdf",
+      "page": 2,
+      "locator": "electrical ratings"
+    }
+  ]
+}

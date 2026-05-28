@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "project": "topology_example_multi_sink_power_plane",
+  "generated_at_utc": "2026-05-28T00:00:00Z",
+  "sources": {
+    "schematic": "exports/example-thomson-export-sch.json",
+    "board": "exports/example-thomson-export-brd.json",
+    "stackup": "exports/example-thomson-export-stack.json",
+    "bom": "exports/example-bom.json",
+    "part_info_index": "exports/part_info/part_info_index.json",
+    "datasheet_manifest": "exports/datasheets/datasheet_manifest.jsonl"
+  },
+  "assumptions": [
+    {"id": "assume_plane_level_0", "description": "Plane current is associated at net level only in this example.", "basis": "topology precision level 0", "confidence": 0.5}
+  ],
+  "graph_summary": {"net_count": 2, "device_count": 4, "power_rail_count": 1, "branch_count": 1, "unresolved_count": 1},
+  "nets": [
+    {"net_name": "5V", "net_type": "power", "pin_refs": ["U1.VOUT", "U2.VDD", "U3.VDD", "J2.1"], "nominal_voltage_v": 5.0, "voltage_model_ref": "vm_5v", "confidence": 0.8, "unresolved_flags": ["partial_unresolved_load"]},
+    {"net_name": "GND", "net_type": "ground", "pin_refs": ["U1.GND", "U2.GND", "U3.GND", "J2.2"], "nominal_voltage_v": 0.0, "voltage_model_ref": null, "confidence": 0.95, "unresolved_flags": []}
+  ],
+  "power_rails": [
+    {"net_name": "5V", "nominal_voltage_v": 5.0, "voltage_source": "regulator_output", "source_components": ["U1"], "pass_through_components": [], "sink_components": ["U2", "U3", "J2"], "total_nominal_current_a": 0.85, "total_max_current_a": 1.8, "unresolved_current_a": 0.2, "confidence": 0.64, "current_model_ref": "cm_5v_plane", "voltage_model_ref": "vm_5v", "unresolved_flags": ["j2_downstream_current_unknown"]}
+  ],
+  "devices": [
+    {"refdes": "U1", "mpn": "TPS54531", "manufacturer": "Texas Instruments", "device_role": "source", "input_nets": ["VIN"], "output_nets": ["5V"], "supply_nets": ["VIN"], "ground_nets": ["GND"], "signal_nets": [], "part_info_ref": "exports/part_info/tps54531.json", "current_model": {"model_id": "cm_u1_out", "type": "regulator_output", "basis": "downstream_aggregation", "confidence": 0.64}, "confidence": 0.75, "unresolved": []},
+    {"refdes": "U2", "mpn": "STM32F407VGT6", "manufacturer": "STMicroelectronics", "device_role": "sink", "input_nets": ["5V"], "output_nets": [], "supply_nets": ["5V"], "ground_nets": ["GND"], "signal_nets": [], "part_info_ref": "exports/part_info/stm32f407vgt6.json", "current_model": {"model_id": "cm_u2_load", "type": "sink_load", "basis": "datasheet_typical", "confidence": 0.62}, "confidence": 0.7, "unresolved": []},
+    {"refdes": "U3", "mpn": "LAN8720A", "manufacturer": "Microchip", "device_role": "sink", "input_nets": ["5V"], "output_nets": [], "supply_nets": ["5V"], "ground_nets": ["GND"], "signal_nets": [], "part_info_ref": "exports/part_info/lan8720a.json", "current_model": {"model_id": "cm_u3_load", "type": "sink_load", "basis": "datasheet_max", "confidence": 0.7}, "confidence": 0.7, "unresolved": []},
+    {"refdes": "J2", "mpn": "043045-0414", "manufacturer": "Molex", "device_role": "mixed", "input_nets": ["5V"], "output_nets": ["5V"], "supply_nets": ["5V"], "ground_nets": ["GND"], "signal_nets": [], "part_info_ref": "exports/part_info/0430450414.json", "current_model": {"model_id": "cm_j2_load", "type": "unresolved", "basis": "unresolved", "confidence": 0.3}, "confidence": 0.55, "unresolved": ["downstream_connector_current_unknown"]}
+  ],
+  "pins": [
+    {"pin_ref": "U1.VOUT", "refdes": "U1", "pin": "5", "pin_name": "VOUT", "net_name": "5V", "role": "source_output", "confidence": 0.75, "part_info_pin_ref": "VOUT", "unresolved_flags": []},
+    {"pin_ref": "U2.VDD", "refdes": "U2", "pin": "19", "pin_name": "VDD", "net_name": "5V", "role": "sink_supply", "confidence": 0.7, "part_info_pin_ref": "VDD", "unresolved_flags": []},
+    {"pin_ref": "U3.VDD", "refdes": "U3", "pin": "3", "pin_name": "VDD", "net_name": "5V", "role": "sink_supply", "confidence": 0.7, "part_info_pin_ref": "VDD", "unresolved_flags": []},
+    {"pin_ref": "J2.1", "refdes": "J2", "pin": "1", "pin_name": "1", "net_name": "5V", "role": "connector_output", "confidence": 0.55, "part_info_pin_ref": "1", "unresolved_flags": ["downstream_connector_current_unknown"]}
+  ],
+  "pass_through_edges": [],
+  "source_nodes": [
+    {"node_id": "src_u1_5v", "source_type": "regulator_output", "refdes": "U1", "pin_ref": "U1.VOUT", "net_name": "5V", "confidence": 0.75}
+  ],
+  "sink_nodes": [
+    {"node_id": "sink_u2_vdd", "sink_type": "ic_supply", "refdes": "U2", "pin_ref": "U2.VDD", "net_name": "5V", "current_model_ref": "cm_u2_load", "confidence": 0.7, "unresolved_flags": []},
+    {"node_id": "sink_u3_vdd", "sink_type": "ic_supply", "refdes": "U3", "pin_ref": "U3.VDD", "net_name": "5V", "current_model_ref": "cm_u3_load", "confidence": 0.7, "unresolved_flags": []},
+    {"node_id": "sink_j2_5v", "sink_type": "connector_output", "refdes": "J2", "pin_ref": "J2.1", "net_name": "5V", "current_model_ref": "cm_j2_load", "confidence": 0.3, "unresolved_flags": ["downstream_connector_current_unknown"]}
+  ],
+  "branches": [
+    {"branch_id": "br_5v_plane_level0", "net": "5V", "source_ref": "U1.VOUT", "sink_refs": ["U2.VDD", "U3.VDD", "J2.1"], "upstream_branch_id": null, "downstream_branch_ids": [], "pass_through_refdes": [], "estimated_current_a": 0.85, "current_basis": "downstream_aggregation", "conservative_bound": false, "copper_geometry_refs": ["zone:5v_l2", "via:5v_1", "via:5v_2"], "thermal_check_required": true, "unresolved_flags": ["j2_downstream_current_unknown"]}
+  ],
+  "copper_geometry_links": [
+    {"link_id": "cgl_5v_plane_l2", "net": "5V", "branch_id": "br_5v_plane_level0", "tracks": [], "vias": ["via:5v_1", "via:5v_2"], "zones": ["zone:5v_l2"], "pads": ["U1.VOUT", "U2.VDD", "U3.VDD", "J2.1"], "layer": "LAYER2", "source_proximity": {"ref": "U1.VOUT", "distance_mm": 0.0}, "sink_proximity": null, "branch_assignment_confidence": 0.35}
+  ],
+  "current_models": [
+    {"model_id": "cm_u1_out", "target": "device:U1", "type": "regulator_output", "basis": "downstream_aggregation", "nominal_current_a": 0.85, "max_current_a": 1.8, "conservative_bound": false, "confidence": 0.64, "unresolved_flags": ["j2_downstream_current_unknown"]},
+    {"model_id": "cm_u2_load", "target": "device:U2", "type": "sink_load", "basis": "datasheet_typical", "nominal_current_a": 0.35, "max_current_a": 0.8, "conservative_bound": false, "confidence": 0.62, "unresolved_flags": []},
+    {"model_id": "cm_u3_load", "target": "device:U3", "type": "sink_load", "basis": "datasheet_max", "nominal_current_a": 0.3, "max_current_a": 0.8, "conservative_bound": false, "confidence": 0.7, "unresolved_flags": []},
+    {"model_id": "cm_j2_load", "target": "device:J2", "type": "unresolved", "basis": "unresolved", "nominal_current_a": null, "max_current_a": null, "conservative_bound": false, "confidence": 0.3, "unresolved_flags": ["downstream_connector_current_unknown"]},
+    {"model_id": "cm_5v_plane", "target": "rail:5V", "type": "plane_distributed", "basis": "downstream_aggregation", "nominal_current_a": 0.85, "max_current_a": 1.8, "conservative_bound": false, "confidence": 0.64, "unresolved_flags": ["j2_downstream_current_unknown"]}
+  ],
+  "voltage_models": [
+    {"model_id": "vm_5v", "target": "net:5V", "nominal_voltage_v": 5.0, "min_voltage_v": null, "max_voltage_v": null, "basis": "regulator_output", "confidence": 0.8, "unresolved_flags": []}
+  ],
+  "unresolved": [
+    {"id": "unres_j2_downstream_current", "type": "sink_current_unknown", "net": "5V", "affected_refdes": ["J2"], "part_info_ref": "exports/part_info/0430450414.json", "required_for": ["plane_current", "connector_current_validation"], "human_review_needed": true, "notes": "Connector rating is known, but downstream load current is not."}
+  ],
+  "validation": {"execution_pass": true, "artifact_validation_pass": true, "topology_consistency_pass": false, "unresolved_items_present": true, "human_review_needed": true, "errors": [], "warnings": ["Plane mapping is Level 0 net-level precision."]}
+}

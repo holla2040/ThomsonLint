@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "mpn": "GRM155R71H104KE14D",
+  "manufacturer": "Murata",
+  "normalized_mpn": "grm155r71h104ke14d",
+  "component_category": "capacitor",
+  "package": {
+    "name": "0402",
+    "pin_count": 2,
+    "thermal_pad": false,
+    "evidence_refs": ["ds:p1:ordering"]
+  },
+  "datasheet_sources": [
+    {
+      "source_id": "ds",
+      "local_path": "exports/datasheets/GRM155R71H104KE14D.pdf",
+      "url": null,
+      "manufacturer_source": true,
+      "retrieved_at_utc": null
+    }
+  ],
+  "extraction_method": {
+    "type": "manual",
+    "model": null,
+    "prompt_version": null,
+    "extracted_at_utc": "2026-05-28T00:00:00Z",
+    "text_extraction_tool": null,
+    "human_reviewed": true
+  },
+  "pin_roles": [
+    {
+      "pin": "1",
+      "pin_name": "1",
+      "role": "passive",
+      "direction": "passive",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "unknown",
+      "voltage_range_v": null,
+      "notes": "Passive two-terminal capacitor.",
+      "evidence_refs": ["ds:p1:ordering"]
+    },
+    {
+      "pin": "2",
+      "pin_name": "2",
+      "role": "passive",
+      "direction": "passive",
+      "power_domain": null,
+      "associated_supply": null,
+      "current_role": "unknown",
+      "voltage_range_v": null,
+      "notes": "Passive two-terminal capacitor.",
+      "evidence_refs": ["ds:p1:ordering"]
+    }
+  ],
+  "power_behavior": {
+    "device_role": "passive",
+    "input_pins": [],
+    "output_pins": [],
+    "ground_pins": [],
+    "enable_pins": [],
+    "feedback_pins": [],
+    "nominal_current_by_rail": [],
+    "max_current_by_rail": [],
+    "quiescent_current_a": null,
+    "standby_current_a": null,
+    "peak_current_a": null,
+    "max_output_current_a": null,
+    "efficiency_data": [],
+    "assumptions_allowed": false
+  },
+  "load_behavior": {
+    "acts_as_load": false,
+    "load_type": null,
+    "notes": "Decoupling capacitor; no DC load current model.",
+    "evidence_refs": ["ds:p1:ratings"]
+  },
+  "pass_through_behavior": {
+    "is_pass_through": false,
+    "pass_through_type": null,
+    "input_pins": [],
+    "output_pins": [],
+    "bidirectional": null,
+    "fuse_hold_current_a": null,
+    "fuse_trip_current_a": null,
+    "ferrite_rated_current_a": null,
+    "ferrite_impedance_ohm": null,
+    "zero_ohm_resistor_rating_a": null,
+    "jumper_rating_a": null,
+    "switch_current_rating_a": null,
+    "connector_pin_current_rating_a": null,
+    "current_sense_resistor_rating_w": null,
+    "evidence_refs": []
+  },
+  "signal_behavior": {
+    "signal_roles": ["unknown"],
+    "differential_pair_pins": [],
+    "evidence_refs": []
+  },
+  "voltage_limits": [
+    {
+      "limit_type": "rated_voltage",
+      "max": 50.0,
+      "unit": "V",
+      "condition": "rated voltage",
+      "evidence_ref": "ds:p1:ratings",
+      "confidence": 0.9
+    }
+  ],
+  "current_limits": [],
+  "thermal_behavior": {
+    "junction_temp_c": null,
+    "ambient_temp_c": null,
+    "theta_ja_c_per_w": null,
+    "theta_jc_c_per_w": null,
+    "power_dissipation_w": null,
+    "notes": "Capacitor heating from ripple current is not modeled in this example.",
+    "evidence_refs": []
+  },
+  "operating_modes": [],
+  "confidence": {
+    "overall": 0.84,
+    "pin_roles": 0.8,
+    "power_behavior": 0.82,
+    "limits": 0.9,
+    "notes": "Manual passive example."
+  },
+  "unresolved_fields": ["dc_bias_derating_curve_if_needed", "ripple_current_if_applicable"],
+  "evidence": [
+    {
+      "id": "ds:p1:ordering",
+      "source": "exports/datasheets/GRM155R71H104KE14D.pdf",
+      "page": 1,
+      "locator": "part number and package"
+    },
+    {
+      "id": "ds:p1:ratings",
+      "source": "exports/datasheets/GRM155R71H104KE14D.pdf",
+      "page": 1,
+      "locator": "capacitance and rated voltage"
+    }
+  ]
+}

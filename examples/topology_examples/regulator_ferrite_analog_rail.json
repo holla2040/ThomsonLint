@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "project": "topology_example_regulator_ferrite_analog_rail",
+  "generated_at_utc": "2026-05-28T00:00:00Z",
+  "sources": {
+    "schematic": "exports/example-thomson-export-sch.json",
+    "board": "exports/example-thomson-export-brd.json",
+    "stackup": "exports/example-thomson-export-stack.json",
+    "bom": "exports/example-bom.json",
+    "part_info_index": "exports/part_info/part_info_index.json",
+    "datasheet_manifest": "exports/datasheets/datasheet_manifest.jsonl"
+  },
+  "assumptions": [],
+  "graph_summary": {"net_count": 3, "device_count": 3, "power_rail_count": 2, "branch_count": 2, "unresolved_count": 0},
+  "nets": [
+    {"net_name": "3V3", "net_type": "power", "pin_refs": ["U2.VOUT", "FB1.1", "U3.VDD"], "nominal_voltage_v": 3.3, "voltage_model_ref": "vm_3v3", "confidence": 0.82, "unresolved_flags": []},
+    {"net_name": "3V3_A", "net_type": "power", "pin_refs": ["FB1.2", "U4.VDDA"], "nominal_voltage_v": 3.3, "voltage_model_ref": "vm_3v3a", "confidence": 0.78, "unresolved_flags": []},
+    {"net_name": "GND", "net_type": "ground", "pin_refs": ["U2.GND", "U3.GND", "U4.VSSA"], "nominal_voltage_v": 0.0, "voltage_model_ref": null, "confidence": 0.95, "unresolved_flags": []}
+  ],
+  "power_rails": [
+    {"net_name": "3V3", "nominal_voltage_v": 3.3, "voltage_source": "regulator_output", "source_components": ["U2"], "pass_through_components": ["FB1"], "sink_components": ["U3"], "total_nominal_current_a": 0.2, "total_max_current_a": 0.5, "unresolved_current_a": null, "confidence": 0.75, "current_model_ref": "cm_3v3", "voltage_model_ref": "vm_3v3", "unresolved_flags": []},
+    {"net_name": "3V3_A", "nominal_voltage_v": 3.3, "voltage_source": "pass_through_from_upstream", "source_components": ["FB1"], "pass_through_components": [], "sink_components": ["U4"], "total_nominal_current_a": 0.025, "total_max_current_a": 0.06, "unresolved_current_a": null, "confidence": 0.7, "current_model_ref": "cm_3v3a", "voltage_model_ref": "vm_3v3a", "unresolved_flags": []}
+  ],
+  "devices": [
+    {"refdes": "U2", "mpn": "AP2112K-3.3", "manufacturer": "Diodes Incorporated", "device_role": "source", "input_nets": ["VIN"], "output_nets": ["3V3"], "supply_nets": ["VIN"], "ground_nets": ["GND"], "signal_nets": [], "part_info_ref": "exports/part_info/ap2112k33.json", "current_model": {"model_id": "cm_u2_out", "type": "regulator_output", "basis": "downstream_aggregation", "confidence": 0.75}, "confidence": 0.8, "unresolved": []},
+    {"refdes": "FB1", "mpn": "BLM18AG601SN1D", "manufacturer": "Murata", "device_role": "pass_through", "input_nets": ["3V3"], "output_nets": ["3V3_A"], "supply_nets": [], "ground_nets": [], "signal_nets": [], "part_info_ref": "exports/part_info/blm18ag601sn1d.json", "current_model": {"model_id": "cm_fb1_limit", "type": "pass_through_limit", "basis": "rating_limit_only", "confidence": 0.92}, "confidence": 0.9, "unresolved": []},
+    {"refdes": "U4", "mpn": "ADS7042", "manufacturer": "Texas Instruments", "device_role": "sink", "input_nets": ["3V3_A"], "output_nets": [], "supply_nets": ["3V3_A"], "ground_nets": ["GND"], "signal_nets": ["SPI_SCLK", "SPI_MISO"], "part_info_ref": "exports/part_info/ads7042.json", "current_model": {"model_id": "cm_u4_load", "type": "sink_load", "basis": "datasheet_typical", "confidence": 0.72}, "confidence": 0.72, "unresolved": []}
+  ],
+  "pins": [
+    {"pin_ref": "U2.VOUT", "refdes": "U2", "pin": "5", "pin_name": "VOUT", "net_name": "3V3", "role": "source_output", "confidence": 0.8, "part_info_pin_ref": "VOUT", "unresolved_flags": []},
+    {"pin_ref": "FB1.1", "refdes": "FB1", "pin": "1", "pin_name": "1", "net_name": "3V3", "role": "pass_through_input", "confidence": 0.9, "part_info_pin_ref": "1", "unresolved_flags": []},
+    {"pin_ref": "FB1.2", "refdes": "FB1", "pin": "2", "pin_name": "2", "net_name": "3V3_A", "role": "pass_through_output", "confidence": 0.9, "part_info_pin_ref": "2", "unresolved_flags": []},
+    {"pin_ref": "U4.VDDA", "refdes": "U4", "pin": "8", "pin_name": "AVDD", "net_name": "3V3_A", "role": "sink_supply", "confidence": 0.72, "part_info_pin_ref": "AVDD", "unresolved_flags": []}
+  ],
+  "pass_through_edges": [
+    {"edge_id": "pte_fb1", "refdes": "FB1", "type": "ferrite", "from_net": "3V3", "to_net": "3V3_A", "current_limit_a": 0.5, "limit_basis": "rated_current", "confidence": 0.92, "unresolved_flags": []}
+  ],
+  "source_nodes": [
+    {"node_id": "src_u2_3v3", "source_type": "regulator_output", "refdes": "U2", "pin_ref": "U2.VOUT", "net_name": "3V3", "confidence": 0.8},
+    {"node_id": "src_fb1_3v3a", "source_type": "pass_through_output", "refdes": "FB1", "pin_ref": "FB1.2", "net_name": "3V3_A", "confidence": 0.9}
+  ],
+  "sink_nodes": [
+    {"node_id": "sink_u3_vdd", "sink_type": "ic_supply", "refdes": "U3", "pin_ref": "U3.VDD", "net_name": "3V3", "current_model_ref": "cm_u3_load", "confidence": 0.7, "unresolved_flags": []},
+    {"node_id": "sink_u4_vdda", "sink_type": "ic_supply", "refdes": "U4", "pin_ref": "U4.VDDA", "net_name": "3V3_A", "current_model_ref": "cm_u4_load", "confidence": 0.72, "unresolved_flags": []}
+  ],
+  "branches": [
+    {"branch_id": "br_u2_to_fb1", "net": "3V3", "source_ref": "U2.VOUT", "sink_refs": ["FB1.1", "U3.VDD"], "upstream_branch_id": null, "downstream_branch_ids": ["br_fb1_to_u4"], "pass_through_refdes": ["FB1"], "estimated_current_a": 0.225, "current_basis": "downstream_aggregation", "conservative_bound": false, "copper_geometry_refs": ["track:3v3_1"], "thermal_check_required": true, "unresolved_flags": []},
+    {"branch_id": "br_fb1_to_u4", "net": "3V3_A", "source_ref": "FB1.2", "sink_refs": ["U4.VDDA"], "upstream_branch_id": "br_u2_to_fb1", "downstream_branch_ids": [], "pass_through_refdes": [], "estimated_current_a": 0.025, "current_basis": "datasheet_typical", "conservative_bound": false, "copper_geometry_refs": ["track:3v3a_1"], "thermal_check_required": false, "unresolved_flags": []}
+  ],
+  "copper_geometry_links": [
+    {"link_id": "cgl_3v3", "net": "3V3", "branch_id": "br_u2_to_fb1", "tracks": ["track:3v3_1"], "vias": ["via:3v3_1"], "zones": [], "pads": ["U2.VOUT", "FB1.1", "U3.VDD"], "layer": "TOP", "source_proximity": {"ref": "U2.VOUT", "distance_mm": 0.0}, "sink_proximity": {"ref": "FB1.1", "distance_mm": 0.0}, "branch_assignment_confidence": 0.65},
+    {"link_id": "cgl_3v3a", "net": "3V3_A", "branch_id": "br_fb1_to_u4", "tracks": ["track:3v3a_1"], "vias": [], "zones": [], "pads": ["FB1.2", "U4.VDDA"], "layer": "TOP", "source_proximity": {"ref": "FB1.2", "distance_mm": 0.0}, "sink_proximity": {"ref": "U4.VDDA", "distance_mm": 0.0}, "branch_assignment_confidence": 0.75}
+  ],
+  "current_models": [
+    {"model_id": "cm_u2_out", "target": "device:U2", "type": "regulator_output", "basis": "downstream_aggregation", "nominal_current_a": 0.225, "max_current_a": 0.56, "conservative_bound": false, "confidence": 0.75, "unresolved_flags": []},
+    {"model_id": "cm_fb1_limit", "target": "pass_through:FB1", "type": "pass_through_limit", "basis": "rating_limit_only", "nominal_current_a": null, "max_current_a": 0.5, "conservative_bound": false, "confidence": 0.92, "unresolved_flags": []},
+    {"model_id": "cm_u3_load", "target": "device:U3", "type": "sink_load", "basis": "datasheet_typical", "nominal_current_a": 0.2, "max_current_a": 0.5, "conservative_bound": false, "confidence": 0.7, "unresolved_flags": []},
+    {"model_id": "cm_u4_load", "target": "device:U4", "type": "sink_load", "basis": "datasheet_typical", "nominal_current_a": 0.025, "max_current_a": 0.06, "conservative_bound": false, "confidence": 0.72, "unresolved_flags": []},
+    {"model_id": "cm_3v3", "target": "rail:3V3", "type": "rail_total", "basis": "downstream_aggregation", "nominal_current_a": 0.225, "max_current_a": 0.56, "conservative_bound": false, "confidence": 0.75, "unresolved_flags": []},
+    {"model_id": "cm_3v3a", "target": "rail:3V3_A", "type": "rail_total", "basis": "datasheet_typical", "nominal_current_a": 0.025, "max_current_a": 0.06, "conservative_bound": false, "confidence": 0.7, "unresolved_flags": []}
+  ],
+  "voltage_models": [
+    {"model_id": "vm_3v3", "target": "net:3V3", "nominal_voltage_v": 3.3, "min_voltage_v": null, "max_voltage_v": null, "basis": "regulator_output", "confidence": 0.82, "unresolved_flags": []},
+    {"model_id": "vm_3v3a", "target": "net:3V3_A", "nominal_voltage_v": 3.3, "min_voltage_v": null, "max_voltage_v": null, "basis": "pass_through_propagation", "confidence": 0.78, "unresolved_flags": []}
+  ],
+  "unresolved": [],
+  "validation": {"execution_pass": true, "artifact_validation_pass": true, "topology_consistency_pass": true, "unresolved_items_present": false, "human_review_needed": false, "errors": [], "warnings": []}
+}

@@ -1,0 +1,498 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Part Info",
+  "description": "Schema for datasheet-derived part behavior. This artifact describes one manufacturer part number only; it must not describe board-specific topology, nets, refdes, branches, or copper geometry.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mpn",
+    "manufacturer",
+    "normalized_mpn",
+    "component_category",
+    "package",
+    "datasheet_sources",
+    "extraction_method",
+    "pin_roles",
+    "power_behavior",
+    "load_behavior",
+    "pass_through_behavior",
+    "signal_behavior",
+    "voltage_limits",
+    "current_limits",
+    "thermal_behavior",
+    "operating_modes",
+    "confidence",
+    "unresolved_fields",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version for this part_info document.",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "mpn": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Manufacturer part number as written by the manufacturer or BOM."
+    },
+    "manufacturer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Manufacturer name."
+    },
+    "normalized_mpn": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Filename-safe normalized MPN key."
+    },
+    "component_category": {
+      "$ref": "#/definitions/componentCategory"
+    },
+    "package": {
+      "$ref": "#/definitions/packageInfo"
+    },
+    "datasheet_sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/datasheetSource"
+      }
+    },
+    "extraction_method": {
+      "$ref": "#/definitions/extractionMethod"
+    },
+    "pin_roles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/pinRole"
+      }
+    },
+    "power_behavior": {
+      "$ref": "#/definitions/powerBehavior"
+    },
+    "load_behavior": {
+      "$ref": "#/definitions/loadBehavior"
+    },
+    "pass_through_behavior": {
+      "$ref": "#/definitions/passThroughBehavior"
+    },
+    "signal_behavior": {
+      "$ref": "#/definitions/signalBehavior"
+    },
+    "voltage_limits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/limitValue"
+      }
+    },
+    "current_limits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/limitValue"
+      }
+    },
+    "thermal_behavior": {
+      "$ref": "#/definitions/thermalBehavior"
+    },
+    "operating_modes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/operatingMode"
+      }
+    },
+    "confidence": {
+      "$ref": "#/definitions/confidenceSummary"
+    },
+    "unresolved_fields": {
+      "type": "array",
+      "description": "Fields or behaviors that could not be extracted. Missing current must be represented here and must not be encoded as zero.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/evidenceRecord"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "not": {
+    "anyOf": [
+      {"required": ["refdes"]},
+      {"required": ["net_name"]},
+      {"required": ["board_nets"]},
+      {"required": ["branch_id"]},
+      {"required": ["copper_geometry_refs"]},
+      {"required": ["topology"]}
+    ]
+  },
+  "definitions": {
+    "componentCategory": {
+      "type": "string",
+      "enum": [
+        "buck_regulator",
+        "ldo_regulator",
+        "boost_regulator",
+        "buck_boost_regulator",
+        "isolated_converter",
+        "mcu",
+        "fpga",
+        "connector",
+        "fuse",
+        "ferrite_bead",
+        "resistor",
+        "capacitor",
+        "inductor",
+        "switch",
+        "current_sense_resistor",
+        "transceiver",
+        "logic",
+        "sensor",
+        "passive",
+        "unknown"
+      ]
+    },
+    "packageInfo": {
+      "type": "object",
+      "required": ["name", "pin_count", "thermal_pad"],
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "pin_count": {"type": ["integer", "null"], "minimum": 0},
+        "thermal_pad": {"type": ["boolean", "null"]},
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "datasheetSource": {
+      "type": "object",
+      "required": ["source_id", "local_path", "manufacturer_source"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "local_path": {"type": ["string", "null"]},
+        "url": {"type": ["string", "null"]},
+        "manufacturer_source": {"type": "boolean"},
+        "retrieved_at_utc": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "additionalProperties": false
+    },
+    "extractionMethod": {
+      "type": "object",
+      "required": ["type", "human_reviewed"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ai_datasheet_extraction", "manual", "manual_reviewed_ai", "unknown"]
+        },
+        "model": {"type": ["string", "null"]},
+        "prompt_version": {"type": ["string", "null"]},
+        "extracted_at_utc": {"type": ["string", "null"], "format": "date-time"},
+        "text_extraction_tool": {"type": ["string", "null"]},
+        "human_reviewed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "pinRole": {
+      "type": "object",
+      "required": ["pin", "pin_name", "role", "direction", "current_role", "evidence_refs"],
+      "properties": {
+        "pin": {"type": "string", "minLength": 1},
+        "pin_name": {"type": ["string", "null"]},
+        "role": {
+          "type": "string",
+          "enum": ["power", "ground", "enable", "feedback", "switch", "sense", "signal", "passive", "no_connect", "thermal", "mechanical", "unknown"]
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["input", "output", "bidirectional", "passive", "not_connected", "unknown"]
+        },
+        "power_domain": {"type": ["string", "null"]},
+        "associated_supply": {"type": ["string", "null"]},
+        "current_role": {
+          "type": "string",
+          "enum": ["source_input", "source_output", "sink_supply", "return", "pass_through_input", "pass_through_output", "sense_only", "signal_only", "unknown"]
+        },
+        "voltage_range_v": {
+          "anyOf": [
+            {"$ref": "#/definitions/numericValue"},
+            {"type": "null"}
+          ]
+        },
+        "notes": {"type": ["string", "null"]},
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "powerBehavior": {
+      "type": "object",
+      "required": [
+        "device_role",
+        "input_pins",
+        "output_pins",
+        "ground_pins",
+        "enable_pins",
+        "feedback_pins",
+        "nominal_current_by_rail",
+        "max_current_by_rail",
+        "assumptions_allowed"
+      ],
+      "properties": {
+        "device_role": {
+          "type": "string",
+          "enum": ["source", "sink", "pass_through", "transformer", "passive", "mixed", "unknown"]
+        },
+        "input_pins": {"$ref": "#/definitions/stringArray"},
+        "output_pins": {"$ref": "#/definitions/stringArray"},
+        "ground_pins": {"$ref": "#/definitions/stringArray"},
+        "enable_pins": {"$ref": "#/definitions/stringArray"},
+        "feedback_pins": {"$ref": "#/definitions/stringArray"},
+        "nominal_current_by_rail": {
+          "type": "array",
+          "description": "Datasheet current draw by rail when actually specified. Do not put device ratings here.",
+          "items": {"$ref": "#/definitions/railCurrentValue"}
+        },
+        "max_current_by_rail": {
+          "type": "array",
+          "description": "Maximum current draw by rail when specified. Device output ratings are allowed only when condition clearly states rating/capability.",
+          "items": {"$ref": "#/definitions/railCurrentValue"}
+        },
+        "quiescent_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "standby_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "peak_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "max_output_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "efficiency_data": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/efficiencyPoint"}
+        },
+        "assumptions_allowed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "loadBehavior": {
+      "type": "object",
+      "required": ["acts_as_load"],
+      "properties": {
+        "acts_as_load": {"type": "boolean"},
+        "load_type": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]},
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "passThroughBehavior": {
+      "type": "object",
+      "required": ["is_pass_through"],
+      "properties": {
+        "is_pass_through": {"type": "boolean"},
+        "pass_through_type": {
+          "type": ["string", "null"],
+          "enum": ["fuse", "ferrite", "zero_ohm_resistor", "jumper", "switch", "connector", "current_sense_resistor", "relay", "unknown", null]
+        },
+        "input_pins": {"$ref": "#/definitions/stringArray"},
+        "output_pins": {"$ref": "#/definitions/stringArray"},
+        "bidirectional": {"type": ["boolean", "null"]},
+        "fuse_hold_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "fuse_trip_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "ferrite_rated_current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "ferrite_impedance_ohm": {"$ref": "#/definitions/nullableNumericValue"},
+        "zero_ohm_resistor_rating_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "jumper_rating_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "switch_current_rating_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "connector_pin_current_rating_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "current_sense_resistor_rating_w": {"$ref": "#/definitions/nullableNumericValue"},
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "signalBehavior": {
+      "type": "object",
+      "required": ["signal_roles"],
+      "properties": {
+        "signal_roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["usb", "ethernet", "can", "rs485", "lvds", "clock", "oscillator", "memory_bus", "gpio", "analog", "unknown"]
+          }
+        },
+        "differential_pair_pins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["positive_pin", "negative_pin", "interface"],
+            "properties": {
+              "positive_pin": {"type": "string"},
+              "negative_pin": {"type": "string"},
+              "interface": {"type": "string"},
+              "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "thermalBehavior": {
+      "type": "object",
+      "properties": {
+        "junction_temp_c": {"$ref": "#/definitions/nullableNumericValue"},
+        "ambient_temp_c": {"$ref": "#/definitions/nullableNumericValue"},
+        "theta_ja_c_per_w": {"$ref": "#/definitions/nullableNumericValue"},
+        "theta_jc_c_per_w": {"$ref": "#/definitions/nullableNumericValue"},
+        "power_dissipation_w": {"$ref": "#/definitions/nullableNumericValue"},
+        "notes": {"type": ["string", "null"]},
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "operatingMode": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {"type": "string"},
+        "current_a": {"$ref": "#/definitions/nullableNumericValue"},
+        "supply_rail": {"type": ["string", "null"]},
+        "condition": {"type": ["string", "null"]},
+        "evidence_refs": {"$ref": "#/definitions/evidenceRefs"}
+      },
+      "additionalProperties": false
+    },
+    "limitValue": {
+      "type": "object",
+      "required": ["limit_type", "unit", "condition", "confidence"],
+      "properties": {
+        "limit_type": {"type": "string"},
+        "value": {"type": "number"},
+        "min": {"type": "number"},
+        "typ": {"type": "number"},
+        "max": {"type": "number"},
+        "unit": {"type": "string", "minLength": 1},
+        "condition": {"type": "string", "minLength": 1},
+        "evidence_ref": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {"required": ["value"]},
+        {"required": ["min"]},
+        {"required": ["typ"]},
+        {"required": ["max"]}
+      ]
+    },
+    "railCurrentValue": {
+      "type": "object",
+      "required": ["rail", "limit_type", "unit", "condition", "confidence"],
+      "properties": {
+        "rail": {"type": "string", "minLength": 1},
+        "limit_type": {"type": "string"},
+        "value": {"type": "number"},
+        "min": {"type": "number"},
+        "typ": {"type": "number"},
+        "max": {"type": "number"},
+        "unit": {"type": "string", "minLength": 1},
+        "condition": {"type": "string", "minLength": 1},
+        "evidence_ref": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {"required": ["value"]},
+        {"required": ["min"]},
+        {"required": ["typ"]},
+        {"required": ["max"]}
+      ]
+    },
+    "numericValue": {
+      "type": "object",
+      "required": ["unit", "condition", "confidence"],
+      "properties": {
+        "value": {"type": "number"},
+        "min": {"type": "number"},
+        "typ": {"type": "number"},
+        "max": {"type": "number"},
+        "unit": {"type": "string", "minLength": 1},
+        "condition": {"type": "string", "minLength": 1},
+        "evidence_ref": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {"required": ["value"]},
+        {"required": ["min"]},
+        {"required": ["typ"]},
+        {"required": ["max"]}
+      ]
+    },
+    "nullableNumericValue": {
+      "anyOf": [
+        {"$ref": "#/definitions/numericValue"},
+        {"type": "null"}
+      ]
+    },
+    "efficiencyPoint": {
+      "type": "object",
+      "required": ["efficiency", "condition", "confidence"],
+      "properties": {
+        "input_v": {"type": ["number", "null"]},
+        "output_v": {"type": ["number", "null"]},
+        "load_a": {"type": ["number", "null"]},
+        "efficiency": {"type": "number", "minimum": 0, "maximum": 1},
+        "condition": {"type": "string"},
+        "evidence_ref": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "confidenceSummary": {
+      "type": "object",
+      "required": ["overall"],
+      "properties": {
+        "overall": {"$ref": "#/definitions/confidence"},
+        "pin_roles": {"$ref": "#/definitions/confidence"},
+        "power_behavior": {"$ref": "#/definitions/confidence"},
+        "limits": {"$ref": "#/definitions/confidence"},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidenceRecord": {
+      "type": "object",
+      "required": ["id", "source"],
+      "anyOf": [
+        {"required": ["page"]},
+        {"required": ["section"]},
+        {"required": ["table"]},
+        {"required": ["figure"]},
+        {"required": ["quote"]},
+        {"required": ["locator"]}
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "page": {"type": ["integer", "null"], "minimum": 1},
+        "section": {"type": ["string", "null"]},
+        "table": {"type": ["string", "null"]},
+        "figure": {"type": ["string", "null"]},
+        "quote": {"type": ["string", "null"]},
+        "locator": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

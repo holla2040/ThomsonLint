@@ -1,0 +1,288 @@
+{
+  "schema_version": "1.0",
+  "mpn": "TPS54302DDCR",
+  "manufacturer": "Texas Instruments",
+  "normalized_mpn": "tps54302ddcr",
+  "component_category": "buck_regulator",
+  "package": {
+    "name": "SOT-23-6",
+    "pin_count": 6,
+    "thermal_pad": false,
+    "evidence_refs": ["ds:p1:package"]
+  },
+  "datasheet_sources": [
+    {
+      "source_id": "ds",
+      "local_path": "exports/datasheets/TPS54302DDCR.pdf",
+      "url": null,
+      "manufacturer_source": true,
+      "retrieved_at_utc": null
+    }
+  ],
+  "extraction_method": {
+    "type": "manual",
+    "model": null,
+    "prompt_version": null,
+    "extracted_at_utc": "2026-05-28T00:00:00Z",
+    "text_extraction_tool": null,
+    "human_reviewed": true
+  },
+  "pin_roles": [
+    {
+      "pin": "1",
+      "pin_name": "SW",
+      "role": "switch",
+      "direction": "output",
+      "power_domain": "buck_output_switch",
+      "associated_supply": "VIN",
+      "current_role": "source_output",
+      "voltage_range_v": null,
+      "notes": "Switch node, not a regulated output pin.",
+      "evidence_refs": ["ds:p3:pin-functions"]
+    },
+    {
+      "pin": "2",
+      "pin_name": "GND",
+      "role": "ground",
+      "direction": "passive",
+      "power_domain": "ground",
+      "associated_supply": null,
+      "current_role": "return",
+      "voltage_range_v": null,
+      "notes": "Power ground return.",
+      "evidence_refs": ["ds:p3:pin-functions"]
+    },
+    {
+      "pin": "3",
+      "pin_name": "FB",
+      "role": "feedback",
+      "direction": "input",
+      "power_domain": "feedback",
+      "associated_supply": "VOUT",
+      "current_role": "sense_only",
+      "voltage_range_v": {
+        "typ": 0.596,
+        "unit": "V",
+        "condition": "feedback reference typical voltage",
+        "evidence_ref": "ds:p6:feedback-reference",
+        "confidence": 0.86
+      },
+      "notes": "Feedback sense input.",
+      "evidence_refs": ["ds:p3:pin-functions", "ds:p6:feedback-reference"]
+    },
+    {
+      "pin": "4",
+      "pin_name": "EN",
+      "role": "enable",
+      "direction": "input",
+      "power_domain": "enable",
+      "associated_supply": "VIN",
+      "current_role": "signal_only",
+      "voltage_range_v": null,
+      "notes": "Enable control input.",
+      "evidence_refs": ["ds:p3:pin-functions"]
+    },
+    {
+      "pin": "5",
+      "pin_name": "VIN",
+      "role": "power",
+      "direction": "input",
+      "power_domain": "input",
+      "associated_supply": null,
+      "current_role": "source_input",
+      "voltage_range_v": {
+        "min": 4.5,
+        "max": 28.0,
+        "unit": "V",
+        "condition": "recommended operating input voltage",
+        "evidence_ref": "ds:p6:vin-range",
+        "confidence": 0.95
+      },
+      "notes": "Input supply pin.",
+      "evidence_refs": ["ds:p3:pin-functions", "ds:p6:vin-range"]
+    },
+    {
+      "pin": "6",
+      "pin_name": "BOOT",
+      "role": "power",
+      "direction": "passive",
+      "power_domain": "bootstrap",
+      "associated_supply": "SW",
+      "current_role": "sense_only",
+      "voltage_range_v": null,
+      "notes": "Bootstrap supply pin for high-side driver.",
+      "evidence_refs": ["ds:p3:pin-functions"]
+    }
+  ],
+  "power_behavior": {
+    "device_role": "source",
+    "input_pins": ["VIN"],
+    "output_pins": ["SW"],
+    "ground_pins": ["GND"],
+    "enable_pins": ["EN"],
+    "feedback_pins": ["FB"],
+    "nominal_current_by_rail": [],
+    "max_current_by_rail": [
+      {
+        "rail": "VOUT",
+        "limit_type": "device_output_rating",
+        "max": 3.0,
+        "unit": "A",
+        "condition": "device output capability, not board load current",
+        "evidence_ref": "ds:p1:features",
+        "confidence": 0.88
+      }
+    ],
+    "quiescent_current_a": {
+      "typ": 0.00011,
+      "unit": "A",
+      "condition": "non-switching quiescent current",
+      "evidence_ref": "ds:p6:iq",
+      "confidence": 0.8
+    },
+    "standby_current_a": null,
+    "peak_current_a": null,
+    "max_output_current_a": {
+      "max": 3.0,
+      "unit": "A",
+      "condition": "device output capability, not board load current",
+      "evidence_ref": "ds:p1:features",
+      "confidence": 0.88
+    },
+    "efficiency_data": [
+      {
+        "input_v": 12.0,
+        "output_v": 5.0,
+        "load_a": 1.0,
+        "efficiency": 0.9,
+        "condition": "example typical efficiency curve",
+        "evidence_ref": "ds:p8:efficiency-curve",
+        "confidence": 0.65
+      }
+    ],
+    "assumptions_allowed": false
+  },
+  "load_behavior": {
+    "acts_as_load": false,
+    "load_type": null,
+    "notes": "Regulator output rating is not actual downstream board current.",
+    "evidence_refs": ["ds:p1:features"]
+  },
+  "pass_through_behavior": {
+    "is_pass_through": false,
+    "pass_through_type": null,
+    "input_pins": [],
+    "output_pins": [],
+    "bidirectional": null,
+    "fuse_hold_current_a": null,
+    "fuse_trip_current_a": null,
+    "ferrite_rated_current_a": null,
+    "ferrite_impedance_ohm": null,
+    "zero_ohm_resistor_rating_a": null,
+    "jumper_rating_a": null,
+    "switch_current_rating_a": null,
+    "connector_pin_current_rating_a": null,
+    "current_sense_resistor_rating_w": null,
+    "evidence_refs": []
+  },
+  "signal_behavior": {
+    "signal_roles": ["unknown"],
+    "differential_pair_pins": [],
+    "evidence_refs": []
+  },
+  "voltage_limits": [
+    {
+      "limit_type": "recommended_input_voltage",
+      "min": 4.5,
+      "max": 28.0,
+      "unit": "V",
+      "condition": "recommended operating input voltage",
+      "evidence_ref": "ds:p6:vin-range",
+      "confidence": 0.95
+    }
+  ],
+  "current_limits": [
+    {
+      "limit_type": "device_output_rating",
+      "max": 3.0,
+      "unit": "A",
+      "condition": "device output capability; not actual board load current",
+      "evidence_ref": "ds:p1:features",
+      "confidence": 0.88
+    }
+  ],
+  "thermal_behavior": {
+    "junction_temp_c": {
+      "max": 150.0,
+      "unit": "degC",
+      "condition": "maximum junction temperature",
+      "evidence_ref": "ds:p6:thermal",
+      "confidence": 0.8
+    },
+    "ambient_temp_c": null,
+    "theta_ja_c_per_w": null,
+    "theta_jc_c_per_w": null,
+    "power_dissipation_w": null,
+    "notes": null,
+    "evidence_refs": ["ds:p6:thermal"]
+  },
+  "operating_modes": [],
+  "confidence": {
+    "overall": 0.88,
+    "pin_roles": 0.93,
+    "power_behavior": 0.88,
+    "limits": 0.86,
+    "notes": "Manual example for schema validation."
+  },
+  "unresolved_fields": ["board_actual_output_current", "board_output_voltage_from_feedback_network"],
+  "evidence": [
+    {
+      "id": "ds:p1:features",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 1,
+      "locator": "features list"
+    },
+    {
+      "id": "ds:p1:package",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 1,
+      "locator": "package ordering table"
+    },
+    {
+      "id": "ds:p3:pin-functions",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 3,
+      "locator": "pin functions table"
+    },
+    {
+      "id": "ds:p6:vin-range",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 6,
+      "locator": "recommended operating conditions"
+    },
+    {
+      "id": "ds:p6:feedback-reference",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 6,
+      "locator": "electrical characteristics"
+    },
+    {
+      "id": "ds:p6:iq",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 6,
+      "locator": "quiescent current row"
+    },
+    {
+      "id": "ds:p6:thermal",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 6,
+      "locator": "thermal characteristics"
+    },
+    {
+      "id": "ds:p8:efficiency-curve",
+      "source": "exports/datasheets/TPS54302DDCR.pdf",
+      "page": 8,
+      "figure": "typical efficiency curve"
+    }
+  ]
+}

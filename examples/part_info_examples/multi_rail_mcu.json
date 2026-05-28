@@ -1,0 +1,293 @@
+{
+  "schema_version": "1.0",
+  "mpn": "STM32F407VGT6",
+  "manufacturer": "STMicroelectronics",
+  "normalized_mpn": "stm32f407vgt6",
+  "component_category": "mcu",
+  "package": {
+    "name": "LQFP-100",
+    "pin_count": 100,
+    "thermal_pad": false,
+    "evidence_refs": ["ds:p1:package"]
+  },
+  "datasheet_sources": [
+    {
+      "source_id": "ds",
+      "local_path": "exports/datasheets/STM32F407VGT6.pdf",
+      "url": null,
+      "manufacturer_source": true,
+      "retrieved_at_utc": null
+    }
+  ],
+  "extraction_method": {
+    "type": "manual",
+    "model": null,
+    "prompt_version": null,
+    "extracted_at_utc": "2026-05-28T00:00:00Z",
+    "text_extraction_tool": null,
+    "human_reviewed": true
+  },
+  "pin_roles": [
+    {
+      "pin": "19",
+      "pin_name": "VDD",
+      "role": "power",
+      "direction": "input",
+      "power_domain": "digital_io",
+      "associated_supply": null,
+      "current_role": "sink_supply",
+      "voltage_range_v": {
+        "min": 1.8,
+        "max": 3.6,
+        "unit": "V",
+        "condition": "operating supply voltage range",
+        "evidence_ref": "ds:p112:vdd-range",
+        "confidence": 0.86
+      },
+      "notes": "Representative VDD pin; actual package has multiple VDD pins.",
+      "evidence_refs": ["ds:p47:pinout", "ds:p112:vdd-range"]
+    },
+    {
+      "pin": "13",
+      "pin_name": "VDDA",
+      "role": "power",
+      "direction": "input",
+      "power_domain": "analog",
+      "associated_supply": null,
+      "current_role": "sink_supply",
+      "voltage_range_v": {
+        "min": 1.8,
+        "max": 3.6,
+        "unit": "V",
+        "condition": "analog supply operating voltage range",
+        "evidence_ref": "ds:p112:vdda-range",
+        "confidence": 0.83
+      },
+      "notes": "Analog supply pin.",
+      "evidence_refs": ["ds:p47:pinout", "ds:p112:vdda-range"]
+    },
+    {
+      "pin": "6",
+      "pin_name": "VBAT",
+      "role": "power",
+      "direction": "input",
+      "power_domain": "backup",
+      "associated_supply": null,
+      "current_role": "sink_supply",
+      "voltage_range_v": {
+        "min": 1.65,
+        "max": 3.6,
+        "unit": "V",
+        "condition": "backup domain operating voltage range",
+        "evidence_ref": "ds:p112:vbat-range",
+        "confidence": 0.78
+      },
+      "notes": "Backup supply pin.",
+      "evidence_refs": ["ds:p47:pinout", "ds:p112:vbat-range"]
+    },
+    {
+      "pin": "20",
+      "pin_name": "VSS",
+      "role": "ground",
+      "direction": "passive",
+      "power_domain": "ground",
+      "associated_supply": null,
+      "current_role": "return",
+      "voltage_range_v": null,
+      "notes": "Digital ground return.",
+      "evidence_refs": ["ds:p47:pinout"]
+    },
+    {
+      "pin": "12",
+      "pin_name": "VSSA",
+      "role": "ground",
+      "direction": "passive",
+      "power_domain": "analog_ground",
+      "associated_supply": "VDDA",
+      "current_role": "return",
+      "voltage_range_v": null,
+      "notes": "Analog ground return.",
+      "evidence_refs": ["ds:p47:pinout"]
+    }
+  ],
+  "power_behavior": {
+    "device_role": "sink",
+    "input_pins": ["VDD", "VDDA", "VBAT"],
+    "output_pins": [],
+    "ground_pins": ["VSS", "VSSA"],
+    "enable_pins": [],
+    "feedback_pins": [],
+    "nominal_current_by_rail": [
+      {
+        "rail": "VDD",
+        "limit_type": "run_mode_current_example",
+        "typ": 0.08,
+        "unit": "A",
+        "condition": "datasheet run-mode example; actual board firmware mode unresolved",
+        "evidence_ref": "ds:p118:run-current",
+        "confidence": 0.62
+      }
+    ],
+    "max_current_by_rail": [],
+    "quiescent_current_a": null,
+    "standby_current_a": {
+      "typ": 0.00001,
+      "unit": "A",
+      "condition": "standby mode example",
+      "evidence_ref": "ds:p122:standby-current",
+      "confidence": 0.77
+    },
+    "peak_current_a": null,
+    "max_output_current_a": null,
+    "efficiency_data": [],
+    "assumptions_allowed": false
+  },
+  "load_behavior": {
+    "acts_as_load": true,
+    "load_type": "multi_rail_ic",
+    "notes": "Actual current depends on clock tree, peripherals, firmware, voltage, and temperature.",
+    "evidence_refs": ["ds:p118:run-current"]
+  },
+  "pass_through_behavior": {
+    "is_pass_through": false,
+    "pass_through_type": null,
+    "input_pins": [],
+    "output_pins": [],
+    "bidirectional": null,
+    "fuse_hold_current_a": null,
+    "fuse_trip_current_a": null,
+    "ferrite_rated_current_a": null,
+    "ferrite_impedance_ohm": null,
+    "zero_ohm_resistor_rating_a": null,
+    "jumper_rating_a": null,
+    "switch_current_rating_a": null,
+    "connector_pin_current_rating_a": null,
+    "current_sense_resistor_rating_w": null,
+    "evidence_refs": []
+  },
+  "signal_behavior": {
+    "signal_roles": ["usb", "can", "gpio", "clock"],
+    "differential_pair_pins": [
+      {
+        "positive_pin": "PA12",
+        "negative_pin": "PA11",
+        "interface": "usb",
+        "evidence_refs": ["ds:p47:pinout"]
+      }
+    ],
+    "evidence_refs": ["ds:p47:pinout"]
+  },
+  "voltage_limits": [
+    {
+      "limit_type": "vdd_recommended_operating",
+      "min": 1.8,
+      "max": 3.6,
+      "unit": "V",
+      "condition": "operating supply voltage range",
+      "evidence_ref": "ds:p112:vdd-range",
+      "confidence": 0.86
+    }
+  ],
+  "current_limits": [],
+  "thermal_behavior": {
+    "junction_temp_c": {
+      "max": 125.0,
+      "unit": "degC",
+      "condition": "maximum junction temperature for selected grade",
+      "evidence_ref": "ds:p130:thermal",
+      "confidence": 0.7
+    },
+    "ambient_temp_c": null,
+    "theta_ja_c_per_w": null,
+    "theta_jc_c_per_w": null,
+    "power_dissipation_w": null,
+    "notes": "Thermal values are package and board dependent.",
+    "evidence_refs": ["ds:p130:thermal"]
+  },
+  "operating_modes": [
+    {
+      "mode": "run",
+      "current_a": {
+        "typ": 0.08,
+        "unit": "A",
+        "condition": "datasheet run-mode example; actual board firmware mode unresolved",
+        "evidence_ref": "ds:p118:run-current",
+        "confidence": 0.62
+      },
+      "supply_rail": "VDD",
+      "condition": "example mode only",
+      "evidence_refs": ["ds:p118:run-current"]
+    },
+    {
+      "mode": "standby",
+      "current_a": {
+        "typ": 0.00001,
+        "unit": "A",
+        "condition": "standby mode example",
+        "evidence_ref": "ds:p122:standby-current",
+        "confidence": 0.77
+      },
+      "supply_rail": "VDD",
+      "condition": "standby mode",
+      "evidence_refs": ["ds:p122:standby-current"]
+    }
+  ],
+  "confidence": {
+    "overall": 0.7,
+    "pin_roles": 0.82,
+    "power_behavior": 0.67,
+    "limits": 0.75,
+    "notes": "Board-specific operating current remains unresolved."
+  },
+  "unresolved_fields": ["actual_clock_frequency", "enabled_peripherals", "firmware_operating_mode", "board_current_by_rail"],
+  "evidence": [
+    {
+      "id": "ds:p1:package",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 1,
+      "locator": "package summary"
+    },
+    {
+      "id": "ds:p47:pinout",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 47,
+      "locator": "pinout and pin functions"
+    },
+    {
+      "id": "ds:p112:vdd-range",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 112,
+      "locator": "operating conditions VDD"
+    },
+    {
+      "id": "ds:p112:vdda-range",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 112,
+      "locator": "operating conditions VDDA"
+    },
+    {
+      "id": "ds:p112:vbat-range",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 112,
+      "locator": "operating conditions VBAT"
+    },
+    {
+      "id": "ds:p118:run-current",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 118,
+      "locator": "run mode supply current table"
+    },
+    {
+      "id": "ds:p122:standby-current",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 122,
+      "locator": "standby current table"
+    },
+    {
+      "id": "ds:p130:thermal",
+      "source": "exports/datasheets/STM32F407VGT6.pdf",
+      "page": 130,
+      "locator": "thermal characteristics"
+    }
+  ]
+}
