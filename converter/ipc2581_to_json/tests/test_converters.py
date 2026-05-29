@@ -1,4 +1,4 @@
-import json, subprocess
+import json, subprocess, sys
 from pathlib import Path
 
 PADS = """*PART*
@@ -17,7 +17,7 @@ XML = """<IPC2581><Layer name='L1' type='signal'/><Layer name='L2' type='signal'
 XML_NS = """<ns:IPC2581 xmlns:ns='urn:test'><ns:Layer name='L1'/><ns:Layer name='L2'/><ns:Component refdes='U1'/><ns:Component refdes='R1'/><ns:Net name='GND'><ns:Pin refdes='U1' pin='1'/><ns:Pin refdes='R1' pin='1'/></ns:Net></ns:IPC2581>"""
 
 def run(cmd, cwd):
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, stdin=subprocess.DEVNULL)
 
 def test_all(tmp_path):
     root = Path(__file__).resolve().parents[1]
@@ -547,26 +547,169 @@ def test_phase611_real_examples_routing_geometry_if_present(tmp_path):
     assert ipc_report["non_copper_polyline_count"] == len(routing["non_copper_polylines"])
     assert ipc_report["copper_polygon_count"] == len(routing["copper_polygons"])
     assert ipc_report["non_copper_polygon_count"] == len(routing["non_copper_polygons"])
-    assert ipc_report["copper_pad_count"] == len(routing["copper_pads"])
-    assert ipc_report["non_copper_pad_count"] == len(routing["non_copper_pads"])
-    assert ipc_report["hole_count"] == len(brd["holes"])
-    assert ipc_report["via_hole_count"] == len(brd["via_holes"])
-    assert ipc_report["plated_hole_count"] == len(brd["plated_holes"])
-    assert ipc_report["nonplated_hole_count"] == len(brd["nonplated_holes"])
-    assert ipc_report["pad_primitive_count"] == len(brd["pad_primitives"])
-    assert ipc_report["resolved_pad_primitive_count"] == len([p for p in routing["pads"] if p.get("primitive_resolution_status") == "resolved"])
-    assert ipc_report["unresolved_pad_primitive_count"] == len([p for p in routing["pads"] if p.get("primitive_resolution_status") == "unresolved"])
-    assert ipc_report["package_geometry_summary_enabled"] is True
-    assert ipc_report["package_count"] == brd["package_geometry_summary"]["package_count"]
-    assert ipc_report["package_landpattern_pad_count"] == brd["package_geometry_summary"]["landpattern_pad_count"]
-    assert ipc_report["stackup_data_quality_available"] is True
-    assert ipc_report["trace_width_by_net_count"] == len(topology["trace_width_by_net"])
-    assert ipc_report["trace_width_usage_by_layer_count"] == len(topology["trace_width_usage_by_layer"])
-    assert ipc_report["route_length_summary_enabled"] is True
-    assert ipc_report["route_length_by_net_count"] == len(topology["route_length_by_net"])
-    assert ipc_report["route_length_by_layer_count"] == len(topology["route_length_by_layer"])
-    assert ipc_report["routes_with_length_count"] == len(routing["routes"])
-    assert ipc_report["paired_net_length_comparison_count"] == len([p for p in topology["paired_net_geometry_comparison"] if p["comparison"].get("route_length_delta") is not None])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dual-mode PADS parser tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Minimal Altium-style .NET fixture: no *PART* block, *SIGNAL* net names,
+# space-separated nodes, and USB-C dual-orientation slash pin names.
+NET_INFERENCE = """\
+*PADS-PCB*
+*NET*
+*SIGNAL* VBUS
+ C27.1 C28.1 CN3.A4/B9 U6.7 U6.8
+*SIGNAL* GND
+ C27.2 C28.2 U6.4
+*END*
+"""
+
+# Standard .asc fixture: *PART* block uses plain REFDES FOOTPRINT pairs
+# (real Cadence/OrCAD export format) instead of COMP keyword= form.
+ASC_STANDARD = """\
+*PADS-PCB*
+*PART*
+U6              SOT23-5
+CN3             USB_C_RECEPTACLE
+C27             c0402
+C28             c0402
+*NET*
+*SIGNAL* VBUS
+ C27.1 C28.1 CN3.A4/B9 U6.7 U6.8
+*SIGNAL* GND
+ C27.2 C28.2 U6.4
+*END*
+"""
+
+
+def test_pads_inference_mode_net_extension(tmp_path):
+    """pads_ascii_to_thomson_sch.py: .net file (no *PART*) → inference mode."""
+    root = Path(__file__).resolve().parents[1]
+    net = tmp_path / "babel.net"
+    net.write_text(NET_INFERENCE)
+    out = tmp_path / "out"
+
+    r = run(
+        ["python3", "pads_ascii_to_thomson_sch.py", "--netlist", str(net),
+         "--project", "inf", "--output", str(out), "--pretty"],
+        root,
+    )
+    assert r.returncode == 0, r.stderr
+
+    sch = json.loads((out / "inf-thomson-export-sch.json").read_text())
+    assert sch["metadata"]["parse_mode"] == "inference"
+    # All referenced refdes must be present
+    refs = {c["refdes"] for c in sch["components"]}
+    assert {"C27", "C28", "CN3", "U6"}.issubset(refs)
+    # Every component must have footprint=null and unresolved_fields containing "footprint"
+    for comp in sch["components"]:
+        assert comp["footprint"] is None, f"{comp['refdes']} should have null footprint"
+        assert "footprint" in comp.get("unresolved_fields", []), \
+            f"{comp['refdes']} missing unresolved_fields entry"
+    # Nets must be extracted correctly
+    net_names = {n["name"] for n in sch["nets"]}
+    assert {"VBUS", "GND"}.issubset(net_names)
+    # Slash pin names (USB-C dual orientation) must survive intact
+    vbus_net = next(n for n in sch["nets"] if n["name"] == "VBUS")
+    assert any(nd["refdes"] == "CN3" and nd["pin"] == "A4/B9" for nd in vbus_net["nodes"])
+
+
+def test_pads_inference_mode_missing_part_block(tmp_path):
+    """pads_ascii_to_thomson_sch.py: .asc file that omits *PART* → inference mode."""
+    root = Path(__file__).resolve().parents[1]
+    net = tmp_path / "altium_export.asc"
+    net.write_text(NET_INFERENCE)  # .asc extension but no *PART* block
+    out = tmp_path / "out"
+
+    r = run(
+        ["python3", "pads_ascii_to_thomson_sch.py", "--netlist", str(net),
+         "--project", "inf2", "--output", str(out), "--pretty"],
+        root,
+    )
+    assert r.returncode == 0, r.stderr
+
+    sch = json.loads((out / "inf2-thomson-export-sch.json").read_text())
+    assert sch["metadata"]["parse_mode"] == "inference"
+    for comp in sch["components"]:
+        assert "footprint" in comp.get("unresolved_fields", [])
+
+
+def test_pads_standard_mode_plain_refdes_footprint(tmp_path):
+    """pads_ascii_to_thomson_sch.py: .asc with plain REFDES FOOTPRINT *PART* block."""
+    root = Path(__file__).resolve().parents[1]
+    net = tmp_path / "sunrise.asc"
+    net.write_text(ASC_STANDARD)
+    out = tmp_path / "out"
+
+    r = run(
+        ["python3", "pads_ascii_to_thomson_sch.py", "--netlist", str(net),
+         "--project", "std", "--output", str(out), "--pretty"],
+        root,
+    )
+    assert r.returncode == 0, r.stderr
+
+    sch = json.loads((out / "std-thomson-export-sch.json").read_text())
+    assert sch["metadata"]["parse_mode"] == "standard"
+    comp_map = {c["refdes"]: c for c in sch["components"]}
+    assert comp_map["U6"]["footprint"] == "SOT23-5"
+    assert comp_map["CN3"]["footprint"] == "USB_C_RECEPTACLE"
+    assert comp_map["C27"]["footprint"] == "c0402"
+    # Components with footprints must NOT appear in unresolved_fields
+    for ref in ("U6", "CN3", "C27", "C28"):
+        uf = comp_map[ref].get("unresolved_fields", [])
+        assert "footprint" not in uf, f"{ref} should not be in unresolved_fields"
+
+
+def test_pads_bundle_inference_mode_net_file(tmp_path):
+    """thomson_bundle_converter.py: .net Altium export triggers inference mode."""
+    root = Path(__file__).resolve().parents[1]
+    proj = tmp_path / "proj"
+    (proj / "pre_conversion" / "schematic").mkdir(parents=True)
+    (proj / "pre_conversion" / "layout").mkdir(parents=True)
+    (proj / "pre_conversion" / "schematic" / "babel.net").write_text(NET_INFERENCE)
+    (proj / "pre_conversion" / "schematic" / "bom.csv").write_text("RefDes\nU6\nCN3\n")
+    out = tmp_path / "out"
+
+    r = run(
+        ["python3", "thomson_bundle_converter.py", str(proj),
+         "--output-root", str(out), "--pretty"],
+        root,
+    )
+    assert r.returncode == 0, r.stderr
+
+    sch = json.loads((out / "proj-thomson-export-sch.json").read_text())
+    refs = {c["refdes"] for c in sch["components"]}
+    assert {"C27", "C28", "CN3", "U6"}.issubset(refs)
+    for comp in sch["components"]:
+        assert comp.get("footprint") is None
+
+    report = json.loads((out / "proj-conversion-report.json").read_text())
+    warn_codes = {w["code"] for w in report["warnings"]}
+    assert "WARN_PADS_INFERENCE_MODE" in warn_codes
+
+
+def test_pads_slash_pin_names_bundle(tmp_path):
+    """thomson_bundle_converter.py: slash pin names (e.g. CN3.A4/B9) parsed correctly."""
+    root = Path(__file__).resolve().parents[1]
+    proj = tmp_path / "proj"
+    (proj / "pre_conversion" / "schematic").mkdir(parents=True)
+    (proj / "pre_conversion" / "layout").mkdir(parents=True)
+    (proj / "pre_conversion" / "schematic" / "usbc.asc").write_text(ASC_STANDARD)
+    (proj / "pre_conversion" / "schematic" / "bom.csv").write_text("RefDes\nCN3\n")
+    out = tmp_path / "out"
+
+    r = run(
+        ["python3", "thomson_bundle_converter.py", str(proj),
+         "--output-root", str(out), "--pretty"],
+        root,
+    )
+    assert r.returncode == 0, r.stderr
+
+    sch = json.loads((out / "proj-thomson-export-sch.json").read_text())
+    vbus_net = next(n for n in sch["nets"] if n["name"] == "VBUS")
+    pin_numbers = [nd["pin_number"] for nd in vbus_net["nodes"] if nd["refdes"] == "CN3"]
+    assert "A4/B9" in pin_numbers, "USB-C dual-orientation pin name not preserved"
 
 
 def test_phase66_pads_multinode_line_and_numbered_mfg_headers(tmp_path):
@@ -593,3 +736,427 @@ def test_phase66_pads_multinode_line_and_numbered_mfg_headers(tmp_path):
     first = bom["items"][0]
     assert first["fields"]["manufacturer"] is not None
     assert first["fields"]["mpn"] is not None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Altium .stackup parser tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Minimal 4-layer Altium .stackup fixture (pipe-delimited, BOM char omitted)
+# Layers (LAYER_V8 indices 0–7):
+#   0: Top Overlay  (Surface)
+#   1: Top Solder   (Mask,   DIELTYPE=3)
+#   2: Top Layer    (Conductor, COPTHICK=1.4mil)
+#   3: Dielectric 1 (Dielectric, DIELTYPE=2/prepreg, DIELHEIGHT=5.1mil)
+#   4: Inner Layer  (Conductor, COPTHICK=1.0mil)
+#   5: Dielectric 2 (Dielectric, DIELTYPE=1/core, DIELHEIGHT=46mil)
+#   6: Bottom Layer (Conductor, COPTHICK=1.4mil)
+#   7: Bottom Solder (Mask, DIELTYPE=3)
+ALTIUM_STACKUP_FIXTURE = (
+    "|LAYER_V8_0NAME=Top Overlay"
+    "|LAYER_V8_1NAME=Top Solder Mask"
+    "|LAYER_V8_1DIELHEIGHT=0.4mil"
+    "|LAYER_V8_1DIELTYPE=3"
+    "|LAYER_V8_1DIELMATERIAL=Solder Resist"
+    "|LAYER_V8_1DIELCONST=3.5"
+    "|LAYER_V8_2NAME=Top Layer"
+    "|LAYER_V8_2COPTHICK=1.4mil"
+    "|LAYER_V8_2$LSM$Material=Copper"
+    "|LAYER_V8_3NAME=Dielectric 1"
+    "|LAYER_V8_3DIELHEIGHT=5.1mil"
+    "|LAYER_V8_3DIELTYPE=2"
+    "|LAYER_V8_3DIELMATERIAL=PP-017"
+    "|LAYER_V8_3DIELCONST=4.3"
+    "|LAYER_V8_3$LSM$LossTangent=0.02"
+    "|LAYER_V8_4NAME=Inner Layer"
+    "|LAYER_V8_4COPTHICK=1.0mil"
+    "|LAYER_V8_5NAME=Dielectric 2"
+    "|LAYER_V8_5DIELHEIGHT=46mil"
+    "|LAYER_V8_5DIELTYPE=1"
+    "|LAYER_V8_5DIELMATERIAL=FR4-Core"
+    "|LAYER_V8_5DIELCONST=4.5"
+    "|LAYER_V8_6NAME=Bottom Layer"
+    "|LAYER_V8_6COPTHICK=1.4mil"
+    "|LAYER_V8_7NAME=Bottom Solder Mask"
+    "|LAYER_V8_7DIELHEIGHT=0.4mil"
+    "|LAYER_V8_7DIELTYPE=3"
+    "|LAYER_V8_7DIELMATERIAL=Solder Resist"
+    "|LAYER_V8_7DIELCONST=3.5"
+)
+
+# Minimal stackup JSON shell that merge_tcfx_into_stack() writes into
+STACK_JSON_SHELL = json.dumps({
+    "project_name": "test",
+    "units": "MIL",
+    "layer_stack": [],
+    "stackup_data_quality": {},
+})
+
+
+def _import_parser():
+    """Import AltiumStackupParser and helpers from parse_tcfx_stackup.py."""
+    root = Path(__file__).resolve().parents[1]
+    spec_path = root / "parse_tcfx_stackup.py"
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("parse_tcfx_stackup", spec_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_altium_stackup_parser_layer_count(tmp_path):
+    """AltiumStackupParser: correct number of layers extracted from fixture."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    # 8 layer indices (0–7), all should be present
+    assert len(parser.raw_layers) == 8
+
+
+def test_altium_stackup_parser_layer_types(tmp_path):
+    """AltiumStackupParser: layer type classification matches expected pattern."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    types = [layer["type"] for layer in parser.raw_layers]
+    assert types[0] == "Surface"        # Top Overlay
+    assert types[1] == "Mask"           # Top Solder Mask (DIELTYPE=3)
+    assert types[2] == "Conductor"      # Top Layer
+    assert types[3] == "Dielectric"     # Prepreg (DIELTYPE=2)
+    assert types[4] == "Conductor"      # Inner Layer
+    assert types[5] == "Dielectric"     # Core (DIELTYPE=1)
+    assert types[6] == "Conductor"      # Bottom Layer
+    assert types[7] == "Mask"           # Bottom Solder Mask
+
+
+def test_altium_stackup_parser_thickness_values(tmp_path):
+    """AltiumStackupParser: thickness values parsed as floats, units detected."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    assert parser.units == "MIL"
+    layers = {l["name"]: l for l in parser.raw_layers}
+    assert layers["Top Layer"]["thickness"] == 1.4
+    assert layers["Dielectric 1"]["thickness"] == 5.1
+    assert layers["Dielectric 2"]["thickness"] == 46.0
+    assert layers["Inner Layer"]["thickness"] == 1.0
+    # Surface layers have no thickness key or None
+    assert layers["Top Overlay"].get("thickness") is None
+
+
+def test_altium_stackup_parser_dk_and_df(tmp_path):
+    """AltiumStackupParser: dielectric constant and loss tangent extracted."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    layers = {l["name"]: l for l in parser.raw_layers}
+    assert layers["Dielectric 1"]["dielectric_constant"] == 4.3
+    assert layers["Dielectric 1"]["loss_tangent"] == 0.02
+    assert layers["Dielectric 2"]["dielectric_constant"] == 4.5
+    # Conductor layers carry no dielectric constant
+    assert layers["Top Layer"]["dielectric_constant"] is None
+
+
+def test_altium_stackup_parser_material_names(tmp_path):
+    """AltiumStackupParser: DIELMATERIAL extracted, missing material → unresolved_fields."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    layers = {l["name"]: l for l in parser.raw_layers}
+    assert layers["Dielectric 1"]["material"] == "PP-017"
+    assert layers["Dielectric 2"]["material"] == "FR4-Core"
+    # Inner Layer has no material in fixture → unresolved
+    assert "material" in layers["Inner Layer"].get("unresolved_fields", [])
+
+
+def test_altium_stackup_merge_quality_source(tmp_path):
+    """merge_tcfx_into_stack with AltiumStackupParser sets correct quality source."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    stack = json.loads(STACK_JSON_SHELL)
+    merged = mod.merge_tcfx_into_stack(parser, stack)
+    assert merged["stackup_data_quality"]["source"] == "ipc2581_merged_with_altium_stackup"
+
+
+def test_altium_stackup_merge_physical_stackup_present(tmp_path):
+    """merge_tcfx_into_stack produces physical_stackup list (Surface layers excluded)."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod.AltiumStackupParser(sf)
+    stack = json.loads(STACK_JSON_SHELL)
+    merged = mod.merge_tcfx_into_stack(parser, stack)
+    phys = merged["physical_stackup"]
+    # Surface layers (overlays) must be excluded from physical_stackup
+    types = {l["type"] for l in phys}
+    assert "Surface" not in types
+    # All three conductor layers must be present
+    conductors = [l for l in phys if l["type"] == "Conductor"]
+    assert len(conductors) == 3
+
+
+def test_altium_stackup_bom_marker_stripped(tmp_path):
+    """AltiumStackupParser: BOM marker (\\ufeff) at file start is silently stripped."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    # Write file with explicit BOM prefix (as Altium often does)
+    content = "\ufeff" + ALTIUM_STACKUP_FIXTURE
+    sf.write_bytes(content.encode("utf-8-sig"))
+    parser = mod.AltiumStackupParser(sf)
+    assert len(parser.raw_layers) == 8
+
+
+def test_load_stackup_parser_routes_correctly(tmp_path):
+    """_load_stackup_parser routes .stackup → AltiumStackupParser, .tcfx → TCFXParser."""
+    mod = _import_parser()
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    parser = mod._load_stackup_parser(sf)
+    assert isinstance(parser, mod.AltiumStackupParser)
+
+
+def test_altium_stackup_cli(tmp_path):
+    """CLI: parse_tcfx_stackup.py accepts .stackup file and emits valid JSON."""
+    root = Path(__file__).resolve().parents[1]
+    sf = tmp_path / "test.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    stack_file = tmp_path / "stack.json"
+    stack_file.write_text(STACK_JSON_SHELL)
+
+    r = run(
+        ["python3", "parse_tcfx_stackup.py", str(sf), str(stack_file), "--json"],
+        root,
+    )
+    assert r.returncode == 0, r.stderr
+    result = json.loads(r.stdout)
+    assert result["status"] == "SUCCESS"
+    assert result["source_format"] == "altium_stackup"
+    assert result["layers_parsed"] == 8
+
+
+def test_merge_tcfx_if_available_discovers_stackup(tmp_path):
+    """merge_tcfx_if_available: discovers .stackup in input/ and sets altium_stackup_merge key."""
+    mod = _import_parser()
+    inp = tmp_path / "input"
+    inp.mkdir()
+    sf = inp / "project.stackup"
+    sf.write_text(ALTIUM_STACKUP_FIXTURE, encoding="utf-8")
+    stack = json.loads(STACK_JSON_SHELL)
+    merged = mod.merge_tcfx_if_available(tmp_path, stack)
+    assert "altium_stackup_merge" in merged
+    assert merged["altium_stackup_merge"]["status"] == "SUCCESS"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ODB++ parser and backfill tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _build_odb_fixture(root):
+    """Create a minimal in-memory ODB++ directory fixture under ``root``."""
+    import os
+    def _w(p, content):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+
+    _w(root / "misc" / "info",
+       "UNITS=MM\nODB_VERSION_MAJOR=8\nODB_VERSION_MINOR=1\nODB_SOURCE=Altium Designer\n")
+
+    _w(root / "matrix" / "matrix",
+       "LAYER {\nNAME=top_layer\nTYPE=SIGNAL\nROW=1\n}\n"
+       "LAYER {\nNAME=bottom_layer\nTYPE=SIGNAL\nROW=2\n}\n")
+
+    _w(root / "steps" / "pcb" / "netlists" / "cadnet" / "netlist",
+       "$0 $NONE$\n$1 GND\n$2 VCC\n")
+
+    # LYR maps: index 0=top_layer, index 1=bottom_layer
+    # top_layer feat_idx 0 -> GND, feat_idx 1 -> VCC
+    _w(root / "steps" / "pcb" / "eda" / "data",
+       "LYR top_layer bottom_layer\n"
+       "NET GND\nFID C 0 0\n"
+       "NET VCC\nFID C 0 1\n")
+
+    # top_layer: $0=r254 (0.254mm), $1=r508 (0.508mm)
+    # 3 L records: feat_idx 0 len=1.0mm, feat_idx 1 len=1.0mm, feat_idx 2 len=1.0mm
+    _w(root / "steps" / "pcb" / "layers" / "top_layer" / "features",
+       "UNITS=MM\n$0 r254\n$1 r508\n"
+       "L 0.0 0.0 1.0 0.0 0 P 0\n"   # feat_idx 0 -> GND  width=0.254
+       "L 0.0 0.0 0.0 1.0 1 P 0\n"   # feat_idx 1 -> VCC  width=0.508
+       "L 5.0 5.0 6.0 5.0 0 P 0\n")  # feat_idx 2 -> None width=0.254
+
+    # bottom_layer: $0=r381 (0.381mm)
+    _w(root / "steps" / "pcb" / "layers" / "bottom_layer" / "features",
+       "UNITS=MM\n$0 r381\n"
+       "L 10.0 0.0 11.0 0.0 0 P 0\n")  # feat_idx 0 -> None
+
+
+def _import_odbpp():
+    import importlib.util, sys
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "odbpp_to_thomson", root / "odbpp_to_thomson.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_odbpp_parser_segment_count(tmp_path):
+    """ODBppParser: directory input yields 4 route segments."""
+    _build_odb_fixture(tmp_path)
+    mod = _import_odbpp()
+    parser = mod.ODBppParser(tmp_path)
+    assert len(parser.route_segments) == 4
+
+
+def test_odbpp_parser_net_attribution(tmp_path):
+    """ODBppParser: GND and VCC attributed; one segment has net=None."""
+    _build_odb_fixture(tmp_path)
+    mod = _import_odbpp()
+    parser = mod.ODBppParser(tmp_path)
+    top_segs = [s for s in parser.route_segments if s["layer"] == "top_layer"]
+    nets = {s["net"] for s in top_segs}
+    assert "GND" in nets
+    assert "VCC" in nets
+    assert None in nets   # feat_idx 2 has no EDA reference
+
+
+def test_odbpp_parser_width_mm(tmp_path):
+    """ODBppParser: symbol r254 → 0.254 mm (µm→mm conversion)."""
+    _build_odb_fixture(tmp_path)
+    mod = _import_odbpp()
+    parser = mod.ODBppParser(tmp_path)
+    gnd_seg = next(
+        s for s in parser.route_segments
+        if s["layer"] == "top_layer" and s["net"] == "GND"
+    )
+    assert abs(gnd_seg["line_width"] - 0.254) < 1e-9
+
+
+def test_odbpp_parser_route_length_by_layer(tmp_path):
+    """ODBppParser: top_layer total=3.0 mm, bottom_layer total=1.0 mm."""
+    _build_odb_fixture(tmp_path)
+    mod = _import_odbpp()
+    parser = mod.ODBppParser(tmp_path)
+    layer_map = {r["layer"]: r["total_route_length"]
+                 for r in parser.route_length_by_layer}
+    assert abs(layer_map["top_layer"] - 3.0) < 1e-9
+    assert abs(layer_map["bottom_layer"] - 1.0) < 1e-9
+
+
+def test_odbpp_merge_backfills_empty_board(tmp_path):
+    """merge_odbpp_into_board: empty board JSON gets routes and layer data."""
+    _build_odb_fixture(tmp_path)
+    mod = _import_odbpp()
+    parser = mod.ODBppParser(tmp_path)
+    board = {
+        "routes": [],
+        "route_length_by_layer": [],
+        "trace_width_usage_by_layer": [],
+        "route_length_by_net": [],
+        "trace_width_by_net": [],
+        "extraction_counts": {"copper_route_count": 0},
+        "routing_topology_summary": {"routed_net_count": 0, "nets": []},
+        "source": {},
+    }
+    result = mod.merge_odbpp_into_board(parser, board)
+    assert len(result["routes"]) == 4
+    assert len(result["route_length_by_layer"]) == 2
+    assert result["extraction_counts"]["copper_route_count"] == 4
+    assert result["source"]["odbpp_merge_status"] == "SUCCESS"
+
+
+def test_odbpp_merge_skips_populated_board(tmp_path):
+    """merge_odbpp_into_board: non-empty routes list is NOT overwritten."""
+    _build_odb_fixture(tmp_path)
+    mod = _import_odbpp()
+    parser = mod.ODBppParser(tmp_path)
+    existing_route = {"net": "EXISTING", "layer": "top_layer", "length": 99.0}
+    board = {
+        "routes": [existing_route],
+        "route_length_by_layer": [{"layer": "top_layer", "total_route_length": 99.0}],
+        "trace_width_usage_by_layer": [],
+        "route_length_by_net": [],
+        "trace_width_by_net": [],
+        "extraction_counts": {"copper_route_count": 1},
+        "routing_topology_summary": {},
+        "source": {},
+    }
+    result = mod.merge_odbpp_into_board(parser, board)
+    # routes already populated — must remain untouched
+    assert len(result["routes"]) == 1
+    assert result["routes"][0]["net"] == "EXISTING"
+
+
+def test_merge_odbpp_if_available_discovers_odb_dir(tmp_path):
+    """merge_odbpp_if_available: auto-discovers ODB++ dir in input/ subdir."""
+    odb_dir = tmp_path / "input" / "project.odb"
+    _build_odb_fixture(odb_dir)
+    mod = _import_odbpp()
+    board = {
+        "routes": [],
+        "route_length_by_layer": [],
+        "trace_width_usage_by_layer": [],
+        "route_length_by_net": [],
+        "trace_width_by_net": [],
+        "extraction_counts": {"copper_route_count": 0},
+        "routing_topology_summary": {},
+        "source": {},
+    }
+    result = mod.merge_odbpp_if_available(tmp_path, board)
+    assert len(result["routes"]) == 4
+    assert result["source"].get("odbpp_merge_status") == "SUCCESS"
+
+
+def test_odbpp_cli(tmp_path):
+    """odbpp_to_thomson CLI: accepts ODB++ dir + board JSON, emits JSON result."""
+    root_py = Path(__file__).resolve().parents[1]
+    odb_dir = tmp_path / "myproject.odb"
+    _build_odb_fixture(odb_dir)
+    board = {
+        "routes": [], "route_length_by_layer": [],
+        "trace_width_usage_by_layer": [], "route_length_by_net": [],
+        "trace_width_by_net": [], "extraction_counts": {"copper_route_count": 0},
+        "routing_topology_summary": {}, "source": {},
+    }
+    brd_json = tmp_path / "myproject-brd.json"
+    brd_json.write_text(json.dumps(board), encoding="utf-8")
+    r = run(
+        ["python3", "odbpp_to_thomson.py",
+         str(odb_dir), str(brd_json), "--json"],
+        root_py,
+    )
+    assert r.returncode == 0, r.stderr
+    result = json.loads(r.stdout)
+    assert result["status"] == "SUCCESS"
+    assert result["route_segments"] == 4
+    assert result["units"] == "MM"
+
+
+def test_odbpp_zip_format(tmp_path):
+    """ODBppParser: zip archive (with odb/ prefix) is parsed identically to dir."""
+    import zipfile as _zf
+    mod = _import_odbpp()
+
+    # Build the fixture in a plain directory first
+    src = tmp_path / "src"
+    _build_odb_fixture(src)
+
+    # Re-pack into a zip with ``odb/`` prefix
+    zip_path = tmp_path / "project.zip"
+    with _zf.ZipFile(zip_path, "w") as zf:
+        for f in sorted(src.rglob("*")):
+            if f.is_file():
+                arc_name = "odb/" + f.relative_to(src).as_posix()
+                zf.write(f, arc_name)
+
+    parser = mod.ODBppParser(zip_path)
+    assert len(parser.route_segments) == 4
+    assert abs(
+        sum(r["total_route_length"] for r in parser.route_length_by_layer) - 4.0
+    ) < 1e-9

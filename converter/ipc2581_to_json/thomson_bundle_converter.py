@@ -111,6 +111,23 @@ def classify_file(path: Path, root: Path, role_hint: str) -> ClassifiedFile:
             return ClassifiedFile(rel, ext, size, "schematic_pdf_candidate", "medium", "Filename suggests schematic PDF")
         if any(k in name for k in ["gerber", "layout", "pcb", "silk", "copper", "layer", "plot", "photoplot", "artwork"]):
             return ClassifiedFile(rel, ext, size, "layout_pdf_candidate", "medium", "Filename suggests layout/Gerber PDF")
+    if ext == ".stackup":
+        return ClassifiedFile(rel, ext, size, "stackup_candidate", "high", "Altium .stackup file")
+    # ODB++ archives — peek at contents to confirm before classifying
+    if ext == ".zip":
+        try:
+            from odbpp_to_thomson import _is_odbpp_zip  # noqa: PLC0415
+            if _is_odbpp_zip(path):
+                return ClassifiedFile(rel, ext, size, "odbpp_candidate", "high", "ODB++ zip archive")
+        except Exception:
+            pass
+    if ext in {".tgz"} or name.endswith(".tar.gz"):
+        try:
+            from odbpp_to_thomson import _is_odbpp_tgz  # noqa: PLC0415
+            if _is_odbpp_tgz(path):
+                return ClassifiedFile(rel, ext, size, "odbpp_candidate", "high", "ODB++ tgz archive")
+        except Exception:
+            pass
     return ClassifiedFile(rel, ext, size, "unknown", "low", "No classifier rule matched")
 
 
@@ -384,7 +401,9 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
     # if len(candidates) > 1:
     #     warnings.append({"code": "WARN_PADS_MULTIPLE_CANDIDATES", "message": f"Multiple PADS candidates found ({len(candidates)}); using {source.relative_path}"})
 
-    lines = (project_root / source.relative_path).read_text(encoding="utf-8", errors="replace").splitlines()
+    src_path = project_root / source.relative_path
+    lines = src_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    is_net_ext = src_path.suffix.lower() == ".net"
     dialect = "unknown"
     if any("*PADS-PCB*" in ln for ln in lines[:10]):
         dialect = "pads_pcb_ascii_orcad_or_altium"
@@ -393,19 +412,37 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
     nets: list[dict[str, Any]] = []
     current_section = None
     current_net = None
+    has_part_block = False
+
+    # Pin pattern: supports alphanumeric pins plus hyphens, underscores, and
+    # forward slashes (e.g. CN3.A4/B9 for USB-C dual-orientation pads).
+    _PIN_PAT = re.compile(r'([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z0-9_\-/]+)')
 
     for raw in lines:
         line = raw.strip()
         if not line:
             continue
-        if line.upper() == "*PART*":
+        upper_line = line.upper()
+        if upper_line.startswith("*PART*") or upper_line.startswith("*COMP*"):
             current_section = "part"
+            has_part_block = True
             continue
-        if line.upper() == "*NET*":
+        if upper_line.startswith("*NET*"):
             current_section = "net"
             if current_net:
                 nets.append(current_net)
                 current_net = None
+            continue
+        if upper_line.startswith("*SIGNAL*"):
+            if current_section == "net" or current_section is None:
+                current_section = "net"
+                if current_net:
+                    nets.append(current_net)
+                parts = line.split(maxsplit=1)
+                net_name = parts[1].strip() if len(parts) > 1 else "unknown_net"
+                current_net = {"name": net_name, "nodes": []}
+            continue
+        if upper_line.startswith("*END*") or upper_line.startswith("*PADS-PCB*") or upper_line.startswith("*PADS-NETLIST*"):
             continue
         if current_section == "part":
             toks = line.split()
@@ -422,29 +459,27 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
                         value = tk.split("=", 1)[1]
                     elif low.startswith("footprint=") or low.startswith("package="):
                         footprint = tk.split("=", 1)[1]
-                components[refdes.upper()] = {"refdes": refdes, "value": value, "footprint": footprint, "package": footprint, "part_name": part_name, "source": {"format": "pads_ascii", "file": source.relative_path}}
+                components[refdes.upper()] = {
+                    "refdes": refdes, "value": value, "footprint": footprint,
+                    "package": footprint, "part_name": part_name,
+                    "source": {"format": "pads_ascii", "file": source.relative_path},
+                }
         elif current_section == "net":
-            if line.upper().startswith("*SIGNAL*"):
-                if current_net:
-                    nets.append(current_net)
-                current_net = {"name": line.split(maxsplit=1)[1].strip() if len(line.split(maxsplit=1)) > 1 else "unknown_net", "nodes": []}
-                continue
             if line.upper().startswith("NET "):
                 if current_net:
                     nets.append(current_net)
                 current_net = {"name": line[4:].strip(), "nodes": []}
                 continue
             if current_net is not None:
-                # Phase 4: Enhanced regex-based pin pattern matching
-                # Matches all [RefDes].[Pin] patterns including single-pin nets
-                pin_pattern = re.compile(r'([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z0-9_]+)')
-                matches = pin_pattern.findall(line)
+                matches = _PIN_PAT.findall(line)
                 if matches:
                     for refdes, pin in matches:
                         if refdes:
-                            current_net["nodes"].append({"refdes": refdes, "pin_number": pin, "pin_name": None})
+                            current_net["nodes"].append(
+                                {"refdes": refdes, "pin_number": pin, "pin_name": None}
+                            )
                 else:
-                    # Fallback: space-split for tokens without dots (legacy compatibility)
+                    # Fallback: space-split for tokens without dots
                     for pin_token in line.split():
                         if pin_token.startswith("*"):
                             continue
@@ -454,12 +489,49 @@ def parse_pads(project_root: Path, files: list[ClassifiedFile], bom: dict[str, A
                             refdes, pin = pin_token, None
                         if not refdes:
                             continue
-                        current_net["nodes"].append({"refdes": refdes, "pin_number": pin, "pin_name": None})
+                        current_net["nodes"].append(
+                            {"refdes": refdes, "pin_number": pin, "pin_name": None}
+                        )
     if current_net:
         nets.append(current_net)
 
-    if not components:
-        warnings.append({"code": "WARN_PADS_NO_COMPONENTS", "message": "No components extracted from PADS file."})
+    # ------------------------------------------------------------------
+    # Inference mode: no *PART* block (Altium .net or stripped export)
+    # Infer component list from net nodes; mark footprints as unresolved.
+    # ------------------------------------------------------------------
+    is_inference = not has_part_block or is_net_ext
+    if is_inference:
+        dialect = f"{dialect}/inference_mode"
+        for net_entry in nets:
+            for node in net_entry.get("nodes", []):
+                rd = node["refdes"].upper()
+                if rd not in components:
+                    components[rd] = {
+                        "refdes": node["refdes"], "value": None, "footprint": None,
+                        "package": None, "part_name": None,
+                        "source": {"format": "pads_ascii_inferred", "file": source.relative_path},
+                        "unresolved_fields": ["footprint"],
+                    }
+        if not components:
+            warnings.append({"code": "WARN_PADS_NO_COMPONENTS", "message": "No components extracted from PADS file."})
+        else:
+            warnings.append({
+                "code": "WARN_PADS_INFERENCE_MODE",
+                "message": (
+                    "Inference mode: *PART* block absent — component footprints are unknown. "
+                    f"{len(components)} component(s) inferred from net connectivity."
+                ),
+            })
+    else:
+        if not components:
+            warnings.append({"code": "WARN_PADS_NO_COMPONENTS", "message": "No components extracted from PADS file."})
+        # In standard mode, flag any component that still lacks a footprint
+        for comp in components.values():
+            if comp.get("footprint") is None:
+                uf = comp.setdefault("unresolved_fields", [])
+                if "footprint" not in uf:
+                    uf.append("footprint")
+
     if not nets:
         warnings.append({"code": "WARN_PADS_NO_NETS", "message": "No nets extracted from PADS file; fixture may be component-only or net sections were not found."})
 
@@ -3090,6 +3162,12 @@ def build_board_export(project_name:str, project_root:Path, ipc:dict[str,Any], c
     }
     if cross_extraction:
         result["cross_extraction_summary"] = cross_extraction.get("enrichment_stats", {})
+    # ODB++ backfill: populate empty routing fields for Altium IPC-2581 boards
+    try:
+        from odbpp_to_thomson import merge_odbpp_if_available  # noqa: PLC0415
+        result = merge_odbpp_if_available(project_root, result)
+    except Exception:
+        pass
     return result
 
 

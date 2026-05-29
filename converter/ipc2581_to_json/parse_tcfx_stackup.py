@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
 """parse_tcfx_stackup.py
 
-Parses Cadence Allegro/OrCAD Technology Files (.tcfx) to extract physical
-stackup layers, and merges the data back into the standard ThomsonLint stackup JSON.
+Unified stackup parser for ThomsonLint. Supports:
 
-This parser resolves null material properties in the stackup JSON by extracting:
+  - Cadence Allegro/OrCAD Technology Files (.tcfx / .tcfx.txt)
+  - Altium Designer Stackup files (.stackup)
+
+Both parsers expose the same interface (raw_layers / units) and route through
+the shared merge_tcfx_into_stack() function so that the downstream stackup JSON
+is format-agnostic.
+
+The parser resolves null material properties in the stackup JSON by extracting:
 - Layer thicknesses (normalized to target units)
 - Dielectric constants (Dk)
 - Loss tangents (Df)
 - Material names
 - Copper weights
-
-The extracted data enables physical-math verification (impedance, thermal, etc.)
-in the Saturn PCB verification engine.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -117,21 +121,209 @@ class TCFXParser:
                     }
 
 
-def merge_tcfx_into_stack(tcfx_parser: TCFXParser, stack_data: dict[str, Any]) -> dict[str, Any]:
+# ─────────────────────────────────────────────────────────────────────────────
+# Altium Designer .stackup parser
+# ─────────────────────────────────────────────────────────────────────────────
+
+# LAYER_V8_<index><attribute>  — index is one or more digits, attribute begins
+# with a letter or '$' (never a digit), so greedy \d+ unambiguously captures
+# the index regardless of digit count (e.g. index 10 vs index 1).
+_ALTIUM_LAYER_KEY_RE = re.compile(r'^LAYER_V8_(\d+)(.+)$')
+
+# Altium DIELTYPE values
+_ALTIUM_DIELTYPE_CORE = 1
+_ALTIUM_DIELTYPE_PREPREG = 2
+_ALTIUM_DIELTYPE_SOLDERMASK = 3
+
+
+def _parse_altium_unit_value(val_str: str) -> tuple[float | None, str]:
+    """Parse an Altium value string such as '1.4mil' or '46mil' or '0.4mil'.
+
+    Returns (numeric_value, unit_string_upper) or (None, '') when unparseable.
+    The unit string is normalised to uppercase (e.g. 'MIL', 'MM', 'OZ').
     """
-    Merges technology file stackup properties into standard stackup JSON structure.
-    
-    This function builds a complete physical stackup from the TCFX file, including
-    dielectric layers that are critical for impedance calculations but not present
-    in IPC-2581 exports.
-    
+    if not val_str:
+        return None, ""
+    m = re.match(r'^([+-]?[0-9]*\.?[0-9]+)\s*([a-zA-Z%]*)$', val_str.strip())
+    if m:
+        try:
+            return float(m.group(1)), m.group(2).upper()
+        except ValueError:
+            pass
+    return None, ""
+
+
+class AltiumStackupParser:
+    """Parser for Altium Designer .stackup files.
+
+    The .stackup format is a single line of pipe-delimited ``KEY=VALUE`` pairs.
+    This class exposes the same ``raw_layers`` / ``units`` interface as
+    ``TCFXParser`` so that ``merge_tcfx_into_stack()`` can consume either
+    format without modification.
+
+    Layer type mapping (from Altium DIELTYPE):
+      - ``COPTHICK`` present                    → ``Conductor``
+      - ``DIELHEIGHT`` + ``DIELTYPE=1``         → ``Dielectric`` (core)
+      - ``DIELHEIGHT`` + ``DIELTYPE=2``         → ``Dielectric`` (prepreg)
+      - ``DIELHEIGHT`` + ``DIELTYPE=3``         → ``Mask`` (soldermask)
+      - neither ``COPTHICK`` nor ``DIELHEIGHT`` → ``Surface`` (overlay/silkscreen)
+    """
+
+    def __init__(self, stackup_path: Path):
+        self.stackup_path = stackup_path
+        # utf-8-sig strips the BOM that Altium often prepends
+        text = stackup_path.read_text(encoding="utf-8-sig", errors="ignore").strip()
+        self._kv: dict[str, str] = self._parse_kv(text)
+        self.units, self.raw_layers = self._extract_layers()
+
+    @staticmethod
+    def _parse_kv(text: str) -> dict[str, str]:
+        """Split pipe-delimited ``KEY=VALUE`` tokens into a dict.
+
+        Each ``|``-separated token is split on the *first* ``=`` only so that
+        values containing ``=`` (e.g. base-64 fragments) are preserved intact.
+        """
+        kv: dict[str, str] = {}
+        for token in text.split("|"):
+            token = token.strip()
+            if "=" in token:
+                k, _, v = token.partition("=")
+                kv[k.strip()] = v.strip()
+        return kv
+
+    def _extract_layers(self) -> tuple[str, list[dict[str, Any]]]:
+        """Group KV pairs by layer index and produce the standard raw_layers list."""
+        # Bucket attributes by integer layer index
+        layers_raw: dict[int, dict[str, str]] = {}
+        for key, val in self._kv.items():
+            m = _ALTIUM_LAYER_KEY_RE.match(key)
+            if not m:
+                continue
+            idx = int(m.group(1))
+            attr = m.group(2)
+            # Skip substack-context keys that embed a UUID in braces — they
+            # duplicate NAME/context info and are not needed for physical data.
+            if "{" in attr:
+                continue
+            layers_raw.setdefault(idx, {})[attr] = val
+
+        if not layers_raw:
+            return "MIL", []
+
+        # Detect the source unit from the first thickness value found
+        detected_unit = "MIL"
+        for attrs in layers_raw.values():
+            for uk in ("COPTHICK", "DIELHEIGHT", "$LSM$Thickness"):
+                if uk in attrs:
+                    _, u = _parse_altium_unit_value(attrs[uk])
+                    if u:
+                        detected_unit = u
+                    break
+            else:
+                continue
+            break
+
+        raw_layers: list[dict[str, Any]] = []
+        for idx in sorted(layers_raw.keys()):
+            attrs = layers_raw[idx]
+            name = attrs.get("NAME")
+
+            # Determine layer type from available keys
+            has_copper = "COPTHICK" in attrs
+            has_diel = "DIELHEIGHT" in attrs
+            dieltype_str = attrs.get("DIELTYPE", "")
+            dieltype = int(dieltype_str) if dieltype_str.isdigit() else None
+
+            if has_copper:
+                layer_type = "Conductor"
+                thickness_str = attrs.get("COPTHICK") or attrs.get("$LSM$Thickness")
+            elif has_diel:
+                layer_type = "Mask" if dieltype == _ALTIUM_DIELTYPE_SOLDERMASK else "Dielectric"
+                thickness_str = attrs.get("DIELHEIGHT") or attrs.get("$LSM$Thickness")
+            else:
+                layer_type = "Surface"
+                thickness_str = None
+
+            thickness, _ = _parse_altium_unit_value(thickness_str) if thickness_str else (None, "")
+
+            # Dielectric constant — prefer the direct key, fall back to $LSM$
+            dk = _to_float(attrs.get("DIELCONST") or attrs.get("$LSM$DielectricConstant"))
+
+            # Loss tangent (only the $LSM$ key carries this)
+            df = _to_float(attrs.get("$LSM$LossTangent"))
+
+            # Material name
+            material = attrs.get("DIELMATERIAL") or attrs.get("$LSM$Material") or None
+
+            # Flag fields that are absent but expected for this layer type
+            unresolved: list[str] = []
+            if thickness is None and layer_type != "Surface":
+                unresolved.append("thickness")
+            if material is None and layer_type in ("Dielectric", "Conductor", "Mask"):
+                unresolved.append("material")
+            if dk is None and layer_type in ("Dielectric", "Mask"):
+                unresolved.append("dielectric_constant")
+
+            entry: dict[str, Any] = {
+                "name": name,
+                "type": layer_type,
+                "material": material,
+                "thickness": thickness,
+                "dielectric_constant": dk,
+                "loss_tangent": df,
+                "function": None,  # resolved downstream by merge_tcfx_into_stack
+            }
+            if unresolved:
+                entry["unresolved_fields"] = unresolved
+
+            raw_layers.append(entry)
+
+        return detected_unit, raw_layers
+
+
+def _load_stackup_parser(stackup_path: Path) -> TCFXParser | AltiumStackupParser:
+    """Route a stackup file to the appropriate parser based on extension.
+
+    Supported extensions:
+      - ``.tcfx``     / ``.tcfx.txt`` → ``TCFXParser``
+      - ``.stackup``                  → ``AltiumStackupParser``
+
+    Raises ``ValueError`` for unrecognised extensions.
+    """
+    name_lower = stackup_path.name.lower()
+    if name_lower.endswith(".tcfx") or name_lower.endswith(".tcfx.txt"):
+        return TCFXParser(stackup_path)
+    if name_lower.endswith(".stackup"):
+        return AltiumStackupParser(stackup_path)
+    raise ValueError(
+        f"Unsupported stackup file extension: {stackup_path.suffix!r}. "
+        "Expected .tcfx, .tcfx.txt, or .stackup."
+    )
+
+
+def merge_tcfx_into_stack(tcfx_parser: TCFXParser | AltiumStackupParser, stack_data: dict[str, Any], *, source_label: str | None = None) -> dict[str, Any]:
+    """Merge stackup parser output into the standard ThomsonLint stackup JSON.
+
+    Accepts both ``TCFXParser`` and ``AltiumStackupParser`` instances — they
+    share the same ``raw_layers`` / ``units`` interface.
+
     Args:
-        tcfx_parser: Parsed TCFX data
-        stack_data: Target stackup JSON dictionary
-    
+        tcfx_parser:  Parsed stackup data (TCFX or Altium).
+        stack_data:   Target stackup JSON dictionary to enrich.
+        source_label: Optional override for ``stackup_data_quality.source``.
+                      Defaults to ``"ipc2581_merged_with_allegro_tcfx"`` for
+                      ``TCFXParser`` and ``"ipc2581_merged_with_altium_stackup"``
+                      for ``AltiumStackupParser``.
+
     Returns:
-        Updated stackup dictionary with complete physical stackup
+        Updated stackup dictionary with complete physical stackup.
     """
+    if source_label is None:
+        source_label = (
+            "ipc2581_merged_with_altium_stackup"
+            if isinstance(tcfx_parser, AltiumStackupParser)
+            else "ipc2581_merged_with_allegro_tcfx"
+        )
     target_units = (stack_data.get("units") or "INCH").upper()
     source_units = tcfx_parser.units
     
@@ -232,7 +424,7 @@ def merge_tcfx_into_stack(tcfx_parser: TCFXParser, stack_data: dict[str, Any]) -
     quality["material_thickness_available"] = True
     quality["dielectric_material_available"] = dielectric_count > 0
     quality["copper_weight_available"] = copper_count > 0
-    quality["source"] = "ipc2581_merged_with_allegro_tcfx"
+    quality["source"] = source_label
     quality["physical_stackup_complete"] = True
     quality["dielectric_layer_count"] = dielectric_count
     quality["copper_layer_count"] = copper_count
@@ -265,140 +457,166 @@ def _infer_side(layer_name: str | None, layer_type: str | None) -> str:
 
 
 def merge_tcfx_if_available(project_root: Path, stack_data: dict[str, Any]) -> dict[str, Any]:
-    """
-    Automatically searches for and merges TCFX data if found.
-    
-    This function is called by thomson_bundle_converter.py to automatically
-    enrich stackup data when a .tcfx file is present.
-    
+    """Automatically search for and merge a stackup file if one is found.
+
+    Searches the project root and common sub-directories for ``.tcfx``,
+    ``.tcfx.txt``, and ``.stackup`` files.  ``.tcfx`` / ``.tcfx.txt`` take
+    precedence over ``.stackup`` so that OrCAD projects are unaffected.
+
     Args:
-        project_root: Project root directory
-        stack_data: Stackup JSON dictionary
-    
+        project_root: Project root directory.
+        stack_data:   Stackup JSON dictionary.
+
     Returns:
-        Updated stackup dictionary (with or without TCFX merge)
+        Updated stackup dictionary (with or without merge).
     """
-    # Search for TCFX files in common locations
-    tcfx_candidates = []
-    tcfx_candidates.extend(list(project_root.glob("*.tcfx")))
-    tcfx_candidates.extend(list(project_root.glob("*.tcfx.txt")))
-    
-    input_dir = project_root / "input"
-    if input_dir.exists():
-        tcfx_candidates.extend(list(input_dir.glob("*.tcfx")))
-        tcfx_candidates.extend(list(input_dir.glob("*.tcfx.txt")))
-    
-    pre_conv_dir = project_root / "pre_conversion"
-    if pre_conv_dir.exists():
-        tcfx_candidates.extend(list(pre_conv_dir.glob("*.tcfx")))
-        tcfx_candidates.extend(list(pre_conv_dir.glob("*.tcfx.txt")))
-    
-    if not tcfx_candidates:
+    search_dirs = [project_root]
+    for sub in ("input", "pre_conversion"):
+        d = project_root / sub
+        if d.exists():
+            search_dirs.append(d)
+
+    tcfx_candidates: list[Path] = []
+    altium_candidates: list[Path] = []
+    for d in search_dirs:
+        tcfx_candidates.extend(d.glob("*.tcfx"))
+        tcfx_candidates.extend(d.glob("*.tcfx.txt"))
+        altium_candidates.extend(d.glob("*.stackup"))
+
+    # Prefer TCFX over Altium when both exist in the same project
+    if tcfx_candidates:
+        chosen_path = tcfx_candidates[0]
+        merge_key = "tcfx_merge"
+    elif altium_candidates:
+        chosen_path = altium_candidates[0]
+        merge_key = "altium_stackup_merge"
+    else:
         return stack_data
-    
-    # Use the first found TCFX file
-    tcfx_path = tcfx_candidates[0]
-    
+
     try:
-        tcfx_parser = TCFXParser(tcfx_path)
-        merged_data = merge_tcfx_into_stack(tcfx_parser, stack_data)
-        
-        # Add merge info to stackup metadata
-        if "tcfx_merge" not in merged_data:
-            # Try to get relative path, fall back to absolute if not under project_root
+        stackup_parser = _load_stackup_parser(chosen_path)
+        merged_data = merge_tcfx_into_stack(stackup_parser, stack_data)
+
+        if merge_key not in merged_data:
             try:
-                tcfx_rel_path = str(tcfx_path.relative_to(project_root))
+                rel_path = str(chosen_path.relative_to(project_root))
             except ValueError:
-                tcfx_rel_path = str(tcfx_path)
-            
-            merged_data["tcfx_merge"] = {
+                rel_path = str(chosen_path)
+
+            merged_data[merge_key] = {
                 "status": "SUCCESS",
-                "tcfx_file": tcfx_rel_path,
-                "layers_parsed": len(tcfx_parser.raw_layers),
-                "layers_updated": sum(1 for layer in merged_data.get("layer_stack", []) 
-                                     if layer.get("thickness") is not None)
+                "source_file": rel_path,
+                "layers_parsed": len(stackup_parser.raw_layers),
+                "layers_updated": sum(
+                    1 for layer in merged_data.get("layer_stack", [])
+                    if layer.get("thickness") is not None
+                ),
             }
-        
+
         return merged_data
+
     except Exception as e:
-        # Add error info but don't fail the conversion
-        if "tcfx_merge" not in stack_data:
-            # Try to get relative path, fall back to absolute if not under project_root
+        if merge_key not in stack_data:
             try:
-                tcfx_rel_path = str(tcfx_path.relative_to(project_root))
+                rel_path = str(chosen_path.relative_to(project_root))
             except ValueError:
-                tcfx_rel_path = str(tcfx_path)
-            
-            stack_data["tcfx_merge"] = {
+                rel_path = str(chosen_path)
+
+            stack_data[merge_key] = {
                 "status": "ERROR",
-                "tcfx_file": tcfx_rel_path,
-                "error": str(e)
+                "source_file": rel_path,
+                "error": str(e),
             }
         return stack_data
 
 
 def main():
-    """CLI entry point for TCFX stackup merger."""
+    """CLI entry point for stackup merger (supports .tcfx and .stackup)."""
     parser = argparse.ArgumentParser(
-        description="Merge Cadence Allegro/OrCAD TCFX Stackup Data into ThomsonLint Stackup JSON"
+        description=(
+            "Merge physical stackup data into a ThomsonLint stackup JSON. "
+            "Accepts Cadence Allegro/OrCAD .tcfx files and Altium .stackup files."
+        )
     )
-    parser.add_argument("tcfx_file", help="Path to input .tcfx or .tcfx.txt file")
-    parser.add_argument("stack_json", help="Path to stackup JSON file (e.g., *-thomson-export-stack.json)")
-    parser.add_argument("--output", help="Optional output path (defaults to overwriting stack_json)")
-    parser.add_argument("--json", action="store_true", help="Output results as JSON")
-    
+    parser.add_argument(
+        "stackup_file",
+        help="Path to input stackup file (.tcfx, .tcfx.txt, or .stackup)",
+    )
+    parser.add_argument(
+        "stack_json",
+        help="Path to target stackup JSON (e.g., *-thomson-export-stack.json)",
+    )
+    parser.add_argument(
+        "--output",
+        help="Optional output path (defaults to overwriting stack_json)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results as JSON",
+    )
+
     args = parser.parse_args()
-    
-    tcfx_path = Path(args.tcfx_file)
+
+    stackup_path = Path(args.stackup_file)
     stack_path = Path(args.stack_json)
     out_path = Path(args.output) if args.output else stack_path
-    
-    # Validate inputs
-    if not tcfx_path.exists():
-        print(f"Error: Technology file not found: {tcfx_path}", file=sys.stderr)
+
+    if not stackup_path.exists():
+        print(f"Error: Stackup file not found: {stackup_path}", file=sys.stderr)
         sys.exit(1)
-        
+
     if not stack_path.exists():
         print(f"Error: Target stackup JSON not found: {stack_path}", file=sys.stderr)
         sys.exit(1)
-        
-    # Parse tech file
+
     try:
-        tcfx_parser = TCFXParser(tcfx_path)
-    except Exception as e:
-        print(f"Error: Failed to parse XML tech file: {e}", file=sys.stderr)
+        stackup_parser = _load_stackup_parser(stackup_path)
+    except (ValueError, Exception) as e:
+        print(f"Error: Failed to parse stackup file: {e}", file=sys.stderr)
         sys.exit(1)
-        
-    # Read target JSON
+
     try:
-        with open(stack_path, "r", encoding="utf-8") as f:
+        with open(stack_path, encoding="utf-8") as f:
             stack_data = json.load(f)
     except Exception as e:
         print(f"Error: Failed to read stackup JSON: {e}", file=sys.stderr)
         sys.exit(1)
-        
-    # Merge and serialize
-    merged_data = merge_tcfx_into_stack(tcfx_parser, stack_data)
-    
+
+    merged_data = merge_tcfx_into_stack(stackup_parser, stack_data)
+
     try:
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(merged_data, f, indent=2)
-        
+
         if args.json:
             result = {
                 "status": "SUCCESS",
-                "tcfx_file": str(tcfx_path),
+                "source_file": str(stackup_path),
+                "source_format": (
+                    "altium_stackup"
+                    if isinstance(stackup_parser, AltiumStackupParser)
+                    else "allegro_tcfx"
+                ),
                 "stack_json": str(stack_path),
                 "output": str(out_path),
-                "layers_parsed": len(tcfx_parser.raw_layers),
-                "units": tcfx_parser.units
+                "layers_parsed": len(stackup_parser.raw_layers),
+                "units": stackup_parser.units,
             }
             print(json.dumps(result, indent=2))
         else:
-            print(f"Success: Merged physical stackup from {tcfx_path.name} into {out_path.name}")
-            print(f"  Parsed {len(tcfx_parser.raw_layers)} layers from TCFX")
-            print(f"  Units: {tcfx_parser.units}")
-            
+            fmt = (
+                "Altium .stackup"
+                if isinstance(stackup_parser, AltiumStackupParser)
+                else "Cadence .tcfx"
+            )
+            print(
+                f"Success: Merged physical stackup from {stackup_path.name} "
+                f"({fmt}) into {out_path.name}"
+            )
+            print(f"  Parsed {len(stackup_parser.raw_layers)} layers")
+            print(f"  Units: {stackup_parser.units}")
+
     except Exception as e:
         print(f"Error: Failed to write output JSON: {e}", file=sys.stderr)
         sys.exit(1)
