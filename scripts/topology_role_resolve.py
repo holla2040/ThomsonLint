@@ -21,9 +21,25 @@ SCHEMA_VERSION = "1.0"
 DEFAULT_PROJECT = "example"
 
 CONNECTOR_PREFIXES = {"J", "P", "CN", "CON", "TB"}
+TEST_POINT_PREFIXES = {"TP", "TEST", "TST"}
+MOSFET_PREFIXES = {"Q", "M", "T"}
 GROUND_NAMES = {"GND", "VSS", "AGND", "DGND", "PGND", "SGND", "CHASSIS", "EARTH"}
 POWER_NAMES = {"VIN", "VOUT", "VBAT", "VBUS", "VSYS", "VCC", "VDD", "AVDD", "DVDD", "PVDD"}
 SIGNAL_PIN_NAMES = {"SDA", "SCL", "MISO", "MOSI", "CLK", "TX", "RX", "GPIO"}
+MOSFET_KEYWORDS = {
+    "mosfet",
+    "fet",
+    "nmos",
+    "pmos",
+    "n-channel",
+    "p-channel",
+    "bss138",
+    "fds4435",
+    "ao3401",
+    "ao3400",
+    "si2301",
+    "si2302",
+}
 POWER_NET_PATTERNS = [
     re.compile(r"^[+-]?\d+(?:V\d*)?$", re.IGNORECASE),
     re.compile(r"^\d+V\d+$", re.IGNORECASE),
@@ -419,16 +435,214 @@ def text_contains(text: str, tokens: tuple[str, ...]) -> str | None:
     return None
 
 
-def looks_zero_ohm(value: str | None, text: str) -> bool:
-    compact = re.sub(r"[\s_\-]+", "", f"{value or ''} {text}".lower().replace("ω", "ohm"))
-    return any(token in compact for token in ("0r", "0r0", "0r00", "0ohm", "zeroohm", "jumper", "link"))
+def is_zero_ohm_value(value: str | None, description: str = "") -> bool:
+    value_text = str(value or "").strip().lower().replace("ω", "ohm")
+    description_text = str(description or "").strip().lower().replace("ω", "ohm")
+    compact_value = re.sub(r"[\s_\-]+", "", value_text)
+    compact_description = re.sub(r"[\s_\-]+", "", description_text)
+
+    if compact_value in {"0", "0r", "0r0", "0r00", "0.0", "0.00", "0ohm"}:
+        return True
+    if re.fullmatch(r"0(?:\.0+)?ohm", compact_value):
+        return True
+    if re.search(r"\bzero\s*ohm\b", description_text):
+        return True
+    if re.search(r"\b(jumper|link)\b", description_text) or compact_description in {"jumper", "link"}:
+        return True
+    return False
+
+
+def parse_resistance_value(value: str | None) -> float | None:
+    text = str(value or "").strip().lower().replace("ω", "ohm")
+    compact = re.sub(r"[\s_]+", "", text)
+    compact = compact.replace("ohms", "ohm")
+
+    if re.fullmatch(r"\d+(?:\.\d+)?", compact):
+        return float(compact)
+
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)(m?r|r|k|m|m?ohm|kohm|meg|megohm)", compact)
+    if match:
+        magnitude = float(match.group(1))
+        unit = match.group(2)
+        if unit in {"mr", "mohm"}:
+            return magnitude / 1000.0
+        if unit in {"r", "ohm"}:
+            return magnitude
+        if unit in {"k", "kohm"}:
+            return magnitude * 1000.0
+        if unit in {"m", "meg", "megohm"}:
+            return magnitude * 1000000.0
+
+    match = re.fullmatch(r"(\d+)([rkm])(\d+)", compact)
+    if match:
+        whole = int(match.group(1))
+        fraction = match.group(3)
+        value = float(f"{whole}.{fraction}")
+        multiplier = {"r": 1.0, "k": 1000.0, "m": 1000000.0}[match.group(2)]
+        return value * multiplier
+    return None
+
+
+def is_nonzero_resistor_value(value: str | None) -> bool:
+    ohms = parse_resistance_value(value)
+    return ohms is not None and ohms > 0
 
 
 def looks_current_sense(value: str | None, text: str) -> bool:
     lowered = f"{value or ''} {text}".lower().replace("ω", "ohm")
     if "shunt" in lowered or "current sense" in lowered:
         return True
-    return bool(re.search(r"\b0\.(?:00)?[0-9]+\s*(?:r|ohm)", lowered))
+    ohms = parse_resistance_value(value)
+    return ohms is not None and 0 < ohms <= 0.05
+
+
+def net_role_counts(groups: dict[str, list[str]]) -> dict[str, int]:
+    return {
+        "power": len(groups.get("power_nets", [])),
+        "ground": len(groups.get("ground_nets", [])),
+        "other": len(groups.get("signal_nets", [])),
+    }
+
+
+def resistor_evidence(prefix: str, value: str | None, groups: dict[str, list[str]]) -> list[dict[str, Any]]:
+    ev = [
+        evidence("refdes_prefix", "refdes", prefix, "resistor refdes prefix"),
+        evidence("value_keyword", "value", value, "nonzero resistor value parsed deterministically"),
+    ]
+    if groups.get("power_nets"):
+        ev.append(evidence("schematic_connection", "power_nets", groups["power_nets"], "one side is a power net"))
+    if groups.get("ground_nets"):
+        ev.append(evidence("schematic_connection", "ground_nets", groups["ground_nets"], "one side is a ground net"))
+    if groups.get("signal_nets"):
+        ev.append(evidence("schematic_connection", "signal_nets", groups["signal_nets"], "one side is a signal/clock/unknown net"))
+    return ev
+
+
+def normalized_pair_name(name: str) -> tuple[str, str] | None:
+    upper = name.upper()
+    replacements = {
+        "CANH": ("CAN", "P"),
+        "CANL": ("CAN", "N"),
+        "D+": ("D", "P"),
+        "D-": ("D", "N"),
+        "USB_DP": ("USB", "P"),
+        "USB_DM": ("USB", "N"),
+        "USB_P": ("USB", "P"),
+        "USB_N": ("USB", "N"),
+    }
+    if upper in replacements:
+        return replacements[upper]
+    for pos, neg in (("_P", "_N"), ("+", "-")):
+        if upper.endswith(pos):
+            return upper[: -len(pos)], "P"
+        if upper.endswith(neg):
+            return upper[: -len(neg)], "N"
+    if upper.endswith("_H"):
+        return upper[:-2], "P"
+    if upper.endswith("_L"):
+        return upper[:-2], "N"
+    if upper.endswith("_HI"):
+        return upper[:-3], "P"
+    if upper.endswith("_LO"):
+        return upper[:-3], "N"
+    if upper.endswith("_A"):
+        return upper[:-2], "P"
+    if upper.endswith("_B"):
+        return upper[:-2], "N"
+    return None
+
+
+def differential_pair_confidence(nets: list[str], description: str) -> float | None:
+    if len(nets) != 2:
+        return None
+    first = normalized_pair_name(nets[0])
+    second = normalized_pair_name(nets[1])
+    if first and second and first[0] == second[0] and {first[1], second[1]} == {"P", "N"}:
+        strong_tokens = ("can", "rs485", "usb", "diff", "differential", "term")
+        if any(token in f"{nets[0]} {nets[1]} {description}".lower() for token in strong_tokens):
+            return 0.8
+        return 0.6
+    if {net.upper() for net in nets} == {"A", "B"} and text_contains(description, ("rs485", "can", "term")):
+        return 0.6
+    return None
+
+
+def classify_nonzero_resistor_by_nets(prefix: str, value: str | None, description: str, groups: dict[str, list[str]]) -> tuple[str, str, float, list[dict[str, Any]], list[str]]:
+    counts = net_role_counts(groups)
+    ev = resistor_evidence(prefix, value, groups)
+    connected = groups.get("connected_nets", [])
+    ohms = parse_resistance_value(value)
+
+    if counts["power"] == 1 and counts["ground"] == 0 and counts["other"] == 1:
+        return "sink", "pullup_resistor", 0.75, ev, ["bias current only", "not an explicit load current model"]
+    if counts["ground"] == 1 and counts["power"] == 0 and counts["other"] == 1:
+        return "sink", "pulldown_resistor", 0.75, ev, ["bias current only", "not an explicit load current model"]
+    if counts["power"] == 1 and counts["ground"] == 1 and counts["other"] == 0:
+        return "sink", "divider_or_bleeder_candidate", 0.65, ev, ["possible divider or bleeder", "current model requires full resistor network context"]
+    if ohms is not None and 100.0 <= ohms <= 130.0:
+        pair_confidence = differential_pair_confidence(connected, description)
+        if pair_confidence is not None:
+            ev.append(evidence("net_name", "connected_nets", connected, "connected net names suggest differential pair"))
+            return "sink", "differential_termination_candidate", pair_confidence, ev, ["termination role requires protocol/context confirmation", "not a load current model"]
+    if len(connected) == 2 and counts["power"] == 0 and counts["ground"] == 0:
+        return "bidirectional_or_interface", "series_termination_candidate", 0.55, ev, ["series/termination role is topology candidate only"]
+    return "unknown", "resistor_nonzero_unknown", 0.35, ev, ["resistor_role_unknown"]
+
+
+def looks_mosfet_like(prefix: str, value: str | None, text: str) -> bool:
+    lowered = f"{value or ''} {text}".lower()
+    if any(keyword in lowered for keyword in MOSFET_KEYWORDS):
+        return True
+    return prefix == "Q" and bool(str(value or "").strip())
+
+
+def has_level_shift_evidence(groups: dict[str, list[str]], text: str) -> tuple[bool, float]:
+    names = " ".join(groups.get("connected_nets", [])).upper()
+    lowered = text.lower()
+    if "BSS138".lower() in lowered and ("SDA" in names or "SCL" in names):
+        return True, 0.7
+    if "SDA" in names or "SCL" in names:
+        return True, 0.6
+    if re.search(r"(?:_3V3|3V3|V3P3)", names) and re.search(r"(?:_5V|5V|V5P0)", names):
+        return True, 0.55
+    return False, 0.0
+
+
+def classify_mosfet_candidate(prefix: str, value: str | None, text: str, groups: dict[str, list[str]]) -> tuple[str, str, float, list[dict[str, Any]], list[str]]:
+    ev = [evidence("refdes_prefix", "refdes", prefix, "transistor/MOSFET refdes prefix")]
+    matched_keyword = text_contains(f"{value or ''} {text}", tuple(sorted(MOSFET_KEYWORDS)))
+    if matched_keyword:
+        ev.append(evidence("description_keyword", "description", matched_keyword, "component text suggests MOSFET/FET"))
+    if groups.get("power_nets"):
+        ev.append(evidence("schematic_connection", "power_nets", groups["power_nets"], "MOSFET candidate is connected to power net(s)"))
+    if groups.get("signal_nets"):
+        ev.append(evidence("schematic_connection", "signal_nets", groups["signal_nets"], "MOSFET candidate is connected to signal/control net(s)"))
+
+    level_shift, level_confidence = has_level_shift_evidence(groups, f"{value or ''} {text}")
+    if level_shift:
+        return (
+            "bidirectional_or_interface",
+            "mosfet_level_shifter_candidate",
+            level_confidence,
+            ev,
+            ["MOSFET direction/function requires schematic context or datasheet confirmation", "mosfet_function_unknown"],
+        )
+    if groups.get("power_nets"):
+        confidence = 0.75 if len(groups.get("power_nets", [])) >= 2 and groups.get("signal_nets") else 0.65
+        return (
+            "bidirectional_or_interface",
+            "mosfet_power_switch_candidate",
+            confidence,
+            ev,
+            ["power path direction unresolved", "current model missing", "requires rail relationship extraction", "power_path_direction_unknown"],
+        )
+    return (
+        "bidirectional_or_interface",
+        "mosfet_signal_or_switch",
+        0.55,
+        ev,
+        ["switch direction/function unresolved", "mosfet_function_unknown"],
+    )
 
 
 def connected_net_groups(component_pins: list[dict[str, Any]], net_role_by_name: dict[str, dict[str, Any]]) -> dict[str, list[str]]:
@@ -500,7 +714,16 @@ def classify_component(refdes: str, component: dict[str, Any], part_info: dict[s
         ev.append(evidence("refdes_prefix", "refdes", prefix, reason))
 
     keyword = text_contains(lowered, ("battery", "coin cell", "lithium"))
-    if prefix == "BT" or keyword:
+    if prefix in TEST_POINT_PREFIXES:
+        role, confidence = "bidirectional_or_interface", 0.85
+        if groups["power_nets"] or groups["ground_nets"]:
+            subtype = "test_point_power_or_ground"
+        else:
+            subtype = "test_point_signal"
+        add_prefix("test point refdes prefix")
+        ev.append(evidence("schematic_connection", "connected_nets", groups["connected_nets"], "test point net roles are observability/access evidence"))
+        unresolved.append("test point is observability/access only, not a load current model")
+    elif prefix == "BT" or keyword:
         role, subtype, confidence = "source", "battery", 0.95
         add_prefix("battery refdes prefix") if prefix == "BT" else ev.append(evidence("description_keyword", "description", keyword, "description/value contains battery keyword"))
     elif text_contains(f"{lowered} {category_text}", ("load switch", "power switch", "ideal diode", "oring", "efuse", "hot swap")):
@@ -530,9 +753,13 @@ def classify_component(refdes: str, component: dict[str, Any], part_info: dict[s
     elif looks_current_sense(value, lowered):
         role, subtype, confidence = "pass_through", "current_sense", 0.78
         ev.append(evidence("value_keyword", "value", value, "value/description indicates current sense or shunt"))
-    elif prefix in {"R", "JP"} and looks_zero_ohm(value, lowered):
+    elif prefix in {"R", "JP"} and is_zero_ohm_value(value, lowered):
         role, subtype, confidence = "pass_through", "zero_ohm_link" if prefix == "R" else "jumper", 0.82
         ev.append(evidence("value_keyword", "value", value, "value/description indicates zero-ohm link or jumper"))
+    elif prefix == "R" and is_nonzero_resistor_value(value):
+        role, subtype, confidence, ev, unresolved = classify_nonzero_resistor_by_nets(prefix, value, lowered, groups)
+    elif prefix in MOSFET_PREFIXES and looks_mosfet_like(prefix, value, lowered):
+        role, subtype, confidence, ev, unresolved = classify_mosfet_candidate(prefix, value, lowered, groups)
     elif prefix in {"L", "CM", "CMC"} or text_contains(lowered, ("choke", "common mode")):
         role, subtype, confidence = "pass_through", "inductor_or_choke_pass_through", 0.62
         add_prefix("series magnetic refdes prefix")
@@ -664,6 +891,36 @@ def collect_unresolved(component_roles: list[dict[str, Any]], net_roles: list[di
 
     for role in component_roles:
         refdes = role["refdes"]
+        if "resistor_role_unknown" in role.get("unresolved", []):
+            unresolved.append(unresolved_record(
+                "resistor_role_unknown",
+                "component",
+                refdes,
+                "Nonzero resistor role could not be determined from local net topology.",
+                ["rail_relationships", "current_allocation"],
+                "deterministic_rule",
+                ["TOPO_ROLE_PASS_THROUGH_001"],
+            ))
+        if "mosfet_function_unknown" in role.get("unresolved", []):
+            unresolved.append(unresolved_record(
+                "mosfet_function_unknown",
+                "component",
+                refdes,
+                "MOSFET/transistor function requires schematic context or datasheet confirmation.",
+                ["rail_relationships", "current_allocation", "calculation_readiness"],
+                "datasheet_extraction",
+                [],
+            ))
+        if "power_path_direction_unknown" in role.get("unresolved", []):
+            unresolved.append(unresolved_record(
+                "power_path_direction_unknown",
+                "component",
+                refdes,
+                "MOSFET power-path direction is unresolved.",
+                ["rail_relationships", "current_allocation", "calculation_readiness"],
+                "human_review",
+                [],
+            ))
         if role["role"] == "unknown":
             unresolved.append(unresolved_record(
                 "component_role_unknown",

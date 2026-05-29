@@ -263,12 +263,194 @@ def test_zero_ohm_resistor_becomes_pass_through_zero_ohm_link(tmp_path: Path) ->
     assert role_for(read_json(out), "R1")["role_subtype"] == "zero_ohm_link"
 
 
+def test_zero_ohm_value_variants_are_zero_ohm_links(tmp_path: Path) -> None:
+    components = [
+        component("R1", value="0R00"),
+        component("R2", value="0R"),
+        component("R3", value="0R0"),
+        component("R4", value="0.0"),
+        component("R5", value="DNP", description="DNP jumper link"),
+    ]
+    nets = []
+    for idx in range(1, 6):
+        nets.extend([
+            net(f"VIN_{idx}", [node(f"R{idx}", "1", None)]),
+            net(f"VOUT_{idx}", [node(f"R{idx}", "2", None)]),
+        ])
+    sch = schematic_fixture(components, nets, power=[f"VIN_{idx}" for idx in range(1, 6)] + [f"VOUT_{idx}" for idx in range(1, 6)])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    for idx in range(1, 6):
+        role = role_for(artifact, f"R{idx}")
+        assert role["role"] == "pass_through"
+        assert role["role_subtype"] == "zero_ohm_link"
+
+
+def test_nonzero_resistor_values_are_not_zero_ohm_links(tmp_path: Path) -> None:
+    values = ["4K7", "5K1", "120R", "0R1", "0.1R"]
+    components = [component(f"R{idx}", value=value) for idx, value in enumerate(values, 1)]
+    nets = []
+    for idx in range(1, len(values) + 1):
+        nets.extend([
+            net(f"VIN_{idx}", [node(f"R{idx}", "1", None)]),
+            net(f"VOUT_{idx}", [node(f"R{idx}", "2", None)]),
+        ])
+    sch = schematic_fixture(components, nets, power=[f"VIN_{idx}" for idx in range(1, len(values) + 1)] + [f"VOUT_{idx}" for idx in range(1, len(values) + 1)])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    for idx, value in enumerate(values, 1):
+        role = role_for(artifact, f"R{idx}")
+        assert role["role_subtype"] != "zero_ohm_link", value
+        assert role["role"] != "pass_through", value
+
+
 def test_current_sense_resistor_becomes_pass_through_current_sense(tmp_path: Path) -> None:
     sch = schematic_fixture([component("R2", value="0.005 ohm", description="current sense shunt")], [net("VIN", [node("R2", "1", None)]), net("VOUT", [node("R2", "2", None)])], power=["VIN", "VOUT"])
     result, out = invoke(tmp_path, sch)
 
     assert result.returncode == 0, result.stderr + result.stdout
     assert role_for(read_json(out), "R2")["role_subtype"] == "current_sense"
+
+
+def test_test_point_on_signal_net_is_test_point_signal(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("TP1")], [net("SDA", [node("TP1", "1", "TP")])], power=[], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "TP1")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "test_point_signal"
+
+
+def test_test_point_on_power_net_is_test_point_power_or_ground(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("TP2")], [net("V3P3", [node("TP2", "1", "TP")])], power=["V3P3"], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "TP2")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "test_point_power_or_ground"
+
+
+def test_test_point_on_ground_net_is_test_point_power_or_ground(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("TP3")], [net("GND", [node("TP3", "1", "TP")])], power=[], ground=["GND"])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "TP3")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "test_point_power_or_ground"
+
+
+def test_pullup_resistor_classification(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("R10", value="4K7")], [net("V3P3", [node("R10", "1", None)]), net("SDA", [node("R10", "2", None)])], power=["V3P3"], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "R10")
+    assert role["role"] == "sink"
+    assert role["role_subtype"] == "pullup_resistor"
+    assert "not an explicit load current model" in role["unresolved"]
+
+
+def test_pulldown_resistor_classification(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("R11", value="5K1")], [net("BUTTON", [node("R11", "1", None)]), net("GND", [node("R11", "2", None)])], power=[], ground=["GND"])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "R11")
+    assert role["role"] == "sink"
+    assert role["role_subtype"] == "pulldown_resistor"
+
+
+def test_divider_or_bleeder_resistor_candidate(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("R12", value="10K")], [net("V5P0", [node("R12", "1", None)]), net("GND", [node("R12", "2", None)])], power=["V5P0"], ground=["GND"])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "R12")
+    assert role["role"] == "sink"
+    assert role["role_subtype"] == "divider_or_bleeder_candidate"
+    assert "current model requires full resistor network context" in role["unresolved"]
+
+
+def test_differential_termination_candidate(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("R13", value="120R")], [net("CANH", [node("R13", "1", None)]), net("CANL", [node("R13", "2", None)])], power=[], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "R13")
+    assert role["role"] == "sink"
+    assert role["role_subtype"] == "differential_termination_candidate"
+    assert role["role_subtype"] != "zero_ohm_link"
+
+
+def test_series_termination_candidate(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("R14", value="33R")], [net("MCU_CLK", [node("R14", "1", None)]), net("CLK_OUT", [node("R14", "2", None)])], power=[], ground=[], clock=["MCU_CLK", "CLK_OUT"])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "R14")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "series_termination_candidate"
+
+
+def test_nonzero_resistor_with_insufficient_context_is_resistor_nonzero_unknown(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("R15", value="5K1")], [net("SIG_ONLY", [node("R15", "1", None)])], power=[], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    role = role_for(artifact, "R15")
+    assert role["role"] == "unknown"
+    assert role["role_subtype"] == "resistor_nonzero_unknown"
+    assert any(item["category"] == "resistor_role_unknown" for item in artifact["unresolved"])
+
+
+def test_mosfet_level_shifter_candidate(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("Q1", value="BSS138")], [net("SDA_3V3", [node("Q1", "1", None)]), net("SDA_5V", [node("Q1", "2", None)]), net("GATE", [node("Q1", "3", None)])], power=[], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "Q1")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "mosfet_level_shifter_candidate"
+
+
+def test_mosfet_power_switch_candidate_emits_unresolved(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("Q2", value="FDS4435BZ")], [net("V5P0", [node("Q2", "1", None)]), net("LOAD_SW", [node("Q2", "2", None)]), net("EN_SW", [node("Q2", "3", None)])], power=["V5P0", "LOAD_SW"], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    role = role_for(artifact, "Q2")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "mosfet_power_switch_candidate"
+    assert any(item["category"] == "power_path_direction_unknown" for item in artifact["unresolved"])
+
+
+def test_generic_q_part_on_signal_nets_is_mosfet_signal_or_switch(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("Q3", value="MMBT3904")], [net("SIG_A", [node("Q3", "1", None)]), net("SIG_B", [node("Q3", "2", None)]), net("CTRL", [node("Q3", "3", None)])], power=[], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "Q3")
+    assert role["role"] == "bidirectional_or_interface"
+    assert role["role_subtype"] == "mosfet_signal_or_switch"
+
+
+def test_mosfet_classification_does_not_infer_current_or_rating_fields(tmp_path: Path) -> None:
+    sch = schematic_fixture([component("Q4", value="AO3400")], [net("V5P0", [node("Q4", "1", None)]), net("LOAD", [node("Q4", "2", None)])], power=["V5P0"], ground=[])
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    role = role_for(read_json(out), "Q4")
+    forbidden = [key for key in role if "current" in key.lower() or "rating" in key.lower() or "rds" in key.lower()]
+    assert forbidden == []
 
 
 def test_unknown_component_emits_component_role_unknown_unresolved(tmp_path: Path) -> None:
@@ -377,6 +559,40 @@ def test_output_artifact_has_expected_top_level_shape(tmp_path: Path) -> None:
         "role_resolution_pass",
     }
     assert expected.issubset(artifact)
+
+
+def test_summary_counts_are_internally_consistent(tmp_path: Path) -> None:
+    sch = schematic_fixture(
+        [
+            component("TP1"),
+            component("R1", value="4K7"),
+            component("Q1", value="BSS138"),
+            component("U1", value="MCU"),
+        ],
+        [
+            net("V3P3", [node("R1", "1", None), node("U1", "1", "VDD")]),
+            net("SDA", [node("R1", "2", None), node("Q1", "1", None), node("TP1", "1", "TP")]),
+            net("SCL", [node("Q1", "2", None)]),
+            net("GND", [node("U1", "2", "GND")]),
+        ],
+        power=["V3P3"],
+        ground=["GND"],
+        clock=[],
+    )
+    result, out = invoke(tmp_path, sch)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    summary = artifact["summary"]
+    roles = artifact["component_roles"]
+    assert summary["component_count"] == len(roles)
+    assert summary["net_count"] == len(artifact["net_roles"])
+    assert summary["role_candidate_count"] == len(roles)
+    assert summary["source_candidate_count"] == sum(1 for row in roles if row["role"] == "source")
+    assert summary["sink_candidate_count"] == sum(1 for row in roles if row["role"] == "sink")
+    assert summary["pass_through_candidate_count"] == sum(1 for row in roles if row["role"] == "pass_through")
+    assert summary["unknown_candidate_count"] == sum(1 for row in roles if row["role"] == "unknown")
+    assert summary["unresolved_count"] == len(artifact["unresolved"])
 
 
 def test_exit_code_2_for_missing_required_input(tmp_path: Path) -> None:
