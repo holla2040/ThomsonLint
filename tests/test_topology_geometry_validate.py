@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "topology_geometry_validate.py"
@@ -181,6 +183,51 @@ def minimal_review(records: list[dict] | None = None, unresolved_items: list[dic
     return review
 
 
+def via_drill_span_record(layer_name: str) -> dict:
+    start, end = [int(part) for part in layer_name.replace("DRILL_", "").replace("VIA_", "").replace("_", "-").split("-")]
+    span_type = "VIA" if layer_name.upper().startswith("VIA") else "DRILL"
+    return review_record(
+        f"br_vcc_{layer_name.lower().replace('-', '_')}_via_cluster_000001",
+        branch_type="via_cluster",
+        layer=layer_name,
+        geometry={"has_trace_like_geometry": False, "has_vias": True},
+        stackup={
+            "primary_layer": layer_name,
+            "is_copper_layer": False,
+            "is_drill_layer": True,
+            "copper_thickness": None,
+            "layer_function": "DRILL",
+            "side": "ALL",
+            "via_span": {
+                "drill_or_via_type": span_type,
+                "start_layer_index": start,
+                "end_layer_index": end,
+                "span_label": f"{start}-{end}",
+                "layer_span_count": abs(end - start) + 1,
+            },
+        },
+    )
+
+
+def add_via_drill_span_evidence(review: dict, record: dict) -> dict:
+    branch_id = record["branch_id"]
+    item = evidence(
+        branch_id,
+        "via_drill_span",
+        {
+            "layer_name": record["layer"],
+            "is_copper": False,
+            "is_drill_layer": True,
+            "via_span": record["stackup"]["via_span"],
+        },
+        source="stackup",
+    )
+    review["evidence_records"].append(item)
+    record["evidence"].append(item["evidence_id"])
+    review["summary"] = rebuild_summary(review)
+    return review
+
+
 def invoke(tmp_path: Path, review: dict, *extra: str) -> tuple[subprocess.CompletedProcess[str], Path]:
     review_path = write_json(tmp_path / "geometry-review.json", review)
     out = tmp_path / "geometry-validation.json"
@@ -269,6 +316,32 @@ def test_forbidden_evidence_types_are_errors(tmp_path: Path) -> None:
         assert any(f"forbidden evidence claim: {forbidden}" in error for error in read_json(out)["errors"])
 
 
+@pytest.mark.parametrize("layer_name", ["DRILL_1-8", "DRILL_1-16"])
+def test_via_cluster_on_drill_span_with_span_evidence_passes_without_layer_unresolved(tmp_path: Path, layer_name: str) -> None:
+    rec = via_drill_span_record(layer_name)
+    review = add_via_drill_span_evidence(minimal_review([rec]), rec)
+    result, out = invoke(tmp_path, review)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["geometry_consistency_pass"] is True
+    assert artifact["human_review_needed"] == []
+    assert not any("missing_layer" in error for error in artifact["errors"])
+    assert not any("non-copper" in error for error in artifact["errors"])
+
+
+@pytest.mark.parametrize("layer_name", ["DRILL_1-8", "DRILL_1-16"])
+def test_via_cluster_on_drill_span_does_not_require_missing_or_non_copper_unresolved(tmp_path: Path, layer_name: str) -> None:
+    rec = via_drill_span_record(layer_name)
+    review = minimal_review([rec])
+    result, out = invoke(tmp_path, review)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["geometry_consistency_pass"] is True
+    assert not any(item["type"] in {"missing_layer", "non_copper_layer"} for item in artifact["human_review_needed"])
+
+
 def test_trace_missing_width_requires_unresolved_missing_width(tmp_path: Path) -> None:
     rec = review_record(geometry={"known_width_count": 0, "min_width": None, "max_width": None})
     review = minimal_review([rec])
@@ -323,6 +396,14 @@ def test_non_copper_layer_requires_unresolved_non_copper_layer(tmp_path: Path) -
 
     assert result.returncode == 1
     assert any("non_copper_layer unresolved" in error for error in read_json(out)["errors"])
+
+
+def test_trace_group_on_non_copper_layer_still_fails_strict_mode(tmp_path: Path) -> None:
+    rec = review_record(stackup={"primary_layer": "FABRICATION", "is_copper_layer": False}, unresolved_flags=["non_copper_layer"])
+    result, out = invoke(tmp_path, minimal_review([rec], [unresolved(rec["branch_id"], "non_copper_layer")]), "--strict")
+
+    assert result.returncode == 1
+    assert any("power branch on non-copper layer" in error for error in read_json(out)["errors"])
 
 
 def test_current_known_must_be_false_when_estimated_current_is_null(tmp_path: Path) -> None:

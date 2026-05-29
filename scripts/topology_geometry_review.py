@@ -30,6 +30,7 @@ NON_COPPER_LAYER_TOKENS = {
     "OUTLINE",
     "DIELECTRIC",
 }
+DRILL_VIA_SPAN_RE = re.compile(r"^(DRILL|VIA)[_-]?(\d+)[-_](\d+)$", re.IGNORECASE)
 
 
 def utc_now() -> str:
@@ -76,31 +77,68 @@ def is_copper_layer(layer: dict[str, Any]) -> bool:
     return material == "COPPER" or function in {"CONDUCTOR", "PLANE"} or layer_type in {"CONDUCTOR", "PLANE"}
 
 
-def normalize_stackup_layers(stackup: dict[str, Any]) -> list[dict[str, Any]]:
-    source_rows: list[Any] = []
-    for key in ("physical_stackup", "layer_stack", "layers"):
-        value = stackup.get(key)
-        if isinstance(value, list) and value:
-            source_rows = value
-            break
+def parse_drill_or_via_span(layer_name: Any) -> dict[str, Any] | None:
+    if not isinstance(layer_name, str):
+        return None
+    match = DRILL_VIA_SPAN_RE.match(layer_name.strip())
+    if not match:
+        return None
+    start = int(match.group(2))
+    end = int(match.group(3))
+    return {
+        "drill_or_via_type": match.group(1).upper(),
+        "start_layer_index": start,
+        "end_layer_index": end,
+        "span_label": f"{start}-{end}",
+        "layer_span_count": abs(end - start) + 1,
+    }
 
+
+def is_drill_or_via_span_layer(layer_or_name: Any) -> bool:
+    if isinstance(layer_or_name, dict):
+        function = str(layer_or_name.get("function") or "").upper()
+        name = layer_or_name.get("layer_name") or layer_or_name.get("name") or layer_or_name.get("layer")
+        return function == "DRILL" or parse_drill_or_via_span(name) is not None
+    return parse_drill_or_via_span(layer_or_name) is not None
+
+
+def layer_from_row(raw: dict[str, Any], source_key: str, idx: int) -> dict[str, Any]:
+    name = first_value(raw, ("name", "layer", "layer_name", "layerRef"))
+    layer_name = str(name) if name is not None else f"layer_{idx:06d}"
+    layer = {
+        "layer_name": layer_name,
+        "sequence": raw.get("sequence") if isinstance(raw.get("sequence"), int) else idx,
+        "function": raw.get("function"),
+        "side": raw.get("side"),
+        "type": raw.get("type"),
+        "material": raw.get("material"),
+        "copper_thickness": raw.get("copper_thickness", raw.get("thickness")),
+        "is_copper": False,
+        "source": source_key,
+        "original_record": dict(raw),
+    }
+    layer["is_copper"] = is_copper_layer(layer)
+    layer["is_drill_layer"] = is_drill_or_via_span_layer(layer)
+    layer["via_span"] = parse_drill_or_via_span(layer_name)
+    return layer
+
+
+def normalize_stackup_layers(stackup: dict[str, Any]) -> list[dict[str, Any]]:
     layers: list[dict[str, Any]] = []
-    for idx, raw in enumerate(source_rows, 1):
-        if not isinstance(raw, dict):
+    seen: set[str] = set()
+    for source_key in ("physical_stackup", "layer_stack", "layers"):
+        source_rows = stackup.get(source_key)
+        if not isinstance(source_rows, list):
             continue
-        name = first_value(raw, ("name", "layer", "layer_name", "layerRef"))
-        layer = {
-            "layer_name": str(name) if name is not None else f"layer_{idx:06d}",
-            "sequence": raw.get("sequence") if isinstance(raw.get("sequence"), int) else idx,
-            "function": raw.get("function"),
-            "side": raw.get("side"),
-            "type": raw.get("type"),
-            "material": raw.get("material"),
-            "copper_thickness": raw.get("copper_thickness", raw.get("thickness")),
-            "is_copper": False,
-        }
-        layer["is_copper"] = is_copper_layer(layer)
-        layers.append(layer)
+        for idx, raw in enumerate(source_rows, 1):
+            if not isinstance(raw, dict):
+                continue
+            layer = layer_from_row(raw, source_key, idx)
+            dedupe_key = safe_slug(layer["layer_name"])
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            layers.append(layer)
     return layers
 
 
@@ -198,9 +236,11 @@ def stackup_context(layer_name: Any, layer: dict[str, Any] | None) -> dict[str, 
     return {
         "primary_layer": layer_name,
         "is_copper_layer": bool(layer and layer.get("is_copper")),
+        "is_drill_layer": bool(layer and layer.get("is_drill_layer")),
         "copper_thickness": layer.get("copper_thickness") if layer else None,
         "layer_function": layer.get("function") if layer else None,
         "side": layer.get("side") if layer else None,
+        "via_span": layer.get("via_span") if layer else None,
     }
 
 
@@ -234,7 +274,7 @@ def build_unresolved(branch: dict[str, Any], layer: dict[str, Any] | None, geome
         unresolved.append(unresolved_record(branch, "missing_layer", "Branch does not identify a primary layer."))
     elif layer is None:
         unresolved.append(unresolved_record(branch, "missing_layer", "Branch layer is not present in the stackup artifact."))
-    elif not layer.get("is_copper"):
+    elif not layer.get("is_copper") and not (branch.get("branch_type") == "via_cluster" and is_drill_or_via_span_layer(layer)):
         unresolved.append(unresolved_record(branch, "non_copper_layer", "Branch primary layer is not classified as copper."))
     unresolved.extend(geometry_unresolved(branch, geometry))
 
@@ -279,7 +319,22 @@ def build_evidence(branch: dict[str, Any], layer: dict[str, Any] | None, geometr
             "function": layer.get("function"),
             "side": layer.get("side"),
             "is_copper": layer.get("is_copper"),
+            "is_drill_layer": layer.get("is_drill_layer"),
+            "via_span": layer.get("via_span"),
         }, None, "stackup", "Stackup layer classification for branch primary layer."))
+        if branch.get("branch_type") == "via_cluster" and is_drill_or_via_span_layer(layer):
+            evidence.append(evidence_record(branch, "via_drill_span", {
+                "layer_name": layer.get("layer_name"),
+                "function": layer.get("function"),
+                "side": layer.get("side"),
+                "type": layer.get("type"),
+                "material": layer.get("material"),
+                "is_copper": layer.get("is_copper"),
+                "is_drill_layer": layer.get("is_drill_layer"),
+                "via_span": layer.get("via_span"),
+                "source": layer.get("source"),
+                "original_record": layer.get("original_record"),
+            }, None, "stackup", "Via cluster drill/via span layer evidence copied from stackup artifact."))
         if layer.get("copper_thickness") is not None:
             evidence.append(evidence_record(branch, "stackup_copper_thickness", layer.get("copper_thickness"), None, "stackup", "Copper thickness copied from stackup artifact."))
     else:
@@ -416,7 +471,13 @@ def build_artifact(
             record["branch_id"]
             for record in review_records
             if record.get("topology_net_type") == "power"
-            and (not record["stackup"].get("primary_layer") or not record["stackup"].get("is_copper_layer"))
+            and (
+                not record["stackup"].get("primary_layer")
+                or (
+                    not record["stackup"].get("is_copper_layer")
+                    and not (record.get("branch_type") == "via_cluster" and record["stackup"].get("is_drill_layer"))
+                )
+            )
         )
         if power_layer_issue:
             errors.append(f"strict mode: power branch on missing/non-copper layer: {', '.join(power_layer_issue[:20])}")

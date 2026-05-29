@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "topology_geometry_review.py"
@@ -78,6 +80,41 @@ def stackup_fixture(*, non_copper_top: bool = False) -> dict:
             {"name": "BOTTOM", "sequence": 3, "type": "Conductor", "material": "COPPER", "function": "CONDUCTOR", "side": "BOTTOM", "copper_thickness": 0.0014},
         ],
     }
+
+
+def drill_span_layer(name: str, *, function: str = "DRILL") -> dict:
+    return {
+        "name": name,
+        "sequence": None,
+        "type": "Drill",
+        "material": None,
+        "thickness": None,
+        "copper_thickness": None,
+        "function": function,
+        "side": "ALL",
+        "polarity": "POSITIVE",
+    }
+
+
+def stackup_with_layer_universe(*drill_layers: str) -> dict:
+    stackup = stackup_fixture()
+    layer_universe = [
+        {
+            "name": "TOP",
+            "sequence": 99,
+            "type": "Mask",
+            "material": "EPOXY",
+            "function": "SILKSCREEN",
+            "side": "TOP",
+            "copper_thickness": 9.9,
+        },
+        {"name": "FABRICATION", "sequence": None, "function": "DOCUMENT", "side": "ALL"},
+        {"name": "OUTLINE", "sequence": None, "function": "OUTLINE", "side": "ALL"},
+    ]
+    layer_universe.extend(drill_span_layer(name) for name in drill_layers)
+    stackup["layer_stack"] = list(stackup["physical_stackup"]) + layer_universe
+    stackup["layers"] = list(stackup["physical_stackup"]) + layer_universe
+    return stackup
 
 
 def geometry(
@@ -215,6 +252,14 @@ def record_for(artifact: dict, branch_id: str) -> dict:
 
 def evidence_types(artifact: dict, branch_id: str) -> set[str]:
     return {item["evidence_type"] for item in artifact["evidence_records"] if item["branch_id"] == branch_id}
+
+
+def evidence_for(artifact: dict, branch_id: str, evidence_type: str) -> dict:
+    return [
+        item
+        for item in artifact["evidence_records"]
+        if item["branch_id"] == branch_id and item["evidence_type"] == evidence_type
+    ][0]
 
 
 def test_trace_branch_with_width_length_produces_review_and_evidence(tmp_path: Path) -> None:
@@ -421,3 +466,93 @@ def test_converter_shaped_branch_fixture_works(tmp_path: Path) -> None:
     artifact = read_json(out)
     assert artifact["summary"]["review_record_count"] == 3
     assert artifact["summary"]["evidence_record_count"] >= 10
+
+
+def test_stackup_normalization_merges_physical_stackup_layer_stack_and_layers(tmp_path: Path) -> None:
+    branches = branch_topology_fixture([
+        branch("br_v3p3_top_trace_group_000001", "V3P3", "power", "trace_group"),
+        branch("br_v3p3_drill_1_8_via_cluster_000001", "V3P3", "power", "via_cluster", layer="DRILL_1-8", geom=geometry(vias=True, trace=False)),
+    ])
+    result, out = invoke(tmp_path, branches=branches, stackup=stackup_with_layer_universe("DRILL_1-8"))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    trace = record_for(artifact, "br_v3p3_top_trace_group_000001")
+    via = record_for(artifact, "br_v3p3_drill_1_8_via_cluster_000001")
+    assert trace["stackup"]["is_copper_layer"] is True
+    assert trace["stackup"]["copper_thickness"] == 0.0014
+    assert via["stackup"]["is_drill_layer"] is True
+    assert via["stackup"]["via_span"]["span_label"] == "1-8"
+
+
+@pytest.mark.parametrize(
+    ("layer_name", "span_label", "span_count"),
+    [
+        ("DRILL_1-8", "1-8", 8),
+        ("DRILL_1-16", "1-16", 16),
+    ],
+)
+def test_via_cluster_on_drill_span_layer_uses_drill_span_evidence_without_layer_unresolved(
+    tmp_path: Path,
+    layer_name: str,
+    span_label: str,
+    span_count: int,
+) -> None:
+    branch_id = f"br_v3p3_{layer_name.lower().replace('-', '_')}_via_cluster_000001"
+    branches = branch_topology_fixture([
+        branch(branch_id, "V3P3", "power", "via_cluster", layer=layer_name, geom=geometry(vias=True, trace=False))
+    ])
+    result, out = invoke(tmp_path, branches=branches, stackup=stackup_with_layer_universe(layer_name))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    rec = record_for(artifact, branch_id)
+    unresolved_types = {item["type"] for item in artifact["unresolved"] if item["branch_id"] == branch_id}
+    span_evidence = evidence_for(artifact, branch_id, "via_drill_span")
+    assert "missing_layer" not in unresolved_types
+    assert "non_copper_layer" not in unresolved_types
+    assert "via_drill_span" in evidence_types(artifact, branch_id)
+    assert rec["stackup"]["is_copper_layer"] is False
+    assert rec["stackup"]["is_drill_layer"] is True
+    assert rec["stackup"]["via_span"]["span_label"] == span_label
+    assert rec["stackup"]["via_span"]["layer_span_count"] == span_count
+    assert span_evidence["value"]["via_span"]["span_label"] == span_label
+
+
+def test_via_span_name_with_underscore_parses_generically(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_3_6_via_cluster_000001"
+    branches = branch_topology_fixture([
+        branch(branch_id, "V3P3", "power", "via_cluster", layer="VIA_3_6", geom=geometry(vias=True, trace=False))
+    ])
+    result, out = invoke(tmp_path, branches=branches, stackup=stackup_with_layer_universe("VIA_3_6"))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    rec = record_for(read_json(out), branch_id)
+    assert rec["stackup"]["via_span"] == {
+        "drill_or_via_type": "VIA",
+        "start_layer_index": 3,
+        "end_layer_index": 6,
+        "span_label": "3-6",
+        "layer_span_count": 4,
+    }
+
+
+def test_trace_group_on_missing_layer_still_creates_missing_layer(tmp_path: Path) -> None:
+    branches = branch_topology_fixture([
+        branch("br_v3p3_missing_trace_group_000001", "V3P3", "power", "trace_group", layer="DRILL_1-8")
+    ])
+    result, out = invoke(tmp_path, branches=branches, stackup=stackup_fixture())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert any(item["type"] == "missing_layer" for item in read_json(out)["unresolved"])
+
+
+def test_trace_group_on_non_copper_layer_still_creates_non_copper_layer(tmp_path: Path) -> None:
+    branches = branch_topology_fixture([
+        branch("br_v3p3_fab_trace_group_000001", "V3P3", "power", "trace_group", layer="FABRICATION")
+    ])
+    stackup = stackup_with_layer_universe()
+    result, out = invoke(tmp_path, branches=branches, stackup=stackup)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert any(item["type"] == "non_copper_layer" for item in read_json(out)["unresolved"])

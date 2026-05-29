@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter
 from datetime import datetime, timezone
@@ -56,6 +57,7 @@ GEOMETRY_UNRESOLVED_TYPES = {
     "missing_diameter",
     "mixed_unknown",
 }
+DRILL_VIA_SPAN_RE = re.compile(r"^(DRILL|VIA)[_-]?(\d+)[-_](\d+)$", re.IGNORECASE)
 
 
 def utc_now() -> str:
@@ -97,6 +99,23 @@ def normalized_claim(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
+def parse_drill_or_via_span(layer_name: Any) -> dict[str, Any] | None:
+    if not isinstance(layer_name, str):
+        return None
+    match = DRILL_VIA_SPAN_RE.match(layer_name.strip())
+    if not match:
+        return None
+    start = int(match.group(2))
+    end = int(match.group(3))
+    return {
+        "drill_or_via_type": match.group(1).upper(),
+        "start_layer_index": start,
+        "end_layer_index": end,
+        "span_label": f"{start}-{end}",
+        "layer_span_count": abs(end - start) + 1,
+    }
+
+
 def rows_for_branch(rows: Any, branch_id: Any) -> list[dict[str, Any]]:
     if not isinstance(rows, list):
         return []
@@ -123,6 +142,21 @@ def evidence_type_set(review: dict[str, Any], branch_id: Any) -> set[str]:
         if isinstance(evidence_type, str):
             types.add(evidence_type)
     return types
+
+
+def has_drill_or_via_span_context(record: dict[str, Any], review: dict[str, Any]) -> bool:
+    if record.get("branch_type") != "via_cluster":
+        return False
+    stackup = record.get("stackup") if isinstance(record.get("stackup"), dict) else {}
+    if stackup.get("is_drill_layer") is True or isinstance(stackup.get("via_span"), dict):
+        return True
+    function = str(stackup.get("layer_function") or "").upper()
+    if function == "DRILL":
+        return True
+    layer_name = record.get("layer") or stackup.get("primary_layer")
+    if parse_drill_or_via_span(layer_name) is not None:
+        return True
+    return bool(evidence_type_set(review, record.get("branch_id")).intersection({"via_drill_span", "drill_layer_context"}))
 
 
 def has_unresolved(review: dict[str, Any], branch_id: Any, expected: set[str]) -> bool:
@@ -249,10 +283,11 @@ def check_review_records(review: dict[str, Any]) -> tuple[list[str], list[str]]:
 
         stackup = stackup if isinstance(stackup, dict) else {}
         layer = record.get("layer") or stackup.get("primary_layer")
+        drill_span_context = has_drill_or_via_span_context(record, review)
         missing_layer_marked = has_unresolved(review, branch_id, {"missing_layer"})
-        if not layer and not missing_layer_marked:
+        if not layer and not missing_layer_marked and not drill_span_context:
             errors.append(f"review_records[{label}] branch layer missing without missing_layer unresolved")
-        if layer and stackup.get("is_copper_layer") is False and not missing_layer_marked and not has_unresolved(review, branch_id, {"non_copper_layer"}):
+        if layer and stackup.get("is_copper_layer") is False and not missing_layer_marked and not drill_span_context and not has_unresolved(review, branch_id, {"non_copper_layer"}):
             errors.append(f"review_records[{label}] non-copper layer without non_copper_layer unresolved")
 
     return errors, warnings
@@ -426,10 +461,11 @@ def collect_human_review(review: dict[str, Any]) -> list[dict[str, Any]]:
             add_human_review_item(items, record, "mixed_unknown_branch_type", "Branch type is mixed or unknown.")
 
         layer = record.get("layer") or stackup.get("primary_layer")
+        drill_span_context = has_drill_or_via_span_context(record, review)
         missing_layer_marked = "missing_layer" in unresolved_types
-        if not layer or missing_layer_marked:
+        if (not layer or missing_layer_marked) and not drill_span_context:
             add_human_review_item(items, record, "missing_layer", "Stackup layer evidence is missing.")
-        if layer and not missing_layer_marked and (stackup.get("is_copper_layer") is False or "non_copper_layer" in unresolved_types):
+        if layer and not missing_layer_marked and not drill_span_context and (stackup.get("is_copper_layer") is False or "non_copper_layer" in unresolved_types):
             add_human_review_item(items, record, "non_copper_layer", "Branch primary layer is not classified as copper.")
 
         flags = record.get("unresolved_flags")
@@ -475,9 +511,10 @@ def collect_strict_errors(review: dict[str, Any], human_review_needed: list[dict
                 errors.append(f"strict_mode: power via cluster missing diameter/width: {branch_id}")
 
         layer = record.get("layer") or stackup.get("primary_layer")
-        if not layer or has_unresolved(review, branch_id, {"missing_layer"}):
+        drill_span_context = has_drill_or_via_span_context(record, review)
+        if (not layer or has_unresolved(review, branch_id, {"missing_layer"})) and not drill_span_context:
             errors.append(f"strict_mode: power branch missing stackup layer: {branch_id}")
-        elif stackup.get("is_copper_layer") is False:
+        elif stackup.get("is_copper_layer") is False and not drill_span_context:
             errors.append(f"strict_mode: power branch on non-copper layer: {branch_id}")
 
     human_types = {item.get("type") for item in human_review_needed}
