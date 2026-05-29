@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_trace_cross_section_000001",
+  "calculation_id": "calc_trace_cross_section_br_v3p3_top_trace_000001",
+  "calculation_family": "trace_cross_section",
+  "target_type": "branch",
+  "target_id": "br_v3p3_top_trace_group_000001",
+  "status": "calculated",
+  "result": {
+    "cross_section_area": {
+      "value": 0.00889,
+      "unit": "mm^2",
+      "source": "standard_formula",
+      "confidence": 0.9,
+      "evidence_refs": ["calc_input:calc_trace_cross_section_br_v3p3_top_trace_000001"]
+    }
+  },
+  "intermediate_values": {
+    "trace_width": {"value": 0.254, "unit": "mm"},
+    "copper_thickness": {"value": 0.035, "unit": "mm"}
+  },
+  "input_refs": ["calc_trace_cross_section_br_v3p3_top_trace_000001"],
+  "source_artifacts": [
+    {
+      "artifact_type": "branch_topology_enriched",
+      "path": "exports/TestProject-branch-topology-enriched.json",
+      "record_id": "br_v3p3_top_trace_group_000001",
+      "notes": "Geometry and stackup context."
+    }
+  ],
+  "evidence_refs": ["ev_geo_br_v3p3_top_trace_group_000001_width"],
+  "assumptions": [
+    {
+      "id": "assume_rectangular_trace_section",
+      "description": "Cross-section uses rectangular width times copper thickness.",
+      "basis": "standard_formula",
+      "evidence_refs": [],
+      "confidence": 0.9
+    }
+  ],
+  "missing_inputs": [],
+  "blocked_by_manifest_items": [],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.9,
+  "human_review_needed": false
+}

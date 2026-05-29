@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_regulator_load_margin_000001",
+  "calculation_id": "calc_regulator_load_margin_u50",
+  "calculation_family": "regulator_load_margin",
+  "target_type": "component",
+  "target_id": "U50",
+  "status": "blocked",
+  "result": {
+    "regulator_load_margin": null
+  },
+  "intermediate_values": {
+    "regulator_output_current_rating_a": {"value": 0.6, "unit": "A"},
+    "allocated_load_current_a": null
+  },
+  "input_refs": [],
+  "source_artifacts": [
+    {
+      "artifact_type": "rail_relationships",
+      "path": "exports/TestProject-rail-relationships.json",
+      "record_id": "rel_v5p0_u50_v3p3",
+      "notes": "Regulator relationship is known; load current is not allocated."
+    }
+  ],
+  "evidence_refs": ["role_component_U50", "rel_v5p0_u50_v3p3"],
+  "assumptions": [],
+  "missing_inputs": [
+    {
+      "field": "allocated_load_current_a",
+      "reason": "Regulator load current is missing; PR17 does not allocate current.",
+      "required_for": ["regulator_load_margin"],
+      "manifest_item_id": "mdi_manifest_branch_current_unknown_v3p3",
+      "recommended_resolution": "datasheet_extraction"
+    }
+  ],
+  "blocked_by_manifest_items": ["mdi_manifest_branch_current_unknown_v3p3"],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.62,
+  "human_review_needed": true
+}

@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Calculation Result",
+  "description": "Schema for a single deterministic topology calculation result. Blocked calculations are valid first-class results and must list missing inputs instead of silently defaulting engineering values.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "calculation_run_id",
+    "calculation_id",
+    "calculation_family",
+    "target_type",
+    "target_id",
+    "status",
+    "result",
+    "intermediate_values",
+    "input_refs",
+    "source_artifacts",
+    "evidence_refs",
+    "assumptions",
+    "missing_inputs",
+    "blocked_by_manifest_items",
+    "warnings",
+    "errors",
+    "confidence",
+    "human_review_needed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "calculation_run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "calculation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "calculation_family": {
+      "$ref": "#/definitions/calculationFamily"
+    },
+    "target_type": {
+      "$ref": "#/definitions/targetType"
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "calculated", "blocked", "not_applicable", "error"]
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {"$ref": "#/definitions/valueWithUnit"},
+          {"type": "string"},
+          {"type": "number"},
+          {"type": "boolean"},
+          {"type": "null"},
+          {"type": "object"},
+          {"type": "array"}
+        ]
+      }
+    },
+    "intermediate_values": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {"$ref": "#/definitions/valueWithUnit"},
+          {"type": "string"},
+          {"type": "number"},
+          {"type": "boolean"},
+          {"type": "null"},
+          {"type": "object"},
+          {"type": "array"}
+        ]
+      }
+    },
+    "input_refs": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/sourceArtifact"}
+    },
+    "evidence_refs": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/assumption"}
+    },
+    "missing_inputs": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/missingInput"}
+    },
+    "blocked_by_manifest_items": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "missing_data_manifest_ref": {
+      "type": ["string", "null"],
+      "description": "Path or artifact identifier for the upstream missing-data manifest."
+    },
+    "missing_data_manifest_item_ids": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "missing_data_group_ids": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "resolution_path": {
+      "type": ["string", "null"]
+    },
+    "resolution_queue": {
+      "type": ["string", "null"]
+    },
+    "blocked_by_categories": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "blocked_by_calculations": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "warnings": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "errors": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "confidence": {
+      "$ref": "#/definitions/confidence"
+    },
+    "human_review_needed": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"const": "blocked"}},
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "missing_inputs": {"minItems": 1}
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "calculationFamily": {
+      "type": "string",
+      "enum": [
+        "trace_cross_section",
+        "trace_resistance",
+        "voltage_drop",
+        "current_density",
+        "via_current_density",
+        "fuse_margin",
+        "regulator_load_margin",
+        "connector_pin_current_margin"
+      ]
+    },
+    "targetType": {
+      "type": "string",
+      "enum": ["branch", "rail", "component", "pin", "relationship", "net", "project"]
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path"],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "enum": [
+            "branch_topology_enriched",
+            "calculation_readiness",
+            "missing_data_manifest",
+            "topology_geometry_review",
+            "rail_relationships",
+            "topology_role_resolution",
+            "part_info",
+            "stackup",
+            "manual"
+          ]
+        },
+        "path": {"type": ["string", "null"]},
+        "record_id": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "assumption": {
+      "type": "object",
+      "required": ["id", "description", "basis"],
+      "properties": {
+        "id": {"type": "string"},
+        "description": {"type": "string"},
+        "basis": {
+          "type": "string",
+          "enum": ["explicit_input", "source_artifact", "standard_formula", "manual", "not_used"]
+        },
+        "evidence_refs": {"$ref": "#/definitions/stringArray"},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "missingInput": {
+      "type": "object",
+      "required": ["field", "reason", "required_for"],
+      "properties": {
+        "field": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "required_for": {"$ref": "#/definitions/stringArray"},
+        "manifest_item_id": {"type": ["string", "null"]},
+        "recommended_resolution": {
+          "type": ["string", "null"],
+          "enum": ["deterministic_rule", "datasheet_extraction", "ai_rule_packet", "human_review", "not_required", null]
+        }
+      },
+      "additionalProperties": false
+    },
+    "valueWithUnit": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {"type": ["number", "integer", "null"]},
+        "unit": {"type": "string"},
+        "source": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "evidence_refs": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

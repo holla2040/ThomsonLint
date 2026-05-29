@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_trace_resistance_000001",
+  "calculation_id": "calc_trace_resistance_br_v3p3_top_trace_000001",
+  "calculation_family": "trace_resistance",
+  "target_type": "branch",
+  "target_id": "br_v3p3_top_trace_group_000001",
+  "status": "calculated",
+  "result": {
+    "trace_resistance": {
+      "value": 0.0815,
+      "unit": "ohm",
+      "source": "standard_formula",
+      "confidence": 0.86,
+      "evidence_refs": ["calc_input:calc_trace_resistance_br_v3p3_top_trace_000001"]
+    }
+  },
+  "intermediate_values": {
+    "trace_length": {"value": 42.0, "unit": "mm"},
+    "cross_section_area": {"value": 0.00889, "unit": "mm^2"},
+    "copper_resistivity": {"value": 1.724e-8, "unit": "ohm*m"}
+  },
+  "input_refs": ["calc_trace_resistance_br_v3p3_top_trace_000001"],
+  "source_artifacts": [
+    {
+      "artifact_type": "branch_topology_enriched",
+      "path": "exports/TestProject-branch-topology-enriched.json",
+      "record_id": "br_v3p3_top_trace_group_000001",
+      "notes": "Trace geometry source."
+    }
+  ],
+  "evidence_refs": ["ev_geo_br_v3p3_top_trace_group_000001_length"],
+  "assumptions": [
+    {
+      "id": "assume_copper_20c_resistivity",
+      "description": "Uses explicit copper resistivity supplied by the caller.",
+      "basis": "explicit_input",
+      "evidence_refs": [],
+      "confidence": 0.8
+    }
+  ],
+  "missing_inputs": [],
+  "blocked_by_manifest_items": [],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.86,
+  "human_review_needed": false
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_fuse_margin_000001",
+  "calculation_id": "calc_fuse_margin_f1",
+  "calculation_family": "fuse_margin",
+  "target_type": "component",
+  "target_id": "F1",
+  "status": "blocked",
+  "result": {
+    "fuse_margin": null
+  },
+  "intermediate_values": {
+    "branch_current_a": {"value": 0.45, "unit": "A"},
+    "fuse_rated_current_a": null
+  },
+  "input_refs": [],
+  "source_artifacts": [
+    {
+      "artifact_type": "topology_role_resolution",
+      "path": "exports/TestProject-topology-role-resolution.json",
+      "record_id": "F1",
+      "notes": "Fuse component role found; rating not available."
+    }
+  ],
+  "evidence_refs": ["role_component_F1"],
+  "assumptions": [],
+  "missing_inputs": [
+    {
+      "field": "fuse_rated_current_a",
+      "reason": "Fuse current rating is missing; margin calculation cannot proceed.",
+      "required_for": ["fuse_margin"],
+      "manifest_item_id": "mdi_fuse_rating_missing_component_f1",
+      "recommended_resolution": "datasheet_extraction"
+    }
+  ],
+  "blocked_by_manifest_items": ["mdi_fuse_rating_missing_component_f1"],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.6,
+  "human_review_needed": true
+}

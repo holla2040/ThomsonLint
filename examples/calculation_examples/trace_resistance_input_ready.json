@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_id": "calc_trace_resistance_br_v3p3_top_trace_000001",
+  "calculation_family": "trace_resistance",
+  "target_type": "branch",
+  "target_id": "br_v3p3_top_trace_group_000001",
+  "branch_id": "br_v3p3_top_trace_group_000001",
+  "rail_name": "V3P3",
+  "net_name": "V3P3",
+  "refdes": null,
+  "pin": null,
+  "source_artifacts": [
+    {
+      "artifact_type": "branch_topology_enriched",
+      "path": "exports/TestProject-branch-topology-enriched.json",
+      "record_id": "br_v3p3_top_trace_group_000001",
+      "notes": "Geometry and stackup context copied from enriched branch topology."
+    }
+  ],
+  "evidence_refs": [
+    "ev_geo_br_v3p3_top_trace_group_000001_width",
+    "ev_geo_br_v3p3_top_trace_group_000001_length"
+  ],
+  "inputs": {
+    "trace_length": {"value": 42.0, "unit": "mm", "source": "topology_geometry_review"},
+    "cross_section_area": {"value": 0.00889, "unit": "mm^2", "source": "trace_cross_section"},
+    "copper_resistivity": {"value": 1.724e-8, "unit": "ohm*m", "source": "explicit_input"}
+  },
+  "assumptions": [
+    {
+      "id": "assume_copper_20c_resistivity",
+      "description": "Uses explicit copper resistivity supplied by the caller.",
+      "basis": "explicit_input",
+      "evidence_refs": [],
+      "confidence": 0.8
+    }
+  ],
+  "missing_inputs": [],
+  "blocked_by_manifest_items": [],
+  "units": {
+    "length": "mm",
+    "area": "mm^2",
+    "resistance": "ohm"
+  },
+  "provenance": {
+    "created_by": "calculation_schema_example",
+    "created_at_utc": "2026-05-29T00:00:00Z",
+    "source_stage": "PR17 examples",
+    "notes": "Ready input example only; no execution implied."
+  },
+  "confidence": 0.86,
+  "human_review_needed": false
+}

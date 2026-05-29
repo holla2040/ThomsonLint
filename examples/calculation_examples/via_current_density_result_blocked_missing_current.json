@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_via_current_density_000001",
+  "calculation_id": "calc_via_current_density_br_v3p3_drill_1_6_via_000001",
+  "calculation_family": "via_current_density",
+  "target_type": "branch",
+  "target_id": "br_v3p3_drill_1_6_via_cluster_000001",
+  "status": "blocked",
+  "result": {
+    "via_current_density": null
+  },
+  "intermediate_values": {
+    "via_barrel_area": {"value": 0.052, "unit": "mm^2"},
+    "branch_current_a": null
+  },
+  "input_refs": ["calc_via_barrel_area_br_v3p3_drill_1_6_via_000001"],
+  "source_artifacts": [
+    {
+      "artifact_type": "topology_geometry_review",
+      "path": "exports/TestProject-topology-geometry-review.json",
+      "record_id": "geo_br_v3p3_drill_1_6_via_cluster_000001",
+      "notes": "Via span and drill geometry evidence."
+    }
+  ],
+  "evidence_refs": ["ev_geo_br_v3p3_drill_1_6_via_cluster_000001_via_drill_span"],
+  "assumptions": [],
+  "missing_inputs": [
+    {
+      "field": "branch_current_a",
+      "reason": "Via current density requires branch current; current is unresolved.",
+      "required_for": ["via_current_density"],
+      "manifest_item_id": "mdi_manifest_branch_current_unknown_v3p3_mdi_branch_current_unknown_branch_br_v3p3_drill_1_6_via_cluster_000001_copper_calculation_voltage_drop_calculation_thermal_calculation",
+      "recommended_resolution": "datasheet_extraction"
+    }
+  ],
+  "blocked_by_manifest_items": [
+    "mdi_manifest_branch_current_unknown_v3p3_mdi_branch_current_unknown_branch_br_v3p3_drill_1_6_via_cluster_000001_copper_calculation_voltage_drop_calculation_thermal_calculation"
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.7,
+  "human_review_needed": true
+}

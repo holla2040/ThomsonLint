@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_id": "calc_trace_cross_section_br_v3p3_top_trace_000001",
+  "calculation_family": "trace_cross_section",
+  "target_type": "branch",
+  "target_id": "br_v3p3_top_trace_group_000001",
+  "branch_id": "br_v3p3_top_trace_group_000001",
+  "rail_name": "V3P3",
+  "net_name": "V3P3",
+  "refdes": null,
+  "pin": null,
+  "source_artifacts": [
+    {
+      "artifact_type": "branch_topology_enriched",
+      "path": "exports/TestProject-branch-topology-enriched.json",
+      "record_id": "br_v3p3_top_trace_group_000001",
+      "notes": "Geometry and stackup context copied from enriched branch topology."
+    }
+  ],
+  "evidence_refs": [
+    "ev_geo_br_v3p3_top_trace_group_000001_width",
+    "ev_geo_br_v3p3_top_trace_group_000001_stackup_copper_thickness"
+  ],
+  "inputs": {
+    "trace_width": {
+      "value": 0.254,
+      "unit": "mm",
+      "source": "topology_geometry_review",
+      "confidence": 0.95,
+      "evidence_refs": ["ev_geo_br_v3p3_top_trace_group_000001_width"]
+    },
+    "copper_thickness": {
+      "value": 0.035,
+      "unit": "mm",
+      "source": "stackup",
+      "confidence": 0.9,
+      "evidence_refs": ["ev_geo_br_v3p3_top_trace_group_000001_stackup_copper_thickness"]
+    }
+  },
+  "assumptions": [
+    {
+      "id": "assume_rectangular_trace_section",
+      "description": "Cross-section uses rectangular width times copper thickness.",
+      "basis": "standard_formula",
+      "evidence_refs": [],
+      "confidence": 0.9
+    }
+  ],
+  "missing_inputs": [],
+  "blocked_by_manifest_items": [],
+  "units": {
+    "length": "mm",
+    "area": "mm^2"
+  },
+  "provenance": {
+    "created_by": "calculation_schema_example",
+    "created_at_utc": "2026-05-29T00:00:00Z",
+    "source_stage": "PR17 examples",
+    "notes": "Ready input example only; no execution implied."
+  },
+  "confidence": 0.9,
+  "human_review_needed": false
+}

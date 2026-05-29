@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_current_density_000001",
+  "calculation_id": "calc_current_density_br_v3p3_top_trace_000001",
+  "calculation_family": "current_density",
+  "target_type": "branch",
+  "target_id": "br_v3p3_top_trace_group_000001",
+  "status": "blocked",
+  "result": {
+    "current_density": null
+  },
+  "intermediate_values": {
+    "cross_section_area": {"value": 0.00889, "unit": "mm^2"},
+    "branch_current_a": null
+  },
+  "input_refs": ["calc_trace_cross_section_br_v3p3_top_trace_000001"],
+  "source_artifacts": [
+    {
+      "artifact_type": "calculation_readiness",
+      "path": "exports/TestProject-calculation-readiness-inventory.json",
+      "record_id": "br_v3p3_top_trace_group_000001",
+      "notes": "Current is unresolved."
+    }
+  ],
+  "evidence_refs": ["ev_geo_br_v3p3_top_trace_group_000001_width"],
+  "assumptions": [],
+  "missing_inputs": [
+    {
+      "field": "branch_current_a",
+      "reason": "Current density requires branch current; the current value is missing.",
+      "required_for": ["current_density"],
+      "manifest_item_id": "mdi_manifest_branch_current_unknown_v3p3_mdi_branch_current_unknown_branch_br_v3p3_top_trace_group_000001_copper_calculation_voltage_drop_calculation_thermal_calculation",
+      "recommended_resolution": "datasheet_extraction"
+    }
+  ],
+  "blocked_by_manifest_items": [
+    "mdi_manifest_branch_current_unknown_v3p3_mdi_branch_current_unknown_branch_br_v3p3_top_trace_group_000001_copper_calculation_voltage_drop_calculation_thermal_calculation"
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.72,
+  "human_review_needed": true
+}

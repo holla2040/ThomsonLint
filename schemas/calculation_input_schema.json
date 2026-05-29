@@ -1,0 +1,240 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Calculation Input",
+  "description": "Schema for a single deterministic topology calculation input. This contract describes known inputs, missing inputs, source artifacts, assumptions, units, and provenance only; it does not imply that unknown electrical values may be defaulted.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "calculation_id",
+    "calculation_family",
+    "target_type",
+    "target_id",
+    "source_artifacts",
+    "evidence_refs",
+    "inputs",
+    "assumptions",
+    "missing_inputs",
+    "blocked_by_manifest_items",
+    "units",
+    "provenance",
+    "confidence",
+    "human_review_needed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "calculation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "calculation_family": {
+      "$ref": "#/definitions/calculationFamily"
+    },
+    "target_type": {
+      "$ref": "#/definitions/targetType"
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch_id": {
+      "type": ["string", "null"]
+    },
+    "rail_name": {
+      "type": ["string", "null"]
+    },
+    "net_name": {
+      "type": ["string", "null"]
+    },
+    "refdes": {
+      "type": ["string", "null"]
+    },
+    "pin": {
+      "type": ["string", "null"]
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/sourceArtifact"}
+    },
+    "evidence_refs": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Calculation-specific known inputs. Missing electrical values must be omitted or null and also listed in missing_inputs.",
+      "additionalProperties": {
+        "anyOf": [
+          {"$ref": "#/definitions/valueWithUnit"},
+          {"type": "string"},
+          {"type": "number"},
+          {"type": "boolean"},
+          {"type": "null"},
+          {"type": "object"},
+          {"type": "array"}
+        ]
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/assumption"}
+    },
+    "missing_inputs": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/missingInput"}
+    },
+    "blocked_by_manifest_items": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "missing_data_manifest_ref": {
+      "type": ["string", "null"],
+      "description": "Path or artifact identifier for the upstream missing-data manifest."
+    },
+    "missing_data_manifest_item_ids": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "missing_data_group_ids": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "resolution_path": {
+      "type": ["string", "null"]
+    },
+    "resolution_queue": {
+      "type": ["string", "null"]
+    },
+    "blocked_by_categories": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "blocked_by_calculations": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "units": {
+      "$ref": "#/definitions/units"
+    },
+    "provenance": {
+      "$ref": "#/definitions/provenance"
+    },
+    "confidence": {
+      "$ref": "#/definitions/confidence"
+    },
+    "human_review_needed": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "calculationFamily": {
+      "type": "string",
+      "enum": [
+        "trace_cross_section",
+        "trace_resistance",
+        "voltage_drop",
+        "current_density",
+        "via_current_density",
+        "fuse_margin",
+        "regulator_load_margin",
+        "connector_pin_current_margin"
+      ]
+    },
+    "targetType": {
+      "type": "string",
+      "enum": ["branch", "rail", "component", "pin", "relationship", "net", "project"]
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path"],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "enum": [
+            "branch_topology_enriched",
+            "calculation_readiness",
+            "missing_data_manifest",
+            "topology_geometry_review",
+            "rail_relationships",
+            "topology_role_resolution",
+            "part_info",
+            "stackup",
+            "manual"
+          ]
+        },
+        "path": {"type": ["string", "null"]},
+        "record_id": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "assumption": {
+      "type": "object",
+      "required": ["id", "description", "basis"],
+      "properties": {
+        "id": {"type": "string"},
+        "description": {"type": "string"},
+        "basis": {
+          "type": "string",
+          "enum": ["explicit_input", "source_artifact", "standard_formula", "manual", "not_used"]
+        },
+        "evidence_refs": {"$ref": "#/definitions/stringArray"},
+        "confidence": {"$ref": "#/definitions/confidence"}
+      },
+      "additionalProperties": false
+    },
+    "missingInput": {
+      "type": "object",
+      "required": ["field", "reason", "required_for"],
+      "properties": {
+        "field": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "required_for": {"$ref": "#/definitions/stringArray"},
+        "manifest_item_id": {"type": ["string", "null"]},
+        "recommended_resolution": {
+          "type": ["string", "null"],
+          "enum": ["deterministic_rule", "datasheet_extraction", "ai_rule_packet", "human_review", "not_required", null]
+        }
+      },
+      "additionalProperties": false
+    },
+    "valueWithUnit": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {"type": ["number", "integer", "null"]},
+        "unit": {"type": "string"},
+        "source": {"type": ["string", "null"]},
+        "confidence": {"$ref": "#/definitions/confidence"},
+        "evidence_refs": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["created_by", "created_at_utc", "source_stage"],
+      "properties": {
+        "created_by": {"type": "string"},
+        "created_at_utc": {"type": "string", "format": "date-time"},
+        "source_stage": {"type": "string"},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

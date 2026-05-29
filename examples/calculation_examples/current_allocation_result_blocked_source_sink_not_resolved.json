@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_current_allocation_readiness_000001",
+  "calculation_id": "calc_current_allocation_readiness_v24p0",
+  "calculation_family": "voltage_drop",
+  "target_type": "rail",
+  "target_id": "V24P0",
+  "status": "blocked",
+  "result": {
+    "allocation_ready": false
+  },
+  "intermediate_values": {
+    "rail_name": "V24P0",
+    "source_sink_resolved": false
+  },
+  "input_refs": [],
+  "source_artifacts": [
+    {
+      "artifact_type": "missing_data_manifest",
+      "path": "exports/TestProject-missing-data-manifest.json",
+      "record_id": "group_source_sink_unresolved_v24p0",
+      "notes": "Source/sink topology remains unresolved."
+    }
+  ],
+  "evidence_refs": [
+    "group_source_sink_unresolved_v24p0"
+  ],
+  "assumptions": [],
+  "missing_inputs": [
+    {
+      "field": "source_sink_relationship",
+      "reason": "Source/sink relationship is unresolved, so current allocation cannot build a deterministic graph.",
+      "required_for": [
+        "current_allocation",
+        "calculation_readiness"
+      ],
+      "manifest_item_id": "mdi_manifest_source_sink_not_resolved_v24p0_mdi_source_sink_not_resolved_branch_br_v24p0_top_trace_group_000001_current_allocation_calculation_readiness",
+      "recommended_resolution": "ai_rule_packet"
+    }
+  ],
+  "blocked_by_manifest_items": [
+    "mdi_manifest_source_sink_not_resolved_v24p0_mdi_source_sink_not_resolved_branch_br_v24p0_top_trace_group_000001_current_allocation_calculation_readiness"
+  ],
+  "missing_data_manifest_ref": "exports/TestProject-missing-data-manifest.json",
+  "missing_data_manifest_item_ids": [
+    "mdi_manifest_source_sink_not_resolved_v24p0_mdi_source_sink_not_resolved_branch_br_v24p0_top_trace_group_000001_current_allocation_calculation_readiness"
+  ],
+  "missing_data_group_ids": [
+    "group_source_sink_unresolved_v24p0"
+  ],
+  "resolution_path": "ai_rule_packet",
+  "resolution_queue": "ai_rule_packet",
+  "blocked_by_categories": [
+    "source_sink_not_resolved"
+  ],
+  "blocked_by_calculations": [
+    "current_allocation",
+    "calculation_readiness"
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.7,
+  "human_review_needed": true
+}

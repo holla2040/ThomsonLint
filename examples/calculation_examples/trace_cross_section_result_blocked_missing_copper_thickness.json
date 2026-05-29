@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "project_id": "TestProject",
+  "calculation_run_id": "run_example_trace_cross_section_blocked_000001",
+  "calculation_id": "calc_trace_cross_section_br_v5p0_drill_1_6_via_000001",
+  "calculation_family": "trace_cross_section",
+  "target_type": "branch",
+  "target_id": "br_v5p0_drill_1_6_via_cluster_000001",
+  "status": "blocked",
+  "result": {
+    "cross_section_area": null
+  },
+  "intermediate_values": {
+    "known_width": {
+      "value": 0.305,
+      "unit": "mm"
+    },
+    "copper_thickness": null
+  },
+  "input_refs": [],
+  "source_artifacts": [
+    {
+      "artifact_type": "missing_data_manifest",
+      "path": "exports/TestProject-missing-data-manifest.json",
+      "record_id": "group_geometry_missing_v5p0",
+      "notes": "Copper thickness is missing for the branch stackup context."
+    },
+    {
+      "artifact_type": "topology_geometry_review",
+      "path": "exports/TestProject-topology-geometry-review.json",
+      "record_id": "geo_br_v5p0_drill_1_6_via_cluster_000001",
+      "notes": "Geometry evidence exists, but copper thickness is not available."
+    }
+  ],
+  "evidence_refs": [
+    "ev_geo_br_v5p0_drill_1_6_via_cluster_000001_width"
+  ],
+  "assumptions": [],
+  "missing_inputs": [
+    {
+      "field": "copper_thickness",
+      "reason": "Copper thickness is required before trace cross-section can be calculated.",
+      "required_for": [
+        "trace_cross_section",
+        "trace_resistance"
+      ],
+      "manifest_item_id": "mdi_manifest_copper_thickness_missing_v5p0_mdi_copper_thickness_missing_branch_br_v5p0_drill_1_6_via_cluster_000001_copper_calculation_thermal_calculation",
+      "recommended_resolution": "deterministic_rule"
+    }
+  ],
+  "blocked_by_manifest_items": [
+    "mdi_manifest_copper_thickness_missing_v5p0_mdi_copper_thickness_missing_branch_br_v5p0_drill_1_6_via_cluster_000001_copper_calculation_thermal_calculation"
+  ],
+  "missing_data_manifest_ref": "exports/TestProject-missing-data-manifest.json",
+  "missing_data_manifest_item_ids": [
+    "mdi_manifest_copper_thickness_missing_v5p0_mdi_copper_thickness_missing_branch_br_v5p0_drill_1_6_via_cluster_000001_copper_calculation_thermal_calculation"
+  ],
+  "missing_data_group_ids": [
+    "group_geometry_missing_v5p0"
+  ],
+  "resolution_path": "deterministic_rule",
+  "resolution_queue": "deterministic_rule",
+  "blocked_by_categories": [
+    "copper_thickness_missing"
+  ],
+  "blocked_by_calculations": [
+    "trace_cross_section",
+    "trace_resistance"
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0.78,
+  "human_review_needed": true
+}
