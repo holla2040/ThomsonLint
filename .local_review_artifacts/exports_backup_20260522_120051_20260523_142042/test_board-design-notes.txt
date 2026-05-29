@@ -1,9 +1,0 @@
-Synthetic test board for ThomsonLint execution testing.
-
-Intent:
-- J1 receives VIN and GND.
-- U1 is a simple LDO regulator.
-- C1 is placed on the +3V3 output, but this synthetic example omits an explicit input capacitor on VIN.
-
-Known intentional review target:
-- The reviewer should consider whether U1 needs an input capacitor near VIN.
