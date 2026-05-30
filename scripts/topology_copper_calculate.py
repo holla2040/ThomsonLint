@@ -22,6 +22,8 @@ SCHEMA_VERSION = "1.0"
 DEFAULT_PROJECT = "example"
 DEFAULT_COPPER_RESISTIVITY_OHM_M = 1.724e-8
 TRACE_TYPES = {"trace_group"}
+VIA_TYPES = {"via", "via_cluster"}
+VIA_ID_TOKENS = ("via", "drill", "via_cluster")
 
 
 def utc_now() -> str:
@@ -135,8 +137,42 @@ def to_mm(value: float, unit: str | None) -> float | None:
 def geometry_review_records(review: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         row for row in as_list(review.get("review_records"))
-        if isinstance(row, dict) and row.get("branch_type") in TRACE_TYPES and isinstance(row.get("branch_id"), str)
+        if isinstance(row, dict) and isinstance(row.get("branch_id"), str) and (is_trace_record(row) or is_via_record(row))
     ]
+
+
+def is_trace_record(record: dict[str, Any]) -> bool:
+    return record.get("branch_type") in TRACE_TYPES
+
+
+def is_via_record(record: dict[str, Any]) -> bool:
+    branch_id = str(record.get("branch_id") or "").lower()
+    geometry = as_dict(record.get("geometry"))
+    type_values = {
+        str(record.get("target_type") or "").lower(),
+        str(record.get("geometry_type") or "").lower(),
+        str(record.get("branch_type") or "").lower(),
+        str(geometry.get("target_type") or "").lower(),
+        str(geometry.get("geometry_type") or "").lower(),
+        str(geometry.get("branch_type") or "").lower(),
+    }
+    if type_values.intersection(VIA_TYPES):
+        return True
+    if any(token in branch_id for token in VIA_ID_TOKENS):
+        return True
+    via_fields = {
+        "via_count",
+        "hole_count",
+        "drill_diameter_mm",
+        "finished_hole_diameter_mm",
+        "plated_hole_diameter_mm",
+        "via_diameter_mm",
+        "via_barrel_plating_thickness_mm",
+        "plating_thickness_mm",
+        "copper_thickness_mm",
+        "copper_thickness_um",
+    }
+    return bool(via_fields.intersection(record.keys()) or via_fields.intersection(geometry.keys()))
 
 
 def evidence_refs_for_record(record: dict[str, Any], review: dict[str, Any]) -> list[str]:
@@ -338,6 +374,26 @@ def allocation_evidence_refs(row: dict[str, Any] | None) -> list[str]:
     return sorted({str(value) for value in as_list(row.get("evidence_refs")) if isinstance(value, str)})
 
 
+def merge_linkages(*rows: dict[str, Any] | None) -> dict[str, Any] | None:
+    present = [row for row in rows if isinstance(row, dict)]
+    if not present:
+        return None
+    merged: dict[str, Any] = {}
+    for key in (
+        "blocked_by_manifest_items",
+        "missing_data_manifest_item_ids",
+        "missing_data_group_ids",
+        "blocked_by_categories",
+        "blocked_by_calculations",
+    ):
+        merged[key] = sorted({str(value) for row in present for value in as_list(row.get(key)) if isinstance(value, str)})
+    for key in ("missing_data_manifest_ref", "resolution_path", "resolution_queue"):
+        values = sorted({str(row.get(key)) for row in present if isinstance(row.get(key), str)})
+        if values:
+            merged[key] = values[0]
+    return merged
+
+
 def manifest_items(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return [row for row in as_list(manifest.get("manifest_items")) if isinstance(row, dict)]
 
@@ -494,6 +550,67 @@ def extract_geometry(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def first_number_from_contexts(contexts: list[dict[str, Any]], keys: list[str]) -> float | None:
+    for context in contexts:
+        for key in keys:
+            value = context.get(key)
+            if isinstance(value, dict):
+                parsed = number_or_none(value.get("value"))
+            else:
+                parsed = number_or_none(value)
+            if parsed is not None:
+                return parsed
+    return None
+
+
+def explicit_single_via(record: dict[str, Any]) -> bool:
+    geometry = as_dict(record.get("geometry"))
+    type_values = {
+        str(record.get("target_type") or "").lower(),
+        str(record.get("geometry_type") or "").lower(),
+        str(record.get("branch_type") or "").lower(),
+        str(geometry.get("target_type") or "").lower(),
+        str(geometry.get("geometry_type") or "").lower(),
+        str(geometry.get("branch_type") or "").lower(),
+    }
+    return record.get("single_via") is True or geometry.get("single_via") is True or "via" in type_values
+
+
+def extract_via_geometry(record: dict[str, Any]) -> dict[str, Any]:
+    geometry = as_dict(record.get("geometry"))
+    stackup = as_dict(record.get("stackup"))
+    contexts = [record, geometry, stackup]
+    via_count_raw = first_number_from_contexts(contexts, ["via_count", "hole_count"])
+    via_count_explicit = via_count_raw is not None
+    via_count = via_count_raw
+    if via_count is None and explicit_single_via(record):
+        via_count = 1.0
+
+    diameter_mm = first_number_from_contexts(contexts, [
+        "finished_hole_diameter_mm",
+        "drill_diameter_mm",
+        "plated_hole_diameter_mm",
+        "via_diameter_mm",
+    ])
+    plating_mm = first_number_from_contexts(contexts, [
+        "via_barrel_plating_thickness_mm",
+        "plating_thickness_mm",
+        "copper_thickness_mm",
+    ])
+    plating_um = first_number_from_contexts(contexts, ["copper_thickness_um"])
+    if plating_mm is None and plating_um is not None:
+        plating_mm = plating_um * 1e-3
+    barrel_length_mm = first_number_from_contexts(contexts, ["barrel_length_mm", "board_thickness_mm"])
+    return {
+        "via_count": via_count,
+        "via_count_explicit": via_count_explicit,
+        "single_via_explicit": explicit_single_via(record),
+        "finished_hole_diameter_mm": diameter_mm,
+        "plating_thickness_mm": plating_mm,
+        "barrel_length_mm": barrel_length_mm,
+    }
+
+
 def resistivity_assumption(value: float, explicit: bool) -> dict[str, Any]:
     if explicit:
         return assumption(
@@ -541,6 +658,7 @@ def calculate_for_branch(
     ]
     results: list[dict[str, Any]] = []
     base_branch = {"branch_id": branch_id}
+    is_trace = is_trace_record(record)
 
     width_missing = geom["width_mm"] is None
     thickness_missing = geom["copper_thickness_mm"] is None
@@ -556,7 +674,7 @@ def calculate_for_branch(
     area_mm2: float | None = None
     area_m2: float | None = None
 
-    if width_missing or thickness_missing:
+    if is_trace and (width_missing or thickness_missing):
         missing: list[dict[str, Any]] = []
         if width_missing:
             missing.append(missing_input("trace_width", "Trace width is missing.", ["trace_cross_section"], geom_blockers[0] if geom_blockers else None))
@@ -582,7 +700,7 @@ def calculate_for_branch(
             confidence=0.5,
             human_review_needed=True,
         ))
-    else:
+    elif is_trace:
         area_mm2 = float(geom["width_mm"]) * float(geom["copper_thickness_mm"])
         area_m2 = area_mm2 * 1e-6
         results.append(result_record(
@@ -606,7 +724,7 @@ def calculate_for_branch(
 
     resistance_ohm: float | None = None
     resistance_assumption = resistivity_assumption(resistivity_ohm_m, resistivity_explicit)
-    if length_missing or area_m2 is None:
+    if is_trace and (length_missing or area_m2 is None):
         missing = []
         if length_missing:
             missing.append(missing_input("trace_length", "Trace length is missing.", ["trace_resistance"], geom_blockers[0] if geom_blockers else None))
@@ -632,7 +750,7 @@ def calculate_for_branch(
             confidence=0.5,
             human_review_needed=True,
         ))
-    else:
+    elif is_trace:
         resistance_ohm = resistivity_ohm_m * float(geom["length_m"]) / area_m2
         results.append(result_record(
             project=project,
@@ -730,7 +848,7 @@ def calculate_for_branch(
     current_linkage = allocation_current_linkage if allocation_current_linkage else manifest_linkage(current_blockers, manifest_path) if current_blockers else None
     current_human_review_needed = bool(current_source_conflict or unresolved_allocation_rows)
 
-    if resistance_ohm is None or current_a is None or current_source_conflict:
+    if is_trace and (resistance_ohm is None or current_a is None or current_source_conflict):
         missing = []
         if resistance_ohm is None:
             missing.append(missing_input("trace_resistance", "Trace resistance is not available.", ["voltage_drop"], geom_blockers[0] if geom_blockers else None))
@@ -763,7 +881,7 @@ def calculate_for_branch(
             human_review_needed=True or current_human_review_needed,
             source_current_record_ids=source_current_ids,
         ))
-    else:
+    elif is_trace:
         voltage_drop_v = current_a * resistance_ohm
         power_loss_w = current_a * current_a * resistance_ohm
         results.append(result_record(
@@ -791,7 +909,7 @@ def calculate_for_branch(
             source_current_record_ids=source_current_ids,
         ))
 
-    if area_m2 is None or current_a is None or current_source_conflict:
+    if is_trace and (area_m2 is None or current_a is None or current_source_conflict):
         missing = []
         if area_m2 is None:
             missing.append(missing_input("cross_section_area", "Trace cross-section is unavailable.", ["current_density"], geom_blockers[0] if geom_blockers else None))
@@ -824,7 +942,7 @@ def calculate_for_branch(
             human_review_needed=True or current_human_review_needed,
             source_current_record_ids=source_current_ids,
         ))
-    else:
+    elif is_trace:
         current_density_a_per_mm2 = current_a / (area_m2 * 1e6)
         results.append(result_record(
             project=project,
@@ -850,6 +968,122 @@ def calculate_for_branch(
             confidence=0.84,
             source_current_record_ids=source_current_ids,
         ))
+    if is_via_record(record):
+        via = extract_via_geometry(record)
+        via_blockers = manifest_blockers_for_branch(
+            branch_id,
+            str(rail_name) if rail_name else None,
+            str(net_name) if net_name else None,
+            manifest,
+            {"copper_thickness_missing", "geometry_missing", "geometry_width_missing", "geometry_area_missing", "branch_current_unknown", "current_model_missing", "source_sink_not_resolved"},
+            {"copper_calculation", "thermal_calculation", "voltage_drop_calculation", "current_allocation", "calculation_readiness"},
+        )
+        via_linkage = manifest_linkage(via_blockers, manifest_path) if via_blockers else None
+        missing = []
+        via_count = via["via_count"]
+        diameter_mm = via["finished_hole_diameter_mm"]
+        plating_mm = via["plating_thickness_mm"]
+        if current_a is None:
+            missing.append(missing_input(current_missing_field, current_missing_reason, ["via_current_density", "current_allocation"], current_blockers[0] if current_blockers else None))
+        if current_source_conflict:
+            missing.append(missing_input("current_source_conflict", "Current allocation and legacy or duplicate allocation sources conflict.", ["via_current_density"], current_blockers[0] if current_blockers else None))
+        if via_count is None:
+            missing.append(missing_input("via_count", "Via count is missing; PR22 does not infer via count from branch names.", ["via_current_density"], via_blockers[0] if via_blockers else None))
+        if diameter_mm is None:
+            missing.append(missing_input("finished_hole_diameter_mm", "Finished hole or drill diameter is missing.", ["via_current_density"], via_blockers[0] if via_blockers else None))
+        if plating_mm is None:
+            missing.append(missing_input("via_barrel_plating_thickness_mm", "Via barrel plating thickness is missing.", ["via_current_density"], via_blockers[0] if via_blockers else None))
+        if via_count is not None and via_count <= 0:
+            missing.append(missing_input("via_count", "Via count must be positive.", ["via_current_density"], via_blockers[0] if via_blockers else None))
+        if diameter_mm is not None and diameter_mm <= 0:
+            missing.append(missing_input("finished_hole_diameter_mm", "Finished hole or drill diameter must be positive.", ["via_current_density"], via_blockers[0] if via_blockers else None))
+        if plating_mm is not None and plating_mm <= 0:
+            missing.append(missing_input("via_barrel_plating_thickness_mm", "Via barrel plating thickness must be positive.", ["via_current_density"], via_blockers[0] if via_blockers else None))
+
+        via_sources = list(current_sources)
+        via_input_refs = list(current_input_refs)
+        via_assumptions = [
+            assumption(
+                "via_barrel_area_approximation",
+                "Via barrel cross-section area is approximated as pi times finished hole diameter times plating thickness.",
+                "standard_formula",
+                0.8,
+            )
+        ] + current_assumptions
+        if via_count is not None and via_count > 1:
+            via_assumptions.append(assumption(
+                "parallel_via_barrel_area",
+                "Explicit via count is evaluated as total parallel via barrel area; this is not a pass/fail current-sharing conclusion.",
+                "standard_formula",
+                0.75,
+            ))
+        if missing:
+            results.append(result_record(
+                project=project,
+                calculation_family="via_current_density",
+                branch=base_branch,
+                status="blocked",
+                result={"via_current_density": None},
+                intermediate_values={
+                    "allocated_current_a": value_unit(current_a, "A"),
+                    "branch_current_a": value_unit(current_a, "A"),
+                    "via_count": value_unit(via_count, "count"),
+                    "finished_hole_diameter_mm": value_unit(diameter_mm, "mm"),
+                    "plating_thickness_mm": value_unit(plating_mm, "mm"),
+                    "barrel_length_mm": value_unit(via["barrel_length_mm"], "mm"),
+                    "current_source": current_source_mode,
+                    "source_current_record_ids": source_current_ids,
+                },
+                input_refs=via_input_refs,
+                source_artifacts=via_sources,
+                evidence_refs=evidence_refs + current_evidence,
+                assumptions=via_assumptions,
+                missing_inputs=missing,
+                linkage=merge_linkages(current_linkage, via_linkage),
+                warnings=current_warnings,
+                confidence=0.5,
+                human_review_needed=True,
+                source_current_record_ids=source_current_ids,
+            ))
+        else:
+            via_count_float = float(via_count)
+            diameter_float = float(diameter_mm)
+            plating_float = float(plating_mm)
+            area_per_via_mm2 = math.pi * diameter_float * plating_float
+            total_area_mm2 = area_per_via_mm2 * via_count_float
+            via_density = float(current_a) / total_area_mm2
+            intermediate_values = {
+                "allocated_current_a": value_unit(float(current_a), "A"),
+                "branch_current_a": value_unit(float(current_a), "A"),
+                "via_count": value_unit(via_count_float, "count"),
+                "finished_hole_diameter_mm": value_unit(diameter_float, "mm"),
+                "plating_thickness_mm": value_unit(plating_float, "mm"),
+                "area_per_via_mm2": value_unit(area_per_via_mm2, "mm^2"),
+                "total_barrel_area_mm2": value_unit(total_area_mm2, "mm^2"),
+                "barrel_length_mm": value_unit(via["barrel_length_mm"], "mm"),
+                "current_source": current_source_mode,
+                "source_current_record_ids": source_current_ids,
+            }
+            if via_count_float > 1:
+                intermediate_values["current_per_via_a"] = value_unit(float(current_a) / via_count_float, "A")
+            results.append(result_record(
+                project=project,
+                calculation_family="via_current_density",
+                branch=base_branch,
+                status="calculated",
+                result={"via_current_density": value_unit(via_density, "A/mm^2", "standard_formula", 0.78, evidence_refs + current_evidence)},
+                intermediate_values=intermediate_values,
+                input_refs=via_input_refs,
+                source_artifacts=via_sources,
+                evidence_refs=evidence_refs + current_evidence,
+                assumptions=via_assumptions,
+                missing_inputs=[],
+                linkage=allocation_current_linkage,
+                warnings=current_warnings,
+                confidence=0.78,
+                human_review_needed=False,
+                source_current_record_ids=source_current_ids,
+            ))
     return results
 
 
@@ -912,7 +1146,7 @@ def build_artifact(
     blocked_calculations = [row for row in calculation_results if row.get("status") == "blocked"]
     calculated_current_results = [
         row for row in calculation_results
-        if row.get("status") == "calculated" and row.get("calculation_family") in {"voltage_drop", "current_density"}
+        if row.get("status") == "calculated" and row.get("calculation_family") in {"voltage_drop", "current_density", "via_current_density"}
     ]
     summary = {
         "calculation_result_count": len(calculation_results),
@@ -924,9 +1158,14 @@ def build_artifact(
         "trace_resistance_calculated_count": sum(1 for row in calculation_results if row.get("calculation_family") == "trace_resistance" and row.get("status") == "calculated"),
         "voltage_drop_calculated_count": sum(1 for row in calculation_results if row.get("calculation_family") == "voltage_drop" and row.get("status") == "calculated"),
         "current_density_calculated_count": sum(1 for row in calculation_results if row.get("calculation_family") == "current_density" and row.get("status") == "calculated"),
+        "via_current_density_calculated_count": sum(1 for row in calculation_results if row.get("calculation_family") == "via_current_density" and row.get("status") == "calculated"),
+        "via_current_density_blocked_count": sum(1 for row in calculation_results if row.get("calculation_family") == "via_current_density" and row.get("status") == "blocked"),
         "missing_current_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") == "branch_current_a" for item in as_list(row.get("missing_inputs")))),
         "missing_copper_thickness_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") == "copper_thickness" for item in as_list(row.get("missing_inputs")))),
         "missing_geometry_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") in {"trace_width", "trace_length", "cross_section_area"} for item in as_list(row.get("missing_inputs")))),
+        "missing_via_geometry_blocked_count": sum(1 for row in blocked_calculations if row.get("calculation_family") == "via_current_density" and any(item.get("field") in {"finished_hole_diameter_mm", "drill_diameter_mm"} for item in as_list(row.get("missing_inputs")))),
+        "missing_via_plating_blocked_count": sum(1 for row in blocked_calculations if row.get("calculation_family") == "via_current_density" and any(item.get("field") in {"via_barrel_plating_thickness_mm", "plating_thickness_mm"} for item in as_list(row.get("missing_inputs")))),
+        "missing_via_count_blocked_count": sum(1 for row in blocked_calculations if row.get("calculation_family") == "via_current_density" and any(item.get("field") == "via_count" for item in as_list(row.get("missing_inputs")))),
         "current_allocation_source_count": allocation_source_count,
         "allocated_current_used_count": sum(1 for row in calculated_current_results if row.get("intermediate_values", {}).get("current_source") == "allocation"),
         "legacy_current_model_used_count": sum(1 for row in calculated_current_results if row.get("intermediate_values", {}).get("current_source") == "legacy"),

@@ -29,6 +29,7 @@ PR18 supports:
 - `trace_resistance`: resistivity times length divided by area
 - `voltage_drop`: current times resistance
 - `current_density`: current divided by area
+- `via_current_density`: explicit branch current divided by explicit via barrel area
 
 Current-dependent calculations are blocked unless an explicit branch current is available from one of these sources:
 
@@ -102,6 +103,39 @@ Accepted allocation types are:
 
 Records are ignored for calculation if they lack `branch_id`, have `usable_for_calculation` other than `true`, omit `allocated_current_a`, or contain a non-finite current. `unresolved_allocations[]` and `passthrough_records[]` are not used as current sources; unresolved records are used only for blocked-result provenance.
 
+## Via Current Density
+
+PR22 adds `via_current_density` for via or via-cluster branches. A record is considered via-related only when the artifact explicitly marks it as a via/via cluster, includes via geometry fields, or has deterministic via/drill wording in the branch id. The calculation does not infer current, via count, diameter, or plating thickness.
+
+Supported explicit via geometry fields include:
+
+- `via_count`
+- `hole_count`
+- `finished_hole_diameter_mm`
+- `drill_diameter_mm`
+- `plated_hole_diameter_mm`
+- `via_diameter_mm`
+- `via_barrel_plating_thickness_mm`
+- `plating_thickness_mm`
+- `copper_thickness_mm`
+- `copper_thickness_um`
+- `barrel_length_mm`
+- `board_thickness_mm`
+
+The required inputs are explicit branch current, via count, finished-hole or drill diameter, and barrel plating thickness. A single-via default is only used when the artifact explicitly represents a single via, such as `branch_type: "via"` or `geometry_type: "via"`.
+
+The formula is:
+
+```text
+area_per_via_mm2 = pi * finished_hole_diameter_mm * plating_thickness_mm
+total_barrel_area_mm2 = area_per_via_mm2 * via_count
+via_current_density_a_per_mm2 = allocated_current_a / total_barrel_area_mm2
+```
+
+For explicit clusters, current is evaluated against total parallel barrel area. The result records `current_per_via_a` as an intermediate when `via_count > 1`, but it does not make an equal-sharing safety conclusion.
+
+Blocked via-current-density results list missing inputs such as `allocated_current_a`, `branch_current_a`, `via_count`, `finished_hole_diameter_mm`, or `via_barrel_plating_thickness_mm`, and preserve PR16/PR20 linkage where available.
+
 ## Output
 
 The output artifact contains:
@@ -110,6 +144,7 @@ The output artifact contains:
 - `blocked_calculations[]`
 - summary counts by calculation family and missing-input category
 - current source summary counts for PR20 allocation usage, legacy current-model usage, current-source conflicts, and unresolved allocation blockers
+- via current density summary counts for calculated, blocked, missing geometry, missing plating, and missing via count cases
 - no findings and no engineering pass/fail judgments
 
 Later PRs can add more calculation families or workflow integration while preserving the blocked-result behavior.

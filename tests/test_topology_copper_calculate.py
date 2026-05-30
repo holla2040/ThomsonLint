@@ -77,6 +77,47 @@ def review_record(
     }
 
 
+def via_review_record(
+    branch_id: str = "br_v3p3_via_cluster_000001",
+    *,
+    via_count: int | None = 1,
+    diameter: float | None = 0.30,
+    plating: float | None = 0.025,
+    branch_type: str = "via_cluster",
+    geometry_type: str = "via_cluster",
+) -> dict:
+    geometry: dict[str, Any] = {
+        "geometry_type": geometry_type,
+        "via_count": via_count,
+        "finished_hole_diameter_mm": diameter,
+        "via_barrel_plating_thickness_mm": plating,
+        "barrel_length_mm": 1.6,
+    }
+    geometry = {key: value for key, value in geometry.items() if value is not None}
+    return {
+        "review_id": f"geo_{branch_id}",
+        "branch_id": branch_id,
+        "net_name": "V3P3",
+        "topology_net_type": "power",
+        "branch_type": branch_type,
+        "target_type": geometry_type,
+        "geometry_type": geometry_type,
+        "layer": "THRU",
+        "geometry": geometry,
+        "stackup": {},
+        "current_context": {
+            "current_model_ref": None,
+            "estimated_current_a": None,
+            "current_basis": "unresolved",
+            "current_known": False,
+        },
+        "review_status": "needs_current_model",
+        "evidence": [f"ev_geo_{branch_id}_via"],
+        "unresolved_flags": [],
+        "warnings": [],
+    }
+
+
 def geometry_review_fixture(records: list[dict] | None = None) -> dict:
     records = records or [review_record()]
     evidence = []
@@ -660,6 +701,286 @@ def test_manual_testproject_shaped_minimal_fixture_with_current_allocation_works
     assert artifact["topology_copper_calculation_pass"] is True
     assert result_for(artifact, "voltage_drop")["status"] == "calculated"
     assert result_for(artifact, "current_density")["status"] == "calculated"
+
+
+def test_via_current_density_calculates_for_single_via_with_explicit_geometry_and_current(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, branch_type="via", geometry_type="via", via_count=None)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    expected_area = math.pi * 0.30 * 0.025
+    assert row["status"] == "calculated"
+    assert math.isclose(row["result"]["via_current_density"]["value"], 0.25 / expected_area, rel_tol=1e-9)
+    assert row["intermediate_values"]["via_count"]["value"] == 1.0
+
+
+def test_via_current_density_calculates_for_explicit_via_cluster_total_area(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, via_count=4)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.8)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    expected_area = math.pi * 0.30 * 0.025 * 4
+    assert row["status"] == "calculated"
+    assert math.isclose(row["result"]["via_current_density"]["value"], 0.8 / expected_area, rel_tol=1e-9)
+    assert math.isclose(row["intermediate_values"]["current_per_via_a"]["value"], 0.2, rel_tol=1e-12)
+    assert any(item["id"] == "parallel_via_barrel_area" for item in row["assumptions"])
+
+
+def test_via_current_density_uses_allocated_current_from_pr20(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, via_count=2)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.4, allocation_id="alloc_via_current")]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "calculated"
+    assert row["intermediate_values"]["current_source"] == "allocation"
+    assert "alloc_via_current" in row["input_refs"]
+
+
+def test_via_current_density_legacy_current_model_still_works_without_allocation(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, via_count=2)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_model=current_model_fixture(branch_id, 0.4),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "calculated"
+    assert row["intermediate_values"]["current_source"] == "legacy"
+
+
+def test_via_current_density_blocks_when_current_missing(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, via_count=2)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        manifest=manifest_fixture([manifest_item("branch_current_unknown", branch_id, branch_id=branch_id)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "blocked"
+    assert "branch_current_a" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_via_current_density_blocks_when_plating_thickness_missing(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, plating=None)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "blocked"
+    assert "via_barrel_plating_thickness_mm" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_via_current_density_blocks_when_diameter_missing(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, diameter=None)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "blocked"
+    assert "finished_hole_diameter_mm" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_via_current_density_blocks_when_via_count_missing_for_cluster(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, via_count=None)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "blocked"
+    assert "via_count" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_via_current_density_does_not_infer_via_count_from_branch_name(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id, via_count=None, branch_type="via_cluster", geometry_type="via_cluster")]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "via_count" in {item["field"] for item in result_for(read_json(out), "via_current_density", branch_id)["missing_inputs"]}
+
+
+def test_via_current_density_does_not_assume_plating_thickness(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    record = via_review_record(branch_id, plating=None)
+    record["stackup"] = {"copper_thickness": 0.035, "copper_thickness_unit": "mm"}
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([record]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "blocked"
+    assert "via_barrel_plating_thickness_mm" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_via_current_density_preserves_allocation_id_and_source_current_record_ids(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25, allocation_id="alloc_via", source_current_record_ids=["cur_via_source"])]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert "alloc_via" in row["input_refs"]
+    assert row["source_current_record_ids"] == ["cur_via_source"]
+
+
+def test_via_current_density_preserves_manifest_linkage_for_blocked_current(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        manifest=manifest_fixture([]),
+        current_allocation=current_allocation_fixture([], [unresolved_allocation(branch_id)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "via_current_density", branch_id)
+    assert row["status"] == "blocked"
+    assert row["missing_data_manifest_item_ids"] == [f"mdi_manifest_branch_current_unknown_v3p3_{branch_id}"]
+    assert row["missing_data_group_ids"] == ["group_current_model_missing_v3p3"]
+
+
+def test_via_current_density_result_validates_against_calculation_result_schema(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    jsonschema.validate(result_for(read_json(out), "via_current_density", branch_id), read_json(RESULT_SCHEMA))
+
+
+def test_via_current_density_json_has_no_nan_or_infinity(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    for value in all_values(read_json(out)):
+        if isinstance(value, float):
+            assert math.isfinite(value)
+
+
+def test_via_current_density_summary_counts_match_results(tmp_path: Path) -> None:
+    calculated_id = "br_v3p3_via_cluster_000001"
+    blocked_id = "br_v3p3_via_cluster_000002"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([
+            via_review_record(calculated_id),
+            via_review_record(blocked_id, plating=None),
+        ]),
+        readiness=readiness_fixture([readiness_branch(calculated_id), readiness_branch(blocked_id)]),
+        current_allocation=current_allocation_fixture([
+            allocation_record(calculated_id, 0.25),
+            allocation_record(blocked_id, 0.25),
+        ]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    via_results = [row for row in artifact["calculation_results"] if row["calculation_family"] == "via_current_density"]
+    assert artifact["summary"]["via_current_density_calculated_count"] == sum(1 for row in via_results if row["status"] == "calculated")
+    assert artifact["summary"]["via_current_density_blocked_count"] == sum(1 for row in via_results if row["status"] == "blocked")
+    assert artifact["summary"]["missing_via_plating_blocked_count"] == 1
+
+
+def test_no_findings_or_pass_fail_judgments_are_emitted_after_via_density_addition(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([via_review_record(branch_id)]),
+        readiness=readiness_fixture([readiness_branch(branch_id)]),
+        current_allocation=current_allocation_fixture([allocation_record(branch_id, 0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    raw = out.read_text(encoding="utf-8").lower()
+    forbidden = ["finding_id", "issue_id", "compliance_pass", "compliance_fail", "margin_pass", "margin_fail"]
+    assert not any(token in raw for token in forbidden)
+
+
+def test_manual_testproject_shaped_minimal_fixture_with_via_current_density_works(tmp_path: Path) -> None:
+    branch_id = "br_v3p3_via_cluster_000001"
+    result, out = invoke(
+        tmp_path,
+        review=geometry_review_fixture([
+            review_record("br_v3p3_top_trace_group_000001"),
+            via_review_record(branch_id, via_count=3),
+        ]),
+        readiness=readiness_fixture([
+            readiness_branch("br_v3p3_top_trace_group_000001"),
+            readiness_branch(branch_id),
+        ]),
+        current_allocation=current_allocation_fixture([
+            allocation_record("br_v3p3_top_trace_group_000001", 0.25),
+            allocation_record(branch_id, 0.30, allocation_id="alloc_testproject_vias"),
+        ]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["execution_pass"] is True
+    assert artifact["topology_copper_calculation_pass"] is True
+    assert result_for(artifact, "via_current_density", branch_id)["status"] == "calculated"
 
 
 def test_copper_thickness_missing_blocks_cross_section_and_resistance(tmp_path: Path) -> None:
