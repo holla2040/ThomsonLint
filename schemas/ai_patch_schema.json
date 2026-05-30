@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Patch Bundle",
+  "description": "Schema for deterministic AI-derived patch candidate bundles. Patch bundles are reviewable intermediate artifacts and are not applied directly to core topology/current/rating/copper/margin artifacts.",
+  "type": "object",
+  "required": [
+    "project",
+    "generated_at_utc",
+    "schema_version",
+    "source_artifacts",
+    "source_validation_artifact",
+    "patch_bundle_pass",
+    "patches",
+    "conflicts",
+    "skipped_items",
+    "human_review_items",
+    "summary",
+    "errors",
+    "warnings"
+  ],
+  "properties": {
+    "project": {"type": "string", "minLength": 1},
+    "generated_at_utc": {"type": "string", "minLength": 1},
+    "schema_version": {"type": "string", "const": "ai_patch_bundle_v1"},
+    "source_artifacts": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/sourceArtifact"}
+    },
+    "source_validation_artifact": {"type": "string", "minLength": 1},
+    "patch_bundle_pass": {"type": "boolean"},
+    "patches": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/patch"}
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/conflict"}
+    },
+    "skipped_items": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/skippedItem"}
+    },
+    "human_review_items": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "summary": {"$ref": "#/definitions/summary"},
+    "errors": {"$ref": "#/definitions/stringArray"},
+    "warnings": {"$ref": "#/definitions/stringArray"}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "patch": {
+      "type": "object",
+      "required": [
+        "patch_id",
+        "patch_class",
+        "operation",
+        "target_type",
+        "target_refdes",
+        "target_mpn",
+        "field_name",
+        "value",
+        "unit",
+        "normalized_value",
+        "normalized_unit",
+        "condition",
+        "basis",
+        "source_packet_id",
+        "source_item_id",
+        "source_accepted_item_id",
+        "missing_data_item_ids",
+        "source_file",
+        "source_page",
+        "evidence_quote",
+        "confidence",
+        "human_review_needed",
+        "usable_for_ingestion",
+        "requires_human_approval_before_ingestion",
+        "provenance",
+        "warnings"
+      ],
+      "properties": {
+        "patch_id": {"type": "string", "minLength": 1},
+        "patch_class": {
+          "type": "string",
+          "enum": [
+            "current_model_patch",
+            "rating_model_patch",
+            "role_resolution_addendum",
+            "pin_role_addendum",
+            "rail_relationship_hint",
+            "passive_support_data_patch",
+            "human_review_patch_candidate"
+          ]
+        },
+        "operation": {"type": "string", "const": "add_candidate"},
+        "target_type": {"type": "string", "minLength": 1},
+        "target_refdes": {"type": ["string", "null"]},
+        "target_mpn": {"type": ["string", "null"]},
+        "field_name": {"type": "string", "minLength": 1},
+        "value": {"type": ["number", "string", "boolean", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "normalized_value": {"type": ["number", "string", "boolean", "null"]},
+        "normalized_unit": {"type": ["string", "null"]},
+        "condition": {"type": ["string", "null"]},
+        "basis": {"type": "string", "minLength": 1},
+        "source_packet_id": {"type": "string", "minLength": 1},
+        "source_item_id": {"type": "string", "minLength": 1},
+        "source_accepted_item_id": {"type": "string", "minLength": 1},
+        "source_item_ids": {"$ref": "#/definitions/stringArray"},
+        "source_accepted_item_ids": {"$ref": "#/definitions/stringArray"},
+        "missing_data_item_ids": {"$ref": "#/definitions/stringArray"},
+        "source_file": {"type": ["string", "null"]},
+        "source_page": {"type": ["integer", "null"]},
+        "evidence_quote": {"type": ["string", "null"]},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "human_review_needed": {"type": "boolean"},
+        "usable_for_ingestion": {"type": "boolean"},
+        "requires_human_approval_before_ingestion": {"type": "boolean"},
+        "provenance": {"$ref": "#/definitions/provenance"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["validation_artifact", "packet_id", "source_item_id", "basis"],
+      "properties": {
+        "validation_artifact": {"type": "string", "minLength": 1},
+        "packet_id": {"type": "string", "minLength": 1},
+        "source_item_id": {"type": "string", "minLength": 1},
+        "source_accepted_item_id": {"type": "string"},
+        "basis": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "conflict": {
+      "type": "object",
+      "required": [
+        "conflict_id",
+        "reason_code",
+        "target_type",
+        "target_refdes",
+        "field_name",
+        "candidate_patch_ids",
+        "detail",
+        "human_review_needed"
+      ],
+      "properties": {
+        "conflict_id": {"type": "string", "minLength": 1},
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "duplicate_identical_candidate",
+            "conflicting_candidate_values",
+            "conflicting_units",
+            "conflicting_conditions",
+            "ambiguous_target_identity"
+          ]
+        },
+        "target_type": {"type": "string"},
+        "target_refdes": {"type": ["string", "null"]},
+        "field_name": {"type": "string"},
+        "candidate_patch_ids": {"$ref": "#/definitions/stringArray"},
+        "detail": {"type": "string"},
+        "human_review_needed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "skippedItem": {
+      "type": "object",
+      "required": ["skipped_item_id", "source_accepted_item_id", "reason_code", "detail", "original_item"],
+      "properties": {
+        "skipped_item_id": {"type": "string", "minLength": 1},
+        "source_accepted_item_id": {"type": ["string", "null"]},
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "unsupported_target_type",
+            "unsupported_field_name",
+            "missing_target_identity",
+            "missing_normalized_value",
+            "missing_normalized_unit",
+            "missing_evidence",
+            "not_usable_for_patch",
+            "human_review_not_included"
+          ]
+        },
+        "detail": {"type": "string"},
+        "original_item": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "source_accepted_item_count",
+        "source_rejected_item_count",
+        "source_human_review_item_count",
+        "patch_count",
+        "current_model_patch_count",
+        "rating_model_patch_count",
+        "role_resolution_addendum_count",
+        "pin_role_addendum_count",
+        "rail_relationship_hint_count",
+        "passive_support_data_patch_count",
+        "human_review_patch_candidate_count",
+        "skipped_item_count",
+        "conflict_count",
+        "usable_for_ingestion_count",
+        "requires_human_approval_count",
+        "error_count",
+        "warning_count"
+      ],
+      "properties": {
+        "source_accepted_item_count": {"type": "integer", "minimum": 0},
+        "source_rejected_item_count": {"type": "integer", "minimum": 0},
+        "source_human_review_item_count": {"type": "integer", "minimum": 0},
+        "patch_count": {"type": "integer", "minimum": 0},
+        "current_model_patch_count": {"type": "integer", "minimum": 0},
+        "rating_model_patch_count": {"type": "integer", "minimum": 0},
+        "role_resolution_addendum_count": {"type": "integer", "minimum": 0},
+        "pin_role_addendum_count": {"type": "integer", "minimum": 0},
+        "rail_relationship_hint_count": {"type": "integer", "minimum": 0},
+        "passive_support_data_patch_count": {"type": "integer", "minimum": 0},
+        "human_review_patch_candidate_count": {"type": "integer", "minimum": 0},
+        "skipped_item_count": {"type": "integer", "minimum": 0},
+        "conflict_count": {"type": "integer", "minimum": 0},
+        "usable_for_ingestion_count": {"type": "integer", "minimum": 0},
+        "requires_human_approval_count": {"type": "integer", "minimum": 0},
+        "error_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}
