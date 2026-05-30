@@ -1,0 +1,261 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Candidate Inputs",
+  "description": "Schemas for isolated AI-derived candidate input artifacts. These artifacts are reviewable candidate inputs and must not overwrite normalized or calculation outputs.",
+  "oneOf": [
+    {"$ref": "#/definitions/manifest"},
+    {"$ref": "#/definitions/currentCandidates"},
+    {"$ref": "#/definitions/ratingCandidates"},
+    {"$ref": "#/definitions/roleAddenda"},
+    {"$ref": "#/definitions/pinRoleAddenda"},
+    {"$ref": "#/definitions/railRelationshipHints"},
+    {"$ref": "#/definitions/passiveSupportCandidates"},
+    {"$ref": "#/definitions/humanReviewCandidates"},
+    {"$ref": "#/definitions/materializationStatus"}
+  ],
+  "definitions": {
+    "manifest": {
+      "type": "object",
+      "required": [
+        "project",
+        "generated_at_utc",
+        "schema_version",
+        "source_artifacts",
+        "source_patch_bundle",
+        "candidate_materialization_pass",
+        "candidate_files",
+        "skipped_patches",
+        "blocked_by_conflict",
+        "summary",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_inputs_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_patch_bundle": {"type": "string"},
+        "candidate_materialization_pass": {"type": "boolean"},
+        "candidate_files": {"type": "object"},
+        "skipped_patches": {"type": "array", "items": {"$ref": "#/definitions/skippedPatch"}},
+        "blocked_by_conflict": {"type": "array", "items": {"$ref": "#/definitions/blockedByConflict"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "materializationStatus": {
+      "type": "object",
+      "required": [
+        "project",
+        "status",
+        "source_patch_bundle",
+        "candidate_materialization_pass",
+        "safe_to_feed_candidate_ingestion",
+        "safe_to_overwrite_core_artifacts",
+        "requires_human_review_count",
+        "conflict_count",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "project": {"type": "string"},
+        "status": {"const": "materialized"},
+        "source_patch_bundle": {"type": "string"},
+        "candidate_materialization_pass": {"type": "boolean"},
+        "safe_to_feed_candidate_ingestion": {"type": "boolean"},
+        "safe_to_overwrite_core_artifacts": {"const": false},
+        "requires_human_review_count": {"type": "integer", "minimum": 0},
+        "conflict_count": {"type": "integer", "minimum": 0},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "currentCandidates": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "current_records", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_current_model_candidates_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "current_records": {"type": "array", "items": {"$ref": "#/definitions/currentRecord"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "ratingCandidates": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "rating_records", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_rating_model_candidates_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "rating_records": {"type": "array", "items": {"$ref": "#/definitions/ratingRecord"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "roleAddenda": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "role_addenda", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_role_resolution_addenda_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "role_addenda": {"type": "array", "items": {"$ref": "#/definitions/roleAddendum"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "pinRoleAddenda": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "pin_role_addenda", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_pin_role_addenda_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "pin_role_addenda": {"type": "array", "items": {"$ref": "#/definitions/pinRoleAddendum"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "railRelationshipHints": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "rail_relationship_hints", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_rail_relationship_hints_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "rail_relationship_hints": {"type": "array", "items": {"$ref": "#/definitions/railRelationshipHint"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "passiveSupportCandidates": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "passive_support_records", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_passive_support_candidates_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "passive_support_records": {"type": "array", "items": {"$ref": "#/definitions/passiveSupportRecord"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "humanReviewCandidates": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "human_review_candidates", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_human_review_candidates_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "human_review_candidates": {"type": "array", "items": {"$ref": "#/definitions/humanReviewCandidate"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "currentRecord": {
+      "type": "object",
+      "required": ["record_id", "record_type", "source", "field_name", "current_a", "current_unit", "basis", "confidence", "human_review_needed", "evidence_refs", "source_patch_id", "source_packet_id", "source_item_id", "source_accepted_item_id", "missing_data_item_ids"],
+      "properties": {
+        "record_id": {"type": "string"},
+        "record_type": {"enum": ["component_current", "rail_current", "branch_current"]},
+        "source": {"type": "string"},
+        "refdes": {"type": ["string", "null"]},
+        "mpn": {"type": ["string", "null"]},
+        "rail_name": {"type": ["string", "null"]},
+        "branch_id": {"type": ["string", "null"]},
+        "field_name": {"type": "string"},
+        "current_a": {"type": "number"},
+        "current_unit": {"const": "A"},
+        "condition": {"type": ["string", "null"]},
+        "basis": {"type": "string"},
+        "confidence": {"type": ["number", "null"]},
+        "human_review_needed": {"type": "boolean"},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/definitions/evidenceRef"}},
+        "source_patch_id": {"type": "string"},
+        "source_packet_id": {"type": "string"},
+        "source_item_id": {"type": "string"},
+        "source_accepted_item_id": {"type": "string"},
+        "missing_data_item_ids": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "ratingRecord": {
+      "type": "object",
+      "required": ["record_id", "record_type", "source", "target_type", "refdes", "rating_name", "unit", "basis", "confidence", "human_review_needed", "evidence_refs", "source_patch_id", "source_packet_id", "source_item_id", "source_accepted_item_id", "missing_data_item_ids"],
+      "properties": {
+        "record_id": {"type": "string"},
+        "record_type": {"const": "rating"},
+        "source": {"type": "string"},
+        "target_type": {"enum": ["fuse", "connector_pin", "connector", "regulator", "load_switch", "ferrite"]},
+        "refdes": {"type": ["string", "null"]},
+        "pin": {"type": ["string", "null"]},
+        "mpn": {"type": ["string", "null"]},
+        "rating_name": {"type": "string"},
+        "value_a": {"type": ["number", "null"]},
+        "value_v": {"type": ["number", "null"]},
+        "unit": {"type": "string"},
+        "condition": {"type": ["string", "null"]},
+        "basis": {"type": "string"},
+        "confidence": {"type": ["number", "null"]},
+        "human_review_needed": {"type": "boolean"},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/definitions/evidenceRef"}},
+        "source_patch_id": {"type": "string"},
+        "source_packet_id": {"type": "string"},
+        "source_item_id": {"type": "string"},
+        "source_accepted_item_id": {"type": "string"},
+        "missing_data_item_ids": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "roleAddendum": {"type": "object"},
+    "pinRoleAddendum": {"type": "object"},
+    "railRelationshipHint": {"type": "object"},
+    "passiveSupportRecord": {"type": "object"},
+    "humanReviewCandidate": {"type": "object"},
+    "skippedPatch": {"type": "object"},
+    "blockedByConflict": {"type": "object"},
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "type": "object",
+      "required": ["source_file", "source_page", "evidence_quote"],
+      "properties": {
+        "source_file": {"type": ["string", "null"]},
+        "source_page": {"type": ["integer", "null"]},
+        "evidence_quote": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}
