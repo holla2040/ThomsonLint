@@ -110,6 +110,35 @@ def rating_record(
     }
 
 
+def connector_rating_record(
+    *,
+    rating_id: str = "rating_connector_p20_1",
+    branch_id: str | None = "br_p20_1",
+    refdes: str | None = "P20",
+    pin: str | None = "1",
+    target_type: str = "connector_pin",
+    rating_name: str = "pin_current_max",
+    value: float = 2.0,
+    usable: bool = True,
+    families: list[str] | None = None,
+    **extra: Any,
+) -> dict[str, Any]:
+    row = rating_record(
+        rating_id=rating_id,
+        branch_id=branch_id,
+        refdes=refdes,
+        pin=pin,
+        target_type=target_type,
+        rating_name=rating_name,
+        value=value,
+        usable=usable,
+        families=families if families is not None else ["connector_pin_current_margin"],
+    )
+    row["evidence_refs"] = ["datasheet:P20:p3"]
+    row.update(extra)
+    return row
+
+
 def rating_models_fixture(records: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     return {
         "project": "TestProject",
@@ -197,6 +226,15 @@ def invoke(
 
 def result_for(artifact: dict[str, Any], target_id: str = "F1") -> dict[str, Any]:
     rows = [row for row in artifact["calculation_results"] if row["target_id"] == target_id]
+    assert len(rows) == 1
+    return rows[0]
+
+
+def connector_result_for(artifact: dict[str, Any], target_id: str = "P20:1") -> dict[str, Any]:
+    rows = [
+        row for row in artifact["calculation_results"]
+        if row["calculation_family"] == "connector_pin_current_margin" and row["target_id"] == target_id
+    ]
     assert len(rows) == 1
     return rows[0]
 
@@ -291,16 +329,33 @@ def test_output_json_has_no_nan_or_infinity(tmp_path: Path) -> None:
 
 
 def test_summary_counts_match_arrays(tmp_path: Path) -> None:
-    result, out = invoke(tmp_path, rating_models=rating_models_fixture([rating_record(), rating_record(rating_id="rating_trip", rating_name="trip_current")]))
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([
+            allocation_record("br_f1_vin", 0.5),
+            allocation_record("br_p20_1", 0.5),
+        ]),
+        rating_models=rating_models_fixture([
+            rating_record(),
+            rating_record(rating_id="rating_trip", rating_name="trip_current"),
+            connector_rating_record(),
+        ]),
+    )
     assert result.returncode == 0, result.stderr + result.stdout
     artifact = read_json(out)
     summary = artifact["summary"]
     results = artifact["calculation_results"]
     blocked = artifact["blocked_calculations"]
     unresolved = artifact["unresolved_margin_inputs"]
-    assert summary["fuse_margin_result_count"] == len(results)
-    assert summary["fuse_margin_calculated_count"] == sum(1 for row in results if row["status"] == "calculated")
-    assert summary["fuse_margin_blocked_count"] == len(blocked)
+    fuse_results = [row for row in results if row["calculation_family"] == "fuse_margin"]
+    connector_results = [row for row in results if row["calculation_family"] == "connector_pin_current_margin"]
+    assert summary["fuse_margin_result_count"] == len(fuse_results)
+    assert summary["fuse_margin_calculated_count"] == sum(1 for row in fuse_results if row["status"] == "calculated")
+    assert summary["fuse_margin_blocked_count"] == sum(1 for row in fuse_results if row["status"] == "blocked")
+    assert summary["connector_pin_margin_result_count"] == len(connector_results)
+    assert summary["connector_pin_margin_calculated_count"] == sum(1 for row in connector_results if row["status"] == "calculated")
+    assert summary["connector_pin_margin_blocked_count"] == sum(1 for row in connector_results if row["status"] == "blocked")
+    assert len(blocked) == sum(1 for row in results if row["status"] == "blocked")
     assert summary["unresolved_margin_input_count"] == len(unresolved)
     assert summary["error_count"] == len(artifact["errors"])
 
@@ -503,3 +558,318 @@ def test_manual_testproject_shaped_minimal_fixture_works(tmp_path: Path) -> None
     assert artifact["execution_pass"] is True
     assert artifact["topology_margin_calculation_pass"] is True
     assert artifact["summary"]["fuse_margin_calculated_count"] == 1
+
+
+def test_connector_pin_margin_calculates_when_branch_pin_rating_and_current_match(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5, allocation_id="alloc_p20_1")]),
+        rating_models=rating_models_fixture([connector_rating_record()]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["status"] == "calculated"
+    assert math.isclose(row["result"]["connector_pin_margin_a"]["value"], 1.5, rel_tol=1e-12)
+
+
+def test_connector_pin_margin_calculates_utilization_ratio(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record(value=2.0)]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert math.isclose(connector_result_for(read_json(out))["result"]["connector_pin_utilization_ratio"]["value"], 0.25, rel_tol=1e-12)
+
+
+def test_connector_pin_negative_margin_is_numeric_result_not_finding(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 2.5)]),
+        rating_models=rating_models_fixture([connector_rating_record(value=2.0)]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    row = connector_result_for(artifact)
+    assert row["status"] == "calculated"
+    assert row["result"]["connector_pin_margin_a"]["value"] < 0
+    assert artifact["summary"]["connector_pin_negative_margin_numeric_result_count"] == 1
+    assert "findings" not in artifact
+
+
+def test_connector_pin_result_preserves_allocation_id_and_rating_id(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5, allocation_id="alloc_p20_1")]),
+        rating_models=rating_models_fixture([connector_rating_record(rating_id="rating_p20_1")]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert "alloc_p20_1" in row["input_refs"]
+    assert "rating_p20_1" in row["input_refs"]
+
+
+def test_connector_pin_result_preserves_evidence_refs(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record()]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert "manual_current:F1" in row["evidence_refs"]
+    assert "datasheet:P20:p3" in row["evidence_refs"]
+
+
+def test_connector_pin_result_validates_against_calculation_result_schema(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record()]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    jsonschema.validate(connector_result_for(read_json(out)), read_json(RESULT_SCHEMA))
+
+
+def test_connector_pin_margin_blocks_when_current_missing(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([]), rating_models=rating_models_fixture([connector_rating_record()]))
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["status"] == "blocked"
+    assert "allocated_current_a" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_connector_pin_margin_blocks_when_rating_missing(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([]),
+        branch_topology=branch_topology_fixture([{"branch_id": "br_p20_1", "refdes": "P20", "pin": "1", "role_subtype": "connector", "rail_name": "VIN"}]),
+        role_resolution=role_resolution_fixture([{"refdes": "P20", "role": "source", "role_subtype": "connector_power_input_or_io", "branch_ids": ["br_p20_1"]}]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = read_json(out)["blocked_calculations"][0]
+    assert row["calculation_family"] == "connector_pin_current_margin"
+    assert "connector_pin_rating" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_connector_pin_margin_blocks_when_rating_unusable(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record(usable=False)]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["status"] == "blocked"
+    assert "connector_pin_rating" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_connector_pin_margin_blocks_when_rating_value_zero(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record(value=0.0)]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["status"] == "blocked"
+    assert "rating_current_a" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_connector_pin_missing_pin_blocks_unless_rating_is_explicit_per_pin(tmp_path: Path) -> None:
+    blocked_rating = connector_rating_record(pin=None, target_type="connector", connector_wide=False)
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([blocked_rating]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    blocked = connector_result_for(read_json(out), "P20")
+    assert blocked["status"] == "blocked"
+    assert "connector_pin" in {item["field"] for item in blocked["missing_inputs"]}
+
+    per_pin_rating = connector_rating_record(pin=None, target_type="connector", per_pin=True)
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([per_pin_rating]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert connector_result_for(read_json(out), "P20")["status"] == "calculated"
+
+
+def test_connector_wide_rating_is_not_expanded_to_all_pins(tmp_path: Path) -> None:
+    rating = connector_rating_record(branch_id=None, pin=None, target_type="connector")
+    topology = branch_topology_fixture([
+        {"branch_id": "br_p20_1", "refdes": "P20", "pin": "1", "role_subtype": "connector"},
+        {"branch_id": "br_p20_2", "refdes": "P20", "pin": "2", "role_subtype": "connector"},
+    ])
+    result, out = invoke(tmp_path, rating_models=rating_models_fixture([rating]), branch_topology=topology)
+    assert result.returncode == 0, result.stderr + result.stdout
+    reasons = {row["reason_code"] for row in read_json(out)["unresolved_margin_inputs"]}
+    assert reasons.intersection({"missing_connector_pin", "ambiguous_target_mapping"})
+
+
+def test_unsupported_connector_rating_name_does_not_calculate(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record(rating_name="thermal_current_limit")]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["status"] == "blocked"
+    assert "unsupported_connector_margin_rating_name" in row["warnings"]
+
+
+def test_ambiguous_connector_rating_to_branch_mapping_creates_unresolved_margin_input(tmp_path: Path) -> None:
+    rating = connector_rating_record(branch_id=None)
+    topology = branch_topology_fixture([
+        {"branch_id": "br_p20_1a", "refdes": "P20", "pin": "1", "role_subtype": "connector"},
+        {"branch_id": "br_p20_1b", "refdes": "P20", "pin": "1", "role_subtype": "connector"},
+    ])
+    result, out = invoke(tmp_path, rating_models=rating_models_fixture([rating]), branch_topology=topology)
+    assert result.returncode == 0, result.stderr + result.stdout
+    unresolved = read_json(out)["unresolved_margin_inputs"][0]
+    assert unresolved["reason_code"] == "ambiguous_target_mapping"
+
+
+def test_missing_connector_rating_to_current_link_creates_unresolved_margin_input(tmp_path: Path) -> None:
+    rating = connector_rating_record(branch_id=None)
+    result, out = invoke(tmp_path, rating_models=rating_models_fixture([rating]))
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert read_json(out)["unresolved_margin_inputs"][0]["reason_code"] == "target_current_link_unknown"
+
+
+def test_connector_role_unknown_blocks_or_unresolves_when_role_confirmation_required(tmp_path: Path) -> None:
+    rating = connector_rating_record(target_type="component", families=["connector_pin_current_margin"])
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([rating]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["status"] == "blocked"
+    assert "connector_pin_rating" in {item["field"] for item in row["missing_inputs"]}
+
+
+def test_does_not_infer_connector_role_from_refdes_prefix(tmp_path: Path) -> None:
+    rating = connector_rating_record(target_type="component", families=[], branch_id=None)
+    result, out = invoke(tmp_path, rating_models=rating_models_fixture([rating]))
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["calculation_results"] == []
+    assert artifact["unresolved_margin_inputs"] == []
+
+
+def test_does_not_infer_connector_pin_rating_from_component_rating(tmp_path: Path) -> None:
+    rating = connector_rating_record(target_type="component", families=[])
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([rating]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert read_json(out)["calculation_results"] == []
+
+
+def test_does_not_infer_current_from_connector_rating(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([]), rating_models=rating_models_fixture([connector_rating_record()]))
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert connector_result_for(read_json(out))["status"] == "blocked"
+
+
+def test_no_findings_or_pass_fail_judgments_are_emitted_for_connector_margin(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 2.5)]),
+        rating_models=rating_models_fixture([connector_rating_record(value=2.0)]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    raw_keys = "\n".join(key.lower() for key in all_keys(read_json(out)))
+    forbidden = ["finding_id", "issue_id", "violation", "compliance_pass", "compliance_fail", "margin_pass", "margin_fail", "pass_fail", "judgment"]
+    assert not any(token in raw_keys for token in forbidden)
+
+
+def test_no_severity_or_compliance_fields_are_emitted_for_connector_margin(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record()]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    raw_keys = "\n".join(key.lower() for key in all_keys(read_json(out)))
+    assert "severity" not in raw_keys
+    assert "compliance" not in raw_keys
+
+
+def test_connector_missing_rating_manifest_linkage_is_preserved_when_present(tmp_path: Path) -> None:
+    manifest = manifest_fixture([manifest_item("rating_missing", "br_p20_1", affected_branches=["br_p20_1"], affected_components=["P20"])])
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([]),
+        branch_topology=branch_topology_fixture([{"branch_id": "br_p20_1", "refdes": "P20", "pin": "1", "role_subtype": "connector"}]),
+        role_resolution=role_resolution_fixture([{"refdes": "P20", "role": "source", "role_subtype": "connector_power_input_or_io", "branch_ids": ["br_p20_1"]}]),
+        manifest=manifest,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = read_json(out)["blocked_calculations"][0]
+    assert row["missing_data_manifest_item_ids"] == ["mdi_manifest_rating_missing_br_p20_1"]
+
+
+def test_connector_branch_current_unknown_manifest_linkage_is_preserved_when_current_missing(tmp_path: Path) -> None:
+    manifest = manifest_fixture([manifest_item("branch_current_unknown", "br_p20_1", affected_branches=["br_p20_1"], affected_components=["P20"])])
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([]), rating_models=rating_models_fixture([connector_rating_record()]), manifest=manifest)
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = connector_result_for(read_json(out))
+    assert row["missing_data_manifest_item_ids"] == ["mdi_manifest_branch_current_unknown_br_p20_1"]
+
+
+def test_connector_missing_manifest_link_is_warning_not_failure(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_p20_1", 0.5)]),
+        rating_models=rating_models_fixture([connector_rating_record()]),
+        manifest=manifest_fixture([manifest_item("current_model_missing", "other_branch", affected_branches=["other_branch"])]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["execution_pass"] is True
+    assert artifact["topology_margin_calculation_pass"] is True
+    assert artifact["warnings"]
+
+
+def test_existing_fuse_margin_behavior_still_passes_with_connector_support(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([
+            allocation_record("br_f1_vin", 0.5, allocation_id="alloc_f1"),
+            allocation_record("br_p20_1", 0.5, allocation_id="alloc_p20"),
+        ]),
+        rating_models=rating_models_fixture([rating_record(), connector_rating_record()]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert result_for(artifact)["status"] == "calculated"
+    assert connector_result_for(artifact)["status"] == "calculated"
+    assert artifact["summary"]["fuse_margin_calculated_count"] == 1
+    assert artifact["summary"]["connector_pin_margin_calculated_count"] == 1
+
+
+def test_manual_testproject_shaped_minimal_fixture_with_connector_margin_works(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_allocation=current_allocation_fixture([allocation_record("br_v5_connector_p20_pin1", 0.75, allocation_id="alloc_testproject_p20_1")]),
+        rating_models=rating_models_fixture([connector_rating_record(rating_id="rating_testproject_p20_1", branch_id="br_v5_connector_p20_pin1", refdes="P20", pin="1", value=2.0)]),
+        branch_topology=branch_topology_fixture([{"branch_id": "br_v5_connector_p20_pin1", "refdes": "P20", "pin": "1", "role_subtype": "connector", "rail_name": "V5"}]),
+        role_resolution=role_resolution_fixture([{"refdes": "P20", "role": "source", "role_subtype": "connector_power_input_or_io", "branch_ids": ["br_v5_connector_p20_pin1"]}]),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["project"] == "TestProject"
+    assert artifact["execution_pass"] is True
+    assert artifact["topology_margin_calculation_pass"] is True
+    assert artifact["summary"]["connector_pin_margin_calculated_count"] == 1

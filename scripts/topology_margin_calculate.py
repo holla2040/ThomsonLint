@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Calculate deterministic topology margin results.
 
-PR 24 scope only: calculate fuse current margin when explicit allocated current,
-explicit fuse rating, and deterministic topology linkage are available. This
-script does not calculate regulator or connector margins, infer ratings, infer
-current, create findings, or make compliance judgments.
+PR 24/25 scope only: calculate fuse and connector-pin current margins when
+explicit allocated current, explicit rating, and deterministic topology linkage
+are available. This script does not calculate regulator margins, infer ratings,
+infer current, create findings, or make compliance judgments.
 """
 from __future__ import annotations
 
@@ -35,6 +35,9 @@ FUSE_MARGIN_RATING_NAMES = {
     "package_current_limit",
     "thermal_current_limit",
 }
+CONNECTOR_TARGET_TYPES = {"connector_pin", "connector"}
+CONNECTOR_ROLE_TARGET_TYPES = {"connector_pin", "connector", "component"}
+CONNECTOR_MARGIN_RATING_NAMES = {"pin_current_max", "current_max"}
 MANIFEST_CATEGORIES = {
     "rating_missing",
     "current_model_missing",
@@ -50,6 +53,7 @@ MANIFEST_BLOCKS = {
     "voltage_drop_calculation",
     "thermal_calculation",
     "fuse_margin",
+    "connector_pin_current_margin",
 }
 
 
@@ -220,6 +224,7 @@ def merge_linkages(*rows: dict[str, Any] | None) -> dict[str, Any] | None:
 def result_record(
     *,
     project: str,
+    calculation_family: str,
     target_type: str,
     target_id: str,
     status: str,
@@ -237,13 +242,13 @@ def result_record(
     confidence: float = 0.8,
     human_review_needed: bool = False,
 ) -> dict[str, Any]:
-    calculation_id = f"calc_fuse_margin_{safe_id(target_id)}_{safe_id(branch_id)}"
+    calculation_id = f"calc_{safe_id(calculation_family)}_{safe_id(target_id)}_{safe_id(branch_id)}"
     row = {
         "schema_version": SCHEMA_VERSION,
         "project_id": project,
         "calculation_run_id": f"run_{safe_id(project)}_topology_margin_calculations",
         "calculation_id": calculation_id,
-        "calculation_family": "fuse_margin",
+        "calculation_family": calculation_family,
         "target_type": target_type,
         "target_id": target_id,
         "status": status,
@@ -324,11 +329,28 @@ def strings_from(value: Any) -> set[str]:
 
 def branch_refdeses(row: dict[str, Any]) -> set[str]:
     refs: set[str] = set()
-    for key in ("refdes", "component_refdes", "pass_through_refdes", "fuse_refdes"):
+    for key in ("refdes", "component_refdes", "pass_through_refdes", "fuse_refdes", "connector_refdes"):
         refs.update(strings_from(row.get(key)))
-    for key in ("refdeses", "component_refdeses", "components", "affected_components", "pass_through_refdeses", "fuse_refdeses"):
+    for key in ("refdeses", "component_refdeses", "components", "affected_components", "pass_through_refdeses", "fuse_refdeses", "connector_refdeses"):
         refs.update(strings_from(row.get(key)))
     return refs
+
+
+def branch_pins(row: dict[str, Any]) -> set[str]:
+    pins: set[str] = set()
+    for key in ("pin", "connector_pin"):
+        value = row.get(key)
+        if isinstance(value, str) and value:
+            pins.add(value)
+    for key in ("pins", "connector_pins"):
+        for value in as_list(row.get(key)):
+            if isinstance(value, str) and value:
+                pins.add(value)
+            elif isinstance(value, dict):
+                for pin_key in ("pin", "pin_number", "connector_pin"):
+                    if isinstance(value.get(pin_key), str) and value.get(pin_key):
+                        pins.add(str(value[pin_key]))
+    return pins
 
 
 def branch_ids_for_refdes(branch_topology: dict[str, Any], refdes: str) -> list[str]:
@@ -336,6 +358,15 @@ def branch_ids_for_refdes(branch_topology: dict[str, Any], refdes: str) -> list[
         str(row.get("branch_id"))
         for row in branch_rows(branch_topology)
         if isinstance(row.get("branch_id"), str) and refdes in branch_refdeses(row)
+    }
+    return sorted(ids)
+
+
+def branch_ids_for_refdes_pin(branch_topology: dict[str, Any], refdes: str, pin: str) -> list[str]:
+    ids = {
+        str(row.get("branch_id"))
+        for row in branch_rows(branch_topology)
+        if isinstance(row.get("branch_id"), str) and refdes in branch_refdeses(row) and pin in branch_pins(row)
     }
     return sorted(ids)
 
@@ -362,6 +393,17 @@ def role_confirms_fuse(role_resolution: dict[str, Any], refdes: str | None) -> b
     return False
 
 
+def role_confirms_connector(role_resolution: dict[str, Any], refdes: str | None) -> bool:
+    rows = role_rows_for_refdes(role_resolution, refdes)
+    if not rows:
+        return False
+    for row in rows:
+        subtype = str(row.get("role_subtype") or row.get("component_role") or row.get("component_type") or "").lower()
+        if "connector" in subtype:
+            return True
+    return False
+
+
 def role_branch_ids(role_resolution: dict[str, Any], refdes: str | None) -> list[str]:
     ids: set[str] = set()
     for row in role_rows_for_refdes(role_resolution, refdes):
@@ -371,6 +413,21 @@ def role_branch_ids(role_resolution: dict[str, Any], refdes: str | None) -> list
         for key in ("branch_ids", "input_branch_ids", "output_branch_ids", "current_path_branch_ids"):
             ids.update(str(value) for value in as_list(row.get(key)) if isinstance(value, str))
     return sorted(ids)
+
+
+def role_branch_ids_for_pin(role_resolution: dict[str, Any], refdes: str | None, pin: str | None) -> list[str]:
+    if not pin:
+        return role_branch_ids(role_resolution, refdes)
+    ids: set[str] = set()
+    for row in role_rows_for_refdes(role_resolution, refdes):
+        for key in ("pin_branch_map", "connector_pin_branch_map", "pin_to_branch"):
+            mapping = row.get(key)
+            if isinstance(mapping, dict) and isinstance(mapping.get(pin), str):
+                ids.add(mapping[pin])
+        for item in as_list(row.get("pin_branches")):
+            if isinstance(item, dict) and str(item.get("pin") or "") == pin and isinstance(item.get("branch_id"), str):
+                ids.add(item["branch_id"])
+    return sorted(ids) or role_branch_ids(role_resolution, refdes)
 
 
 def target_id_for_rating(rating: dict[str, Any], branch_id: str | None = None) -> str:
@@ -389,10 +446,20 @@ def fuse_result_target_type(rating: dict[str, Any]) -> str:
     return "fuse_pin" if isinstance(rating.get("pin"), str) or rating.get("normalized_target_type") == "fuse_pin" else "fuse"
 
 
+def connector_result_target_type(rating: dict[str, Any]) -> str:
+    return "connector_pin" if isinstance(rating.get("pin"), str) or rating.get("normalized_target_type") == "connector_pin" else "connector"
+
+
 def rating_fuse_relevant(rating: dict[str, Any]) -> bool:
     target_type = rating.get("normalized_target_type")
     families = {str(value) for value in as_list(rating.get("applies_to_calculation_families"))}
     return target_type in FUSE_ROLE_TARGET_TYPES or "fuse_margin" in families or rating.get("normalized_rating_name") == "trip_current"
+
+
+def rating_connector_relevant(rating: dict[str, Any]) -> bool:
+    target_type = rating.get("normalized_target_type")
+    families = {str(value) for value in as_list(rating.get("applies_to_calculation_families"))}
+    return target_type in CONNECTOR_TARGET_TYPES or "connector_pin_current_margin" in families
 
 
 def rating_usable_for_pr24(rating: dict[str, Any], role_resolution: dict[str, Any]) -> tuple[bool, str | None]:
@@ -406,11 +473,59 @@ def rating_usable_for_pr24(rating: dict[str, Any], role_resolution: dict[str, An
     return True, None
 
 
+def rating_scope(rating: dict[str, Any]) -> str | None:
+    scope = rating.get("rating_scope")
+    if isinstance(scope, str) and scope:
+        return scope
+    for key in ("is_per_pin", "per_pin", "applies_to_all_pins", "connector_wide"):
+        if rating.get(key) is True:
+            return "per_pin" if key in {"is_per_pin", "per_pin"} else "connector"
+    return None
+
+
+def connector_rating_is_global(rating: dict[str, Any]) -> bool:
+    scope = str(rating_scope(rating) or "").lower()
+    return scope in {"pin", "per_pin", "connector", "global"} or any(rating.get(key) is True for key in ("is_per_pin", "per_pin", "applies_to_all_pins", "connector_wide"))
+
+
+def rating_usable_for_pr25_connector(rating: dict[str, Any], role_resolution: dict[str, Any]) -> tuple[bool, str | None]:
+    target_type = rating.get("normalized_target_type")
+    if target_type == "component" and not role_confirms_connector(role_resolution, rating.get("refdes")):
+        return False, "target_role_unknown"
+    if target_type not in CONNECTOR_ROLE_TARGET_TYPES:
+        return False, "target_role_unknown"
+    if rating.get("usable_for_margin_calculation") is not True:
+        return False, "rating_unusable"
+    return True, None
+
+
 def candidate_branches_for_rating(rating: dict[str, Any], role_resolution: dict[str, Any], branch_topology: dict[str, Any]) -> tuple[list[str], str, bool]:
     if isinstance(rating.get("branch_id"), str):
         return [str(rating["branch_id"])], "rating_branch_id", False
     refdes = rating.get("refdes") if isinstance(rating.get("refdes"), str) else None
     if refdes:
+        branch_ids = branch_ids_for_refdes(branch_topology, refdes)
+        if branch_ids:
+            return branch_ids, "branch_topology_enriched", len(branch_ids) > 1
+        role_ids = role_branch_ids(role_resolution, refdes)
+        if role_ids:
+            return role_ids, "topology_role_resolution", len(role_ids) > 1
+    return [], "unresolved", False
+
+
+def candidate_branches_for_connector_rating(rating: dict[str, Any], role_resolution: dict[str, Any], branch_topology: dict[str, Any]) -> tuple[list[str], str, bool]:
+    if isinstance(rating.get("branch_id"), str):
+        return [str(rating["branch_id"])], "rating_branch_id", False
+    refdes = rating.get("refdes") if isinstance(rating.get("refdes"), str) else None
+    pin = rating.get("pin") if isinstance(rating.get("pin"), str) else None
+    if refdes and pin:
+        branch_ids = branch_ids_for_refdes_pin(branch_topology, refdes, pin)
+        if branch_ids:
+            return branch_ids, "branch_topology_enriched", len(branch_ids) > 1
+        role_ids = role_branch_ids_for_pin(role_resolution, refdes, pin)
+        if role_ids:
+            return role_ids, "topology_role_resolution", len(role_ids) > 1
+    if refdes and connector_rating_is_global(rating):
         branch_ids = branch_ids_for_refdes(branch_topology, refdes)
         if branch_ids:
             return branch_ids, "branch_topology_enriched", len(branch_ids) > 1
@@ -483,7 +598,7 @@ def unresolved_input(
     allocation_ids = [str(allocation.get("allocation_id"))] if isinstance(allocation, dict) and isinstance(allocation.get("allocation_id"), str) else []
     link = manifest_linkage or {}
     return {
-        "unresolved_id": f"unresolved_fuse_margin_{safe_id(reason_code)}_{safe_id(rating_ids[0] if rating_ids else branch_id)}",
+        "unresolved_id": f"unresolved_margin_{safe_id(reason_code)}_{safe_id(rating_ids[0] if rating_ids else branch_id)}",
         "reason_code": reason_code,
         "refdes": rating.get("refdes") if isinstance(rating, dict) else None,
         "pin": rating.get("pin") if isinstance(rating, dict) else None,
@@ -531,6 +646,7 @@ def blocked_result(
     target_id = target_id_for_rating(rating or {}, branch_id)
     return result_record(
         project=project,
+        calculation_family="fuse_margin",
         target_type=fuse_result_target_type(rating or {}) if rating else "fuse",
         target_id=target_id,
         branch_id=branch_id,
@@ -542,6 +658,47 @@ def blocked_result(
             "allocated_current_a": value_unit(number_or_none(allocation.get("allocated_current_a")) if isinstance(allocation, dict) else None, "A"),
             "rating_current_a": value_unit(number_or_none(rating.get("value_a")) if isinstance(rating, dict) else None, "A"),
             "rating_name": rating.get("normalized_rating_name") if isinstance(rating, dict) else None,
+        },
+        input_refs=([str(allocation.get("allocation_id"))] if isinstance(allocation, dict) and isinstance(allocation.get("allocation_id"), str) else [])
+        + ([str(rating.get("rating_id"))] if isinstance(rating, dict) and isinstance(rating.get("rating_id"), str) else []),
+        source_artifacts=result_sources(paths, allocation, rating, link_method),
+        evidence_refs=evidence_refs(rating, allocation),
+        missing_inputs=missing,
+        linkage_row=linkage_row,
+        warnings=warnings,
+        confidence=confidence(rating, allocation),
+        human_review_needed=True,
+    )
+
+
+def connector_blocked_result(
+    *,
+    project: str,
+    rating: dict[str, Any] | None,
+    allocation: dict[str, Any] | None,
+    branch_id: str | None,
+    missing: list[dict[str, Any]],
+    paths: dict[str, Path | None],
+    linkage_row: dict[str, Any] | None,
+    link_method: str | None = None,
+    warnings: list[str] | None = None,
+) -> dict[str, Any]:
+    target_id = target_id_for_rating(rating or {}, branch_id)
+    return result_record(
+        project=project,
+        calculation_family="connector_pin_current_margin",
+        target_type=connector_result_target_type(rating or {}) if rating else "connector_pin",
+        target_id=target_id,
+        branch_id=branch_id,
+        refdes=rating.get("refdes") if isinstance(rating, dict) and isinstance(rating.get("refdes"), str) else None,
+        pin=rating.get("pin") if isinstance(rating, dict) and isinstance(rating.get("pin"), str) else None,
+        status="blocked",
+        result={"connector_pin_margin_a": None, "connector_pin_utilization_ratio": None},
+        intermediate_values={
+            "allocated_current_a": value_unit(number_or_none(allocation.get("allocated_current_a")) if isinstance(allocation, dict) else None, "A"),
+            "rating_current_a": value_unit(number_or_none(rating.get("value_a")) if isinstance(rating, dict) else None, "A"),
+            "rating_name": rating.get("normalized_rating_name") if isinstance(rating, dict) else None,
+            "rating_scope": rating_scope(rating) if isinstance(rating, dict) else None,
         },
         input_refs=([str(allocation.get("allocation_id"))] if isinstance(allocation, dict) and isinstance(allocation.get("allocation_id"), str) else [])
         + ([str(rating.get("rating_id"))] if isinstance(rating, dict) and isinstance(rating.get("rating_id"), str) else []),
@@ -572,6 +729,7 @@ def calculate_result(
     target_id = target_id_for_rating(rating, branch_id)
     return result_record(
         project=project,
+        calculation_family="fuse_margin",
         target_type=fuse_result_target_type(rating),
         target_id=target_id,
         branch_id=branch_id,
@@ -586,6 +744,50 @@ def calculate_result(
             "allocated_current_a": value_unit(current_a, "A"),
             "rating_current_a": value_unit(rating_a, "A"),
             "rating_name": rating.get("normalized_rating_name"),
+        },
+        input_refs=[str(allocation.get("allocation_id")), str(rating.get("rating_id"))],
+        source_artifacts=result_sources(paths, allocation, rating, link_method),
+        evidence_refs=evidence_refs(rating, allocation),
+        missing_inputs=[],
+        linkage_row=linkage_row,
+        confidence=confidence(rating, allocation),
+        human_review_needed=human_review_needed(rating, allocation),
+    )
+
+
+def calculate_connector_result(
+    *,
+    project: str,
+    rating: dict[str, Any],
+    allocation: dict[str, Any],
+    branch_id: str,
+    paths: dict[str, Path | None],
+    linkage_row: dict[str, Any] | None,
+    link_method: str,
+) -> dict[str, Any]:
+    current_a = float(allocation["allocated_current_a"])
+    rating_a = float(rating["value_a"])
+    margin_a = rating_a - current_a
+    utilization = current_a / rating_a
+    target_id = target_id_for_rating(rating, branch_id)
+    return result_record(
+        project=project,
+        calculation_family="connector_pin_current_margin",
+        target_type=connector_result_target_type(rating),
+        target_id=target_id,
+        branch_id=branch_id,
+        refdes=rating.get("refdes") if isinstance(rating.get("refdes"), str) else None,
+        pin=rating.get("pin") if isinstance(rating.get("pin"), str) else None,
+        status="calculated",
+        result={
+            "connector_pin_margin_a": value_unit(margin_a, "A", "standard_formula", confidence(rating, allocation), evidence_refs(rating, allocation)),
+            "connector_pin_utilization_ratio": value_unit(utilization, "ratio", "standard_formula", confidence(rating, allocation), evidence_refs(rating, allocation)),
+        },
+        intermediate_values={
+            "allocated_current_a": value_unit(current_a, "A"),
+            "rating_current_a": value_unit(rating_a, "A"),
+            "rating_name": rating.get("normalized_rating_name"),
+            "rating_scope": rating_scope(rating),
         },
         input_refs=[str(allocation.get("allocation_id")), str(rating.get("rating_id"))],
         source_artifacts=result_sources(paths, allocation, rating, link_method),
@@ -632,6 +834,26 @@ def eligible_fuse_branches(branch_topology: dict[str, Any], role_resolution: dic
     return eligible
 
 
+def eligible_connector_branches(branch_topology: dict[str, Any], role_resolution: dict[str, Any], manifest: dict[str, Any]) -> set[str]:
+    eligible: set[str] = set()
+    for row in branch_rows(branch_topology):
+        branch_id = row.get("branch_id")
+        if not isinstance(branch_id, str):
+            continue
+        refs = branch_refdeses(row)
+        if any(role_confirms_connector(role_resolution, refdes) for refdes in refs):
+            eligible.add(branch_id)
+        text = " ".join(str(row.get(key) or "").lower() for key in ("target_type", "branch_type", "role_subtype", "component_role"))
+        if "connector" in text:
+            eligible.add(branch_id)
+    for item in manifest_items(manifest):
+        if item.get("category") == "rating_missing":
+            values = " ".join(item_values(item)).lower()
+            if "connector" in values:
+                eligible.update(str(value) for value in as_list(item.get("affected_branches")) if isinstance(value, str))
+    return eligible
+
+
 def build_artifact(
     *,
     project: str,
@@ -648,9 +870,11 @@ def build_artifact(
     allocation_by_branch, allocation_conflicts = allocation_index(current_allocation)
     normalized_ratings = [row for row in as_list(rating_models.get("normalized_ratings")) if isinstance(row, dict)]
     fuse_ratings = [row for row in normalized_ratings if rating_fuse_relevant(row)]
+    connector_ratings = [row for row in normalized_ratings if rating_connector_relevant(row)]
     calculation_results: list[dict[str, Any]] = []
     unresolved_inputs: list[dict[str, Any]] = []
     consumed_branches: set[str] = set()
+    consumed_connector_branches: set[str] = set()
 
     for rating in sorted(fuse_ratings, key=lambda row: str(row.get("rating_id") or "")):
         refdes = rating.get("refdes") if isinstance(rating.get("refdes"), str) else None
@@ -737,6 +961,91 @@ def build_artifact(
             link_method=link_method,
         ))
 
+    for rating in sorted(connector_ratings, key=lambda row: str(row.get("rating_id") or "")):
+        refdes = rating.get("refdes") if isinstance(rating.get("refdes"), str) else None
+        pin = rating.get("pin") if isinstance(rating.get("pin"), str) else None
+        rating_matches = manifest_matches(manifest, refdes=refdes, pin=pin, branch_id=rating.get("branch_id") if isinstance(rating.get("branch_id"), str) else None, categories=MANIFEST_CATEGORIES, blocks=None)
+        rating_link = merge_linkages(rating_linkage(rating, paths.get("missing_data_manifest")), linkage(rating_matches, paths.get("missing_data_manifest")) if rating_matches else None)
+        usable, unusable_reason = rating_usable_for_pr25_connector(rating, role_resolution)
+        branch_ids, link_method, ambiguous = candidate_branches_for_connector_rating(rating, role_resolution, branch_topology)
+        pin_missing = pin is None and not connector_rating_is_global(rating)
+        if ambiguous:
+            unresolved_inputs.append(unresolved_input(
+                reason_code="ambiguous_target_mapping",
+                detail="connector rating target maps to multiple candidate branches",
+                rating=rating,
+                manifest_linkage=rating_link,
+                missing_inputs=[missing_input("target_current_link", "Connector rating target maps to multiple candidate branches.", ["connector_pin_current_margin"], rating_matches[0] if rating_matches else None)],
+                source_artifacts=result_sources(paths, None, rating, link_method),
+            ))
+            continue
+        if not branch_ids:
+            reason = "missing_connector_pin" if pin_missing else "target_role_unknown" if unusable_reason == "target_role_unknown" else "target_current_link_unknown"
+            unresolved_inputs.append(unresolved_input(
+                reason_code=reason,
+                detail="connector rating target cannot be linked to exactly one allocated branch",
+                rating=rating,
+                manifest_linkage=rating_link,
+                missing_inputs=[missing_input("connector_pin" if pin_missing else "target_current_link", "A deterministic connector-pin rating-to-current branch link is required.", ["connector_pin_current_margin"], rating_matches[0] if rating_matches else None)],
+                source_artifacts=result_sources(paths, None, rating, link_method),
+                warnings=["connector_wide_rating_not_expanded"] if pin_missing else [],
+            ))
+            continue
+
+        branch_id = branch_ids[0]
+        consumed_connector_branches.add(branch_id)
+        allocation = allocation_by_branch.get(branch_id)
+        allocation_conflict_rows = allocation_conflicts.get(branch_id, [])
+        allocation_matches = manifest_matches(manifest, refdes=refdes, pin=pin, branch_id=branch_id, categories=MANIFEST_CATEGORIES, blocks=MANIFEST_BLOCKS)
+        combined_link = merge_linkages(
+            rating_link,
+            linkage(allocation_matches, paths.get("missing_data_manifest")) if allocation_matches else None,
+            allocation_linkage(allocation, paths.get("missing_data_manifest")) if allocation else None,
+        )
+        missing: list[dict[str, Any]] = []
+        block_warnings: list[str] = []
+        rating_name = rating.get("normalized_rating_name")
+        rating_value = number_or_none(rating.get("value_a"))
+        if not usable:
+            missing.append(missing_input("connector_pin_rating", f"rating is not usable for PR25 connector pin margin: {unusable_reason}", ["connector_pin_current_margin"], rating_matches[0] if rating_matches else None))
+        if pin_missing:
+            missing.append(missing_input("connector_pin", "connector pin is missing and rating is not explicitly per-pin, global, or connector-wide.", ["connector_pin_current_margin"], rating_matches[0] if rating_matches else None))
+            block_warnings.append("connector_wide_rating_not_expanded")
+        if rating_name not in CONNECTOR_MARGIN_RATING_NAMES:
+            missing.append(missing_input("rating_name", "rating name is not supported for PR25 connector pin margin.", ["connector_pin_current_margin"], rating_matches[0] if rating_matches else None))
+            block_warnings.append("unsupported_connector_margin_rating_name")
+        if rating_value is None or rating_value <= 0:
+            missing.append(missing_input("rating_current_a", "connector pin rating current must be explicit and positive.", ["connector_pin_current_margin"], rating_matches[0] if rating_matches else None))
+        if allocation_conflict_rows:
+            missing.append(missing_input("allocated_current_a", "current allocation records conflict for this branch.", ["connector_pin_current_margin"], allocation_matches[0] if allocation_matches else None))
+            block_warnings.append("current_source_conflict")
+        elif allocation is None:
+            missing.append(missing_input("allocated_current_a", "usable allocated branch current is missing.", ["connector_pin_current_margin"], allocation_matches[0] if allocation_matches else None))
+        if missing:
+            calculation_results.append(connector_blocked_result(
+                project=project,
+                rating=rating,
+                allocation=allocation,
+                branch_id=branch_id,
+                missing=missing,
+                paths=paths,
+                linkage_row=combined_link,
+                link_method=link_method,
+                warnings=block_warnings,
+            ))
+            continue
+
+        assert allocation is not None
+        calculation_results.append(calculate_connector_result(
+            project=project,
+            rating=rating,
+            allocation=allocation,
+            branch_id=branch_id,
+            paths=paths,
+            linkage_row=combined_link,
+            link_method=link_method,
+        ))
+
     eligible_branches = eligible_fuse_branches(branch_topology, role_resolution, manifest)
     for branch_id in sorted(eligible_branches - consumed_branches):
         allocation = allocation_by_branch.get(branch_id)
@@ -767,22 +1076,72 @@ def build_artifact(
             warnings=["missing_fuse_rating"],
         ))
 
+    eligible_connector = eligible_connector_branches(branch_topology, role_resolution, manifest)
+    for branch_id in sorted(eligible_connector - consumed_connector_branches):
+        allocation = allocation_by_branch.get(branch_id)
+        branch_matches = manifest_matches(manifest, branch_id=branch_id, categories=MANIFEST_CATEGORIES, blocks=MANIFEST_BLOCKS)
+        link = merge_linkages(
+            linkage(branch_matches, paths.get("missing_data_manifest")) if branch_matches else None,
+            allocation_linkage(allocation, paths.get("missing_data_manifest")) if allocation else None,
+        )
+        if allocation is None:
+            unresolved_inputs.append(unresolved_input(
+                reason_code="missing_allocated_current",
+                detail="connector branch has no usable allocated current",
+                allocation=None,
+                branch_id=branch_id,
+                manifest_linkage=link,
+                missing_inputs=[missing_input("allocated_current_a", "usable allocated branch current is missing.", ["connector_pin_current_margin"], branch_matches[0] if branch_matches else None)],
+                source_artifacts=[source_artifact("topology_current_allocation", paths["current_allocation"], None, "PR20 allocated branch current.")],
+            ))
+            continue
+        calculation_results.append(connector_blocked_result(
+            project=project,
+            rating=None,
+            allocation=allocation,
+            branch_id=branch_id,
+            missing=[missing_input("connector_pin_rating", "usable connector pin rating is missing.", ["connector_pin_current_margin"], branch_matches[0] if branch_matches else None)],
+            paths=paths,
+            linkage_row=link,
+            warnings=["missing_connector_pin_rating"],
+        ))
+
     if paths.get("missing_data_manifest") and manifest and not any(item.get("category") == "rating_missing" for item in manifest_items(manifest)):
         warnings.append("missing-data manifest did not contain rating_missing items; missing ratings remain unresolved where applicable")
 
     blocked = [row for row in calculation_results if row.get("status") == "blocked"]
+    fuse_results = [row for row in calculation_results if row.get("calculation_family") == "fuse_margin"]
+    connector_results = [row for row in calculation_results if row.get("calculation_family") == "connector_pin_current_margin"]
+    fuse_blocked = [row for row in fuse_results if row.get("status") == "blocked"]
+    connector_blocked = [row for row in connector_results if row.get("status") == "blocked"]
+    connector_unresolved = [
+        row for row in unresolved_inputs
+        if any("connector" in str(item.get("field") or "") for item in as_list(row.get("missing_inputs")))
+        or any(str(value).startswith("rating_connector") for value in as_list(row.get("rating_ids")))
+        or "connector" in str(row.get("detail") or "").lower()
+    ]
     errors: list[str] = []
     summary = {
-        "fuse_margin_result_count": len(calculation_results),
-        "fuse_margin_calculated_count": sum(1 for row in calculation_results if row.get("status") == "calculated"),
-        "fuse_margin_blocked_count": len(blocked),
+        "fuse_margin_result_count": len(fuse_results),
+        "fuse_margin_calculated_count": sum(1 for row in fuse_results if row.get("status") == "calculated"),
+        "fuse_margin_blocked_count": len(fuse_blocked),
         "unresolved_margin_input_count": len(unresolved_inputs),
-        "missing_rating_blocked_count": sum(1 for row in blocked if any(item.get("field") == "fuse_rating" for item in as_list(row.get("missing_inputs")))),
-        "missing_current_blocked_count": sum(1 for row in blocked if any(item.get("field") == "allocated_current_a" for item in as_list(row.get("missing_inputs")))) + sum(1 for row in unresolved_inputs if row.get("reason_code") == "missing_allocated_current"),
+        "missing_rating_blocked_count": sum(1 for row in fuse_blocked if any(item.get("field") == "fuse_rating" for item in as_list(row.get("missing_inputs")))),
+        "missing_current_blocked_count": sum(1 for row in fuse_blocked if any(item.get("field") == "allocated_current_a" for item in as_list(row.get("missing_inputs")))) + sum(1 for row in unresolved_inputs if row.get("reason_code") == "missing_allocated_current" and row not in connector_unresolved),
         "ambiguous_target_mapping_count": sum(1 for row in unresolved_inputs if row.get("reason_code") == "ambiguous_target_mapping"),
-        "unsupported_rating_name_count": sum(1 for row in blocked if "unsupported_fuse_margin_rating_name" in as_list(row.get("warnings"))) + sum(1 for row in unresolved_inputs if row.get("reason_code") == "unsupported_fuse_margin_rating_name"),
-        "trip_current_blocked_count": sum(1 for row in blocked if "trip_current_not_continuous_margin_basis" in as_list(row.get("warnings"))) + sum(1 for row in unresolved_inputs if row.get("reason_code") == "trip_current_not_continuous_margin_basis"),
-        "negative_margin_numeric_result_count": sum(1 for row in calculation_results if row.get("status") == "calculated" and number_or_none(row.get("result", {}).get("fuse_margin_a", {}).get("value")) is not None and float(row["result"]["fuse_margin_a"]["value"]) < 0),
+        "unsupported_rating_name_count": sum(1 for row in fuse_blocked if "unsupported_fuse_margin_rating_name" in as_list(row.get("warnings"))) + sum(1 for row in unresolved_inputs if row.get("reason_code") == "unsupported_fuse_margin_rating_name"),
+        "trip_current_blocked_count": sum(1 for row in fuse_blocked if "trip_current_not_continuous_margin_basis" in as_list(row.get("warnings"))) + sum(1 for row in unresolved_inputs if row.get("reason_code") == "trip_current_not_continuous_margin_basis"),
+        "negative_margin_numeric_result_count": sum(1 for row in fuse_results if row.get("status") == "calculated" and number_or_none(row.get("result", {}).get("fuse_margin_a", {}).get("value")) is not None and float(row["result"]["fuse_margin_a"]["value"]) < 0),
+        "connector_pin_margin_result_count": len(connector_results),
+        "connector_pin_margin_calculated_count": sum(1 for row in connector_results if row.get("status") == "calculated"),
+        "connector_pin_margin_blocked_count": len(connector_blocked),
+        "connector_pin_unresolved_margin_input_count": len(connector_unresolved),
+        "connector_pin_missing_rating_blocked_count": sum(1 for row in connector_blocked if any(item.get("field") == "connector_pin_rating" for item in as_list(row.get("missing_inputs")))),
+        "connector_pin_missing_current_blocked_count": sum(1 for row in connector_blocked if any(item.get("field") == "allocated_current_a" for item in as_list(row.get("missing_inputs")))) + sum(1 for row in connector_unresolved if row.get("reason_code") == "missing_allocated_current"),
+        "connector_pin_missing_pin_blocked_count": sum(1 for row in connector_blocked if any(item.get("field") == "connector_pin" for item in as_list(row.get("missing_inputs")))) + sum(1 for row in connector_unresolved if row.get("reason_code") == "missing_connector_pin"),
+        "connector_pin_ambiguous_target_mapping_count": sum(1 for row in connector_unresolved if row.get("reason_code") == "ambiguous_target_mapping"),
+        "connector_pin_unsupported_rating_name_count": sum(1 for row in connector_blocked if "unsupported_connector_margin_rating_name" in as_list(row.get("warnings"))) + sum(1 for row in connector_unresolved if row.get("reason_code") == "unsupported_connector_margin_rating_name"),
+        "connector_pin_negative_margin_numeric_result_count": sum(1 for row in connector_results if row.get("status") == "calculated" and number_or_none(row.get("result", {}).get("connector_pin_margin_a", {}).get("value")) is not None and float(row["result"]["connector_pin_margin_a"]["value"]) < 0),
         "error_count": len(errors),
         "warning_count": len(warnings) + sum(len(as_list(row.get("warnings"))) for row in calculation_results) + sum(len(as_list(row.get("warnings"))) for row in unresolved_inputs),
     }
@@ -877,9 +1236,10 @@ def main(argv: list[str] | None = None) -> int:
     summary = artifact["summary"]
     print(
         "topology margin calculate: "
-        f"results={summary['fuse_margin_result_count']} "
-        f"calculated={summary['fuse_margin_calculated_count']} "
-        f"blocked={summary['fuse_margin_blocked_count']} "
+        f"fuse_results={summary['fuse_margin_result_count']} "
+        f"connector_results={summary['connector_pin_margin_result_count']} "
+        f"calculated={summary['fuse_margin_calculated_count'] + summary['connector_pin_margin_calculated_count']} "
+        f"blocked={summary['fuse_margin_blocked_count'] + summary['connector_pin_margin_blocked_count']} "
         f"unresolved={summary['unresolved_margin_input_count']} "
         f"errors={summary['error_count']} warnings={summary['warning_count']} "
         f"out={out_path}"

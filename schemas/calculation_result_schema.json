@@ -182,7 +182,7 @@
     },
     "targetType": {
       "type": "string",
-      "enum": ["branch", "rail", "component", "pin", "relationship", "net", "project", "fuse", "fuse_pin"]
+      "enum": ["branch", "rail", "component", "pin", "relationship", "net", "project", "fuse", "fuse_pin", "connector", "connector_pin"]
     },
     "sourceArtifact": {
       "type": "object",
