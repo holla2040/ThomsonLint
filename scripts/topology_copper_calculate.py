@@ -35,7 +35,7 @@ def load_json(path: Path) -> Any:
 
 def write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(data, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
 
 
 def default_path(template: str, project: str) -> str:
@@ -173,6 +173,171 @@ def current_model_index(current_model: dict[str, Any] | None) -> dict[str, dict[
     return index
 
 
+ALLOCATION_TYPES_USABLE_FOR_COPPER = {
+    "explicit_branch_current",
+    "deterministic_branch_sum",
+    "deterministic_passthrough_current",
+    "deterministic_single_path_rail_current",
+}
+
+
+def material_current_match(left: float, right: float) -> bool:
+    return math.isclose(left, right, rel_tol=1e-9, abs_tol=1e-12)
+
+
+def current_allocation_records(current_allocation: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(current_allocation, dict):
+        return []
+    return [row for row in as_list(current_allocation.get("allocation_records")) if isinstance(row, dict)]
+
+
+def unresolved_allocation_records(current_allocation: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(current_allocation, dict):
+        return []
+    return [row for row in as_list(current_allocation.get("unresolved_allocations")) if isinstance(row, dict)]
+
+
+def usable_allocation_record(row: dict[str, Any]) -> bool:
+    return (
+        row.get("allocation_type") in ALLOCATION_TYPES_USABLE_FOR_COPPER
+        and row.get("usable_for_calculation") is True
+        and isinstance(row.get("branch_id"), str)
+        and is_number(row.get("allocated_current_a"))
+    )
+
+
+def allocation_source_key(row: dict[str, Any]) -> tuple[str, ...]:
+    source_ids = tuple(sorted(str(value) for value in as_list(row.get("source_current_record_ids")) if isinstance(value, str)))
+    if source_ids:
+        return source_ids
+    allocation_id = row.get("allocation_id")
+    return (str(allocation_id),) if isinstance(allocation_id, str) else (safe_id(row.get("branch_id")), safe_id(row.get("allocation_type")))
+
+
+def preferred_allocation(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+    sorted_rows = sorted(rows, key=lambda row: (
+        0 if row.get("allocation_type") == "deterministic_branch_sum" else 1,
+        str(row.get("allocation_id") or ""),
+    ))
+    return sorted_rows[0]
+
+
+def allocation_index(current_allocation: dict[str, Any] | None) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]], int]:
+    by_branch: dict[str, list[dict[str, Any]]] = {}
+    source_count = 0
+    for row in current_allocation_records(current_allocation):
+        if not usable_allocation_record(row):
+            continue
+        branch_id = str(row["branch_id"])
+        by_branch.setdefault(branch_id, []).append(row)
+        source_count += 1
+
+    chosen: dict[str, dict[str, Any]] = {}
+    conflicts: dict[str, list[dict[str, Any]]] = {}
+    for branch_id, rows in by_branch.items():
+        grouped: dict[tuple[str, ...], list[dict[str, Any]]] = {}
+        for row in rows:
+            grouped.setdefault(allocation_source_key(row), []).append(row)
+
+        deduped: list[dict[str, Any]] = []
+        conflict_rows: list[dict[str, Any]] = []
+        for group_rows in grouped.values():
+            values = [float(row["allocated_current_a"]) for row in group_rows]
+            if any(not material_current_match(values[0], value) for value in values[1:]):
+                conflict_rows.extend(group_rows)
+                continue
+            preferred = preferred_allocation(group_rows)
+            if preferred is not None:
+                deduped.append(preferred)
+
+        if conflict_rows:
+            conflicts[branch_id] = conflict_rows
+            continue
+
+        sum_rows = [row for row in deduped if row.get("allocation_type") == "deterministic_branch_sum"]
+        if sum_rows:
+            if len(sum_rows) > 1:
+                conflicts[branch_id] = sum_rows
+            else:
+                chosen[branch_id] = sum_rows[0]
+            continue
+
+        if len(deduped) == 1:
+            chosen[branch_id] = deduped[0]
+        elif len(deduped) > 1:
+            conflicts[branch_id] = deduped
+    return chosen, conflicts, source_count
+
+
+def unresolved_allocations_for_branch(
+    branch_id: str,
+    rail_name: str | None,
+    net_name: str | None,
+    current_allocation: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for row in unresolved_allocation_records(current_allocation):
+        row_branch = row.get("branch_id")
+        row_rail = row.get("rail_name")
+        branch_match = row_branch == branch_id
+        rail_match = bool(rail_name and row_rail == rail_name) or bool(net_name and row_rail == net_name)
+        if branch_match or rail_match:
+            matches.append(row)
+    return sorted(matches, key=lambda row: str(row.get("unresolved_id") or ""))
+
+
+def allocation_linkage(rows: list[dict[str, Any]], manifest_path: Path | None = None) -> dict[str, Any]:
+    item_ids = sorted({str(value) for row in rows for value in as_list(row.get("missing_data_manifest_item_ids")) if isinstance(value, str)})
+    group_ids = sorted({str(value) for row in rows for value in as_list(row.get("missing_data_group_ids")) if isinstance(value, str)})
+    categories = sorted({str(value) for row in rows for value in as_list(row.get("blocked_by_categories")) if isinstance(value, str)})
+    calculations = sorted({str(value) for row in rows for value in as_list(row.get("blocked_by_calculations")) if isinstance(value, str)})
+    paths = sorted({str(row.get("resolution_path")) for row in rows if isinstance(row.get("resolution_path"), str)})
+    queues = sorted({str(row.get("resolution_queue") or row.get("resolution_path")) for row in rows if isinstance(row.get("resolution_queue") or row.get("resolution_path"), str)})
+    linkage: dict[str, Any] = {
+        "blocked_by_manifest_items": item_ids,
+        "missing_data_manifest_item_ids": item_ids,
+        "missing_data_group_ids": group_ids,
+        "resolution_path": paths[0] if paths else None,
+        "resolution_queue": queues[0] if queues else paths[0] if paths else None,
+        "blocked_by_categories": categories,
+        "blocked_by_calculations": calculations,
+    }
+    if manifest_path is not None:
+        linkage["missing_data_manifest_ref"] = str(manifest_path)
+    return linkage
+
+
+def normalize_allocation_assumptions(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        for item in as_list(row.get("assumptions")):
+            if not isinstance(item, dict):
+                continue
+            basis = item.get("basis") if item.get("basis") in {"explicit_input", "source_artifact", "standard_formula", "manual", "not_used"} else "source_artifact"
+            normalized.append({
+                "id": str(item.get("id") or "allocation_assumption"),
+                "description": str(item.get("description") or "Allocation artifact assumption."),
+                "basis": basis,
+                "evidence_refs": [str(ref) for ref in as_list(item.get("evidence_refs")) if isinstance(ref, str)],
+                "confidence": float(item.get("confidence")) if is_number(item.get("confidence")) else 0.8,
+            })
+    return normalized
+
+
+def allocation_source_current_ids(row: dict[str, Any] | None) -> list[str]:
+    if not isinstance(row, dict):
+        return []
+    return sorted({str(value) for value in as_list(row.get("source_current_record_ids")) if isinstance(value, str)})
+
+
+def allocation_evidence_refs(row: dict[str, Any] | None) -> list[str]:
+    if not isinstance(row, dict):
+        return []
+    return sorted({str(value) for value in as_list(row.get("evidence_refs")) if isinstance(value, str)})
+
+
 def manifest_items(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return [row for row in as_list(manifest.get("manifest_items")) if isinstance(row, dict)]
 
@@ -268,6 +433,7 @@ def result_record(
     errors: list[str] | None = None,
     confidence: float = 0.8,
     human_review_needed: bool = False,
+    source_current_record_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     branch_id = str(branch.get("branch_id"))
     calculation_id = f"calc_{safe_id(calculation_family)}_{safe_id(branch_id)}"
@@ -293,6 +459,8 @@ def result_record(
         "confidence": confidence,
         "human_review_needed": human_review_needed,
     }
+    if source_current_record_ids:
+        row["source_current_record_ids"] = source_current_record_ids
     if linkage:
         row.update(linkage)
     return row
@@ -353,6 +521,10 @@ def calculate_for_branch(
     manifest: dict[str, Any],
     current_by_branch: dict[str, dict[str, Any]],
     current_model_path: Path | None,
+    allocation_by_branch: dict[str, dict[str, Any]],
+    allocation_conflicts_by_branch: dict[str, list[dict[str, Any]]],
+    current_allocation: dict[str, Any] | None,
+    current_allocation_path: Path | None,
     resistivity_ohm_m: float,
     resistivity_explicit: bool,
     review: dict[str, Any],
@@ -481,12 +653,72 @@ def calculate_for_branch(
             confidence=0.86,
         ))
 
-    current_row = current_by_branch.get(branch_id)
-    current_a = number_or_none(current_row.get("branch_current_a")) if current_row else None
-    current_evidence = [str(ref) for ref in as_list(current_row.get("evidence_refs"))] if current_row else []
+    legacy_current_row = current_by_branch.get(branch_id)
+    legacy_current_a = number_or_none(legacy_current_row.get("branch_current_a")) if legacy_current_row else None
+    allocation_row = allocation_by_branch.get(branch_id)
+    allocation_conflict_rows = allocation_conflicts_by_branch.get(branch_id, [])
+    unresolved_allocation_rows = unresolved_allocations_for_branch(
+        branch_id,
+        str(rail_name) if rail_name else None,
+        str(net_name) if net_name else None,
+        current_allocation,
+    )
+
+    current_a: float | None = None
+    current_source_mode: str | None = None
+    current_evidence: list[str] = []
+    current_assumptions: list[dict[str, Any]] = []
     current_sources = list(sources)
-    if current_model_path is not None:
-        current_sources.append(source_artifact("manual", current_model_path, branch_id, "Explicit branch current model."))
+    current_input_refs: list[str] = []
+    current_warnings: list[str] = []
+    source_current_ids: list[str] = []
+    allocation_current_linkage: dict[str, Any] | None = None
+    current_missing_field = "branch_current_a"
+    current_missing_reason = "Explicit branch current is missing; PR18 does not infer current."
+    current_source_conflict = False
+
+    if current_allocation_path is not None:
+        current_missing_field = "allocated_current_a"
+        current_missing_reason = "Usable allocated branch current is missing; PR21 does not infer current."
+        current_sources.append(source_artifact(
+            "topology_current_allocation",
+            current_allocation_path,
+            allocation_row.get("allocation_id") if isinstance(allocation_row, dict) else None,
+            "PR20 topology current allocation.",
+        ))
+        if allocation_conflict_rows:
+            current_source_conflict = True
+            current_warnings.append("current_source_conflict: multiple usable allocation records for this branch are not deduplicable")
+            allocation_current_linkage = allocation_linkage(allocation_conflict_rows, manifest_path)
+        elif allocation_row is not None:
+            allocation_current_a = number_or_none(allocation_row.get("allocated_current_a"))
+            if legacy_current_a is not None and allocation_current_a is not None and not material_current_match(allocation_current_a, legacy_current_a):
+                current_source_conflict = True
+                current_warnings.append("current_source_conflict: current allocation and legacy current model differ")
+            elif allocation_current_a is not None:
+                current_a = allocation_current_a
+                current_source_mode = "allocation"
+                allocation_id = allocation_row.get("allocation_id")
+                if isinstance(allocation_id, str):
+                    current_input_refs.append(allocation_id)
+                current_evidence.extend(allocation_evidence_refs(allocation_row))
+                current_assumptions.extend(normalize_allocation_assumptions([allocation_row]))
+                source_current_ids = allocation_source_current_ids(allocation_row)
+                allocation_current_linkage = allocation_linkage([allocation_row], manifest_path)
+                if legacy_current_a is not None and current_model_path is not None:
+                    current_sources.append(source_artifact("manual", current_model_path, branch_id, "Legacy current model matched PR20 allocation."))
+                    current_evidence.extend([str(ref) for ref in as_list(legacy_current_row.get("evidence_refs")) if isinstance(ref, str)])
+            else:
+                allocation_current_linkage = allocation_linkage(unresolved_allocation_rows, manifest_path) if unresolved_allocation_rows else None
+        else:
+            allocation_current_linkage = allocation_linkage(unresolved_allocation_rows, manifest_path) if unresolved_allocation_rows else None
+    else:
+        current_a = legacy_current_a
+        current_source_mode = "legacy" if current_a is not None else None
+        current_evidence = [str(ref) for ref in as_list(legacy_current_row.get("evidence_refs")) if isinstance(ref, str)] if legacy_current_row else []
+        if current_model_path is not None:
+            current_sources.append(source_artifact("manual", current_model_path, branch_id, "Explicit branch current model."))
+
     current_blockers = manifest_blockers_for_branch(
         branch_id,
         str(rail_name) if rail_name else None,
@@ -495,13 +727,17 @@ def calculate_for_branch(
         {"branch_current_unknown", "current_model_missing"},
         {"copper_calculation", "voltage_drop_calculation", "thermal_calculation"},
     )
+    current_linkage = allocation_current_linkage if allocation_current_linkage else manifest_linkage(current_blockers, manifest_path) if current_blockers else None
+    current_human_review_needed = bool(current_source_conflict or unresolved_allocation_rows)
 
-    if resistance_ohm is None or current_a is None:
+    if resistance_ohm is None or current_a is None or current_source_conflict:
         missing = []
         if resistance_ohm is None:
             missing.append(missing_input("trace_resistance", "Trace resistance is not available.", ["voltage_drop"], geom_blockers[0] if geom_blockers else None))
         if current_a is None:
-            missing.append(missing_input("branch_current_a", "Explicit branch current is missing; PR18 does not infer current.", ["voltage_drop"], current_blockers[0] if current_blockers else None))
+            missing.append(missing_input(current_missing_field, current_missing_reason, ["voltage_drop", "current_allocation"], current_blockers[0] if current_blockers else None))
+        if current_source_conflict:
+            missing.append(missing_input("current_source_conflict", "Current allocation and legacy or duplicate allocation sources conflict.", ["voltage_drop"], current_blockers[0] if current_blockers else None))
         blockers = current_blockers + ([] if resistance_ohm is not None else geom_blockers)
         results.append(result_record(
             project=project,
@@ -512,15 +748,20 @@ def calculate_for_branch(
             intermediate_values={
                 "trace_resistance": value_unit(resistance_ohm, "ohm"),
                 "branch_current_a": value_unit(current_a, "A"),
+                "allocated_current_a": value_unit(current_a, "A") if current_allocation_path is not None else None,
+                "current_source": current_source_mode,
+                "source_current_record_ids": source_current_ids,
             },
             input_refs=[],
             source_artifacts=current_sources,
             evidence_refs=evidence_refs + current_evidence,
             assumptions=[resistance_assumption] if resistance_ohm is not None else [],
             missing_inputs=missing,
-            linkage=manifest_linkage(blockers, manifest_path) if blockers else None,
+            linkage=current_linkage if current_linkage else manifest_linkage(blockers, manifest_path) if blockers else None,
+            warnings=current_warnings,
             confidence=0.5,
-            human_review_needed=True,
+            human_review_needed=True or current_human_review_needed,
+            source_current_record_ids=source_current_ids,
         ))
     else:
         voltage_drop_v = current_a * resistance_ohm
@@ -534,22 +775,30 @@ def calculate_for_branch(
             intermediate_values={
                 "trace_resistance": value_unit(resistance_ohm, "ohm"),
                 "branch_current_a": value_unit(current_a, "A"),
+                "allocated_current_a": value_unit(current_a, "A") if current_allocation_path is not None else None,
                 "power_loss_w": value_unit(power_loss_w, "W"),
+                "current_source": current_source_mode,
+                "source_current_record_ids": source_current_ids,
             },
-            input_refs=[f"calc_trace_resistance_{safe_id(branch_id)}"],
+            input_refs=[f"calc_trace_resistance_{safe_id(branch_id)}"] + current_input_refs,
             source_artifacts=current_sources,
             evidence_refs=evidence_refs + current_evidence,
-            assumptions=[],
+            assumptions=current_assumptions,
             missing_inputs=[],
+            linkage=allocation_current_linkage,
+            warnings=current_warnings,
             confidence=0.84,
+            source_current_record_ids=source_current_ids,
         ))
 
-    if area_m2 is None or current_a is None:
+    if area_m2 is None or current_a is None or current_source_conflict:
         missing = []
         if area_m2 is None:
             missing.append(missing_input("cross_section_area", "Trace cross-section is unavailable.", ["current_density"], geom_blockers[0] if geom_blockers else None))
         if current_a is None:
-            missing.append(missing_input("branch_current_a", "Explicit branch current is missing; PR18 does not infer current.", ["current_density"], current_blockers[0] if current_blockers else None))
+            missing.append(missing_input(current_missing_field, current_missing_reason, ["current_density", "current_allocation"], current_blockers[0] if current_blockers else None))
+        if current_source_conflict:
+            missing.append(missing_input("current_source_conflict", "Current allocation and legacy or duplicate allocation sources conflict.", ["current_density"], current_blockers[0] if current_blockers else None))
         blockers = current_blockers + ([] if area_m2 is not None else geom_blockers)
         results.append(result_record(
             project=project,
@@ -560,15 +809,20 @@ def calculate_for_branch(
             intermediate_values={
                 "cross_section_area": value_unit(area_mm2, "mm^2"),
                 "branch_current_a": value_unit(current_a, "A"),
+                "allocated_current_a": value_unit(current_a, "A") if current_allocation_path is not None else None,
+                "current_source": current_source_mode,
+                "source_current_record_ids": source_current_ids,
             },
             input_refs=[],
             source_artifacts=current_sources,
             evidence_refs=evidence_refs + current_evidence,
             assumptions=[],
             missing_inputs=missing,
-            linkage=manifest_linkage(blockers, manifest_path) if blockers else None,
+            linkage=current_linkage if current_linkage else manifest_linkage(blockers, manifest_path) if blockers else None,
+            warnings=current_warnings,
             confidence=0.5,
-            human_review_needed=True,
+            human_review_needed=True or current_human_review_needed,
+            source_current_record_ids=source_current_ids,
         ))
     else:
         current_density_a_per_mm2 = current_a / (area_m2 * 1e6)
@@ -582,13 +836,19 @@ def calculate_for_branch(
                 "cross_section_area": value_unit(area_mm2, "mm^2"),
                 "area_m2": value_unit(area_m2, "m^2"),
                 "branch_current_a": value_unit(current_a, "A"),
+                "allocated_current_a": value_unit(current_a, "A") if current_allocation_path is not None else None,
+                "current_source": current_source_mode,
+                "source_current_record_ids": source_current_ids,
             },
-            input_refs=[f"calc_trace_cross_section_{safe_id(branch_id)}"],
+            input_refs=[f"calc_trace_cross_section_{safe_id(branch_id)}"] + current_input_refs,
             source_artifacts=current_sources,
             evidence_refs=evidence_refs + current_evidence,
-            assumptions=[],
+            assumptions=current_assumptions,
             missing_inputs=[],
+            linkage=allocation_current_linkage,
+            warnings=current_warnings,
             confidence=0.84,
+            source_current_record_ids=source_current_ids,
         ))
     return results
 
@@ -599,6 +859,7 @@ def build_artifact(
     calculation_readiness_path: Path,
     missing_data_manifest_path: Path,
     current_model_path: Path | None,
+    current_allocation_path: Path | None,
     copper_resistivity_ohm_m: float,
     resistivity_explicit: bool,
 ) -> dict[str, Any]:
@@ -616,9 +877,15 @@ def build_artifact(
         current_model = load_json(current_model_path)
         if not isinstance(current_model, dict):
             raise ValueError(f"current model artifact must be a JSON object: {current_model_path}")
+    current_allocation = None
+    if current_allocation_path is not None:
+        current_allocation = load_json(current_allocation_path)
+        if not isinstance(current_allocation, dict):
+            raise ValueError(f"current allocation artifact must be a JSON object: {current_allocation_path}")
 
     readiness_by_branch = branch_readiness_index(readiness)
     current_by_branch = current_model_index(current_model)
+    allocation_by_branch, allocation_conflicts_by_branch, allocation_source_count = allocation_index(current_allocation)
     calculation_results: list[dict[str, Any]] = []
     warnings: list[str] = []
     errors: list[str] = []
@@ -633,12 +900,20 @@ def build_artifact(
             manifest=manifest,
             current_by_branch=current_by_branch,
             current_model_path=current_model_path,
+            allocation_by_branch=allocation_by_branch,
+            allocation_conflicts_by_branch=allocation_conflicts_by_branch,
+            current_allocation=current_allocation,
+            current_allocation_path=current_allocation_path,
             resistivity_ohm_m=copper_resistivity_ohm_m,
             resistivity_explicit=resistivity_explicit,
             review=review,
         ))
 
     blocked_calculations = [row for row in calculation_results if row.get("status") == "blocked"]
+    calculated_current_results = [
+        row for row in calculation_results
+        if row.get("status") == "calculated" and row.get("calculation_family") in {"voltage_drop", "current_density"}
+    ]
     summary = {
         "calculation_result_count": len(calculation_results),
         "calculated_count": sum(1 for row in calculation_results if row.get("status") == "calculated"),
@@ -652,6 +927,11 @@ def build_artifact(
         "missing_current_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") == "branch_current_a" for item in as_list(row.get("missing_inputs")))),
         "missing_copper_thickness_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") == "copper_thickness" for item in as_list(row.get("missing_inputs")))),
         "missing_geometry_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") in {"trace_width", "trace_length", "cross_section_area"} for item in as_list(row.get("missing_inputs")))),
+        "current_allocation_source_count": allocation_source_count,
+        "allocated_current_used_count": sum(1 for row in calculated_current_results if row.get("intermediate_values", {}).get("current_source") == "allocation"),
+        "legacy_current_model_used_count": sum(1 for row in calculated_current_results if row.get("intermediate_values", {}).get("current_source") == "legacy"),
+        "current_source_conflict_count": sum(1 for row in blocked_calculations if any(item.get("field") == "current_source_conflict" for item in as_list(row.get("missing_inputs")))),
+        "unresolved_allocation_blocked_count": sum(1 for row in blocked_calculations if any(item.get("field") == "allocated_current_a" for item in as_list(row.get("missing_inputs")))),
     }
     return {
         "schema_version": SCHEMA_VERSION,
@@ -664,7 +944,8 @@ def build_artifact(
             source_artifact("topology_geometry_review", geometry_review_path, None, None),
             source_artifact("calculation_readiness", calculation_readiness_path, None, None),
             source_artifact("missing_data_manifest", missing_data_manifest_path, None, None),
-        ] + ([source_artifact("manual", current_model_path, None, "Explicit branch current model.")] if current_model_path else []),
+        ] + ([source_artifact("topology_current_allocation", current_allocation_path, None, "PR20 topology current allocation.")] if current_allocation_path else [])
+        + ([source_artifact("manual", current_model_path, None, "Explicit branch current model.")] if current_model_path else []),
         "calculation_results": calculation_results,
         "blocked_calculations": blocked_calculations,
         "errors": errors,
@@ -679,6 +960,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--calculation-readiness", default=None)
     parser.add_argument("--missing-data-manifest", default=None)
     parser.add_argument("--current-model", default=None)
+    parser.add_argument("--current-allocation", default=None)
     parser.add_argument("--copper-resistivity-ohm-m", type=float, default=None)
     parser.add_argument("--out", default=None)
     return parser.parse_args(argv)
@@ -691,6 +973,7 @@ def main(argv: list[str] | None = None) -> int:
     readiness_path = Path(args.calculation_readiness or default_path("exports/{project}-calculation-readiness-inventory.json", project))
     manifest_path = Path(args.missing_data_manifest or default_path("exports/{project}-missing-data-manifest.json", project))
     current_model_path = Path(args.current_model) if args.current_model else None
+    current_allocation_path = Path(args.current_allocation) if args.current_allocation else None
     out_path = Path(args.out or default_path("exports/{project}-topology-copper-calculations.json", project))
     resistivity_explicit = args.copper_resistivity_ohm_m is not None
     resistivity = args.copper_resistivity_ohm_m if resistivity_explicit else DEFAULT_COPPER_RESISTIVITY_OHM_M
@@ -704,12 +987,15 @@ def main(argv: list[str] | None = None) -> int:
                 raise FileNotFoundError(f"missing {label} JSON: {path}")
         if current_model_path is not None and not current_model_path.exists():
             raise FileNotFoundError(f"missing current-model JSON: {current_model_path}")
+        if current_allocation_path is not None and not current_allocation_path.exists():
+            raise FileNotFoundError(f"missing current-allocation JSON: {current_allocation_path}")
         artifact = build_artifact(
             project,
             geometry_path,
             readiness_path,
             manifest_path,
             current_model_path,
+            current_allocation_path,
             float(resistivity),
             resistivity_explicit,
         )

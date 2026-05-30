@@ -5,6 +5,7 @@ import math
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import jsonschema
 
@@ -223,6 +224,98 @@ def current_model_fixture(branch_id: str = "br_v3p3_top_trace_group_000001", cur
     }
 
 
+def allocation_record(
+    branch_id: str = "br_v3p3_top_trace_group_000001",
+    current: Any = 0.25,
+    *,
+    allocation_id: str | None = None,
+    allocation_type: str = "explicit_branch_current",
+    usable: bool = True,
+    source_current_record_ids: list[str] | None = None,
+) -> dict:
+    allocation_id = allocation_id or f"alloc_{allocation_type}_{branch_id}"
+    return {
+        "allocation_id": allocation_id,
+        "allocation_type": allocation_type,
+        "branch_id": branch_id,
+        "rail_name": "V3P3",
+        "net_name": "V3P3",
+        "allocated_current_a": current,
+        "current_type": "requirement",
+        "basis": "manual_design_requirement",
+        "confidence": 1.0,
+        "source_current_record_ids": source_current_record_ids if source_current_record_ids is not None else ["cur_branch_v3p3"],
+        "source_artifacts": [],
+        "evidence_refs": ["allocation:evidence"],
+        "missing_data_manifest_item_ids": [],
+        "missing_data_group_ids": [],
+        "assumptions": [
+            {
+                "id": "allocation_fixture",
+                "description": "Fixture allocation assumption.",
+                "basis": "explicit_current_records",
+                "evidence_refs": ["allocation:evidence"],
+                "confidence": 0.9,
+            }
+        ],
+        "warnings": [],
+        "usable_for_calculation": usable,
+    }
+
+
+def unresolved_allocation(
+    branch_id: str = "br_v3p3_top_trace_group_000001",
+    *,
+    reason_code: str = "missing_current_model",
+    rail_name: str = "V3P3",
+) -> dict:
+    return {
+        "unresolved_id": f"unres_{reason_code}_{branch_id}",
+        "reason_code": reason_code,
+        "target_type": "branch",
+        "branch_id": branch_id,
+        "rail_name": rail_name,
+        "refdes": None,
+        "source_current_record_ids": [],
+        "missing_inputs": [{"field": "branch_current_a", "reason": "missing", "required_for": ["current_allocation"]}],
+        "blocked_by_categories": ["branch_current_unknown"],
+        "blocked_by_calculations": ["current_allocation", "voltage_drop_calculation", "thermal_calculation"],
+        "missing_data_manifest_item_ids": [f"mdi_manifest_branch_current_unknown_v3p3_{branch_id}"],
+        "missing_data_group_ids": ["group_current_model_missing_v3p3"],
+        "resolution_path": "datasheet_extraction",
+        "resolution_queue": "datasheet_extraction",
+        "human_review_needed": True,
+        "detail": "Fixture unresolved allocation.",
+        "source_artifacts": [],
+        "evidence_refs": ["unresolved:evidence"],
+    }
+
+
+def current_allocation_fixture(
+    allocations: list[dict] | None = None,
+    unresolved: list[dict] | None = None,
+) -> dict:
+    allocation_rows = allocations if allocations is not None else [allocation_record()]
+    unresolved_rows = unresolved if unresolved is not None else []
+    return {
+        "schema_version": "1.0",
+        "project": "unit",
+        "generated_at_utc": "2026-05-29T00:00:00Z",
+        "execution_pass": True,
+        "topology_current_allocation_pass": True,
+        "source_artifacts": [],
+        "allocation_records": allocation_rows,
+        "unresolved_allocations": unresolved_rows,
+        "passthrough_records": [],
+        "summary": {
+            "allocation_record_count": len(allocation_rows),
+            "unresolved_allocation_count": len(unresolved_rows),
+        },
+        "errors": [],
+        "warnings": [],
+    }
+
+
 def invoke(
     tmp_path: Path,
     *,
@@ -230,6 +323,7 @@ def invoke(
     readiness: dict | None = None,
     manifest: dict | None = None,
     current_model: dict | None = None,
+    current_allocation: dict | None = None,
     extra: list[str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     review_path = write_json(tmp_path / "geometry-review.json", review or geometry_review_fixture())
@@ -250,6 +344,8 @@ def invoke(
     ]
     if current_model is not None:
         args.extend(["--current-model", str(write_json(tmp_path / "current-model.json", current_model))])
+    if current_allocation is not None:
+        args.extend(["--current-allocation", str(write_json(tmp_path / "current-allocation.json", current_allocation))])
     if extra:
         args.extend(extra)
     return run_calculator(*args), out
@@ -260,6 +356,17 @@ def result_for(artifact: dict, family: str, branch_id: str = "br_v3p3_top_trace_
         row for row in artifact["calculation_results"]
         if row["calculation_family"] == family and row["target_id"] == branch_id
     ][0]
+
+
+def all_values(value: Any) -> list[Any]:
+    values = [value]
+    if isinstance(value, dict):
+        for child in value.values():
+            values.extend(all_values(child))
+    elif isinstance(value, list):
+        for child in value:
+            values.extend(all_values(child))
+    return values
 
 
 def test_missing_required_inputs_exits_2(tmp_path: Path) -> None:
@@ -349,6 +456,212 @@ def test_current_density_calculates_when_explicit_current_present(tmp_path: Path
     assert math.isclose(row["result"]["current_density"]["value"], 0.25 / 0.00875, rel_tol=1e-9)
 
 
+def test_current_allocation_cli_argument_is_supported(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert read_json(out)["summary"]["current_allocation_source_count"] == 1
+
+
+def test_voltage_drop_uses_allocated_branch_current(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture(), extra=["--copper-resistivity-ohm-m", "1.7e-8"])
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    resistance = result_for(artifact, "trace_resistance")["result"]["trace_resistance"]["value"]
+    row = result_for(artifact, "voltage_drop")
+    assert row["status"] == "calculated"
+    assert math.isclose(row["result"]["voltage_drop"]["value"], 0.25 * resistance, rel_tol=1e-9)
+    assert row["intermediate_values"]["current_source"] == "allocation"
+
+
+def test_current_density_uses_allocated_branch_current(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "current_density")
+    assert row["status"] == "calculated"
+    assert math.isclose(row["result"]["current_density"]["value"], 0.25 / 0.00875, rel_tol=1e-9)
+    assert row["intermediate_values"]["current_source"] == "allocation"
+
+
+def test_allocated_current_result_preserves_allocation_id(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(allocation_id="alloc_known_branch_current")
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "voltage_drop")
+    assert "alloc_known_branch_current" in row["input_refs"]
+    assert any(source["artifact_type"] == "topology_current_allocation" and source["record_id"] == "alloc_known_branch_current" for source in row["source_artifacts"])
+
+
+def test_allocated_current_result_preserves_source_current_record_ids(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(source_current_record_ids=["cur_u12", "cur_u13"])
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "current_density")
+    assert row["source_current_record_ids"] == ["cur_u12", "cur_u13"]
+    assert row["intermediate_values"]["source_current_record_ids"] == ["cur_u12", "cur_u13"]
+
+
+def test_unusable_allocation_record_does_not_enable_calculation(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(usable=False)
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert result_for(artifact, "voltage_drop")["status"] == "blocked"
+    assert result_for(artifact, "current_density")["status"] == "blocked"
+
+
+def test_unresolved_allocation_blocks_voltage_drop_with_manifest_linkage(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([], [unresolved_allocation()]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "voltage_drop")
+    assert row["status"] == "blocked"
+    assert "allocated_current_a" in {item["field"] for item in row["missing_inputs"]}
+    assert row["missing_data_manifest_item_ids"] == ["mdi_manifest_branch_current_unknown_v3p3_br_v3p3_top_trace_group_000001"]
+    assert row["missing_data_group_ids"] == ["group_current_model_missing_v3p3"]
+    assert row["resolution_path"] == "datasheet_extraction"
+
+
+def test_unresolved_allocation_blocks_current_density_with_manifest_linkage(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([], [unresolved_allocation()]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "current_density")
+    assert row["status"] == "blocked"
+    assert "branch_current_unknown" in row["blocked_by_categories"]
+    assert "current_allocation" in row["blocked_by_calculations"]
+    assert row["human_review_needed"] is True
+
+
+def test_missing_allocated_current_is_not_zero(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(current=None)
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert result_for(artifact, "voltage_drop")["status"] == "blocked"
+    assert result_for(artifact, "current_density")["status"] == "blocked"
+    assert not any(
+        row.get("intermediate_values", {}).get("branch_current_a", {}).get("value") == 0
+        for row in artifact["calculation_results"]
+        if row["calculation_family"] in {"voltage_drop", "current_density"}
+    )
+
+
+def test_allocation_artifact_does_not_infer_from_rail_name(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(branch_id="br_other", current=0.25)
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert result_for(artifact, "voltage_drop")["status"] == "blocked"
+    assert result_for(artifact, "current_density")["status"] == "blocked"
+
+
+def test_legacy_current_model_still_works_when_no_allocation_artifact(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_model=current_model_fixture(current=0.25))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "voltage_drop")
+    assert row["status"] == "calculated"
+    assert row["intermediate_values"]["current_source"] == "legacy"
+
+
+def test_current_allocation_preferred_over_legacy_current_model_when_both_present_and_matching(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_model=current_model_fixture(current=0.25),
+        current_allocation=current_allocation_fixture([allocation_record(current=0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "voltage_drop")
+    assert row["status"] == "calculated"
+    assert row["intermediate_values"]["current_source"] == "allocation"
+    assert any(source["artifact_type"] == "manual" for source in row["source_artifacts"])
+
+
+def test_current_source_conflict_blocks_or_warns_when_allocation_and_legacy_differ(tmp_path: Path) -> None:
+    result, out = invoke(
+        tmp_path,
+        current_model=current_model_fixture(current=0.5),
+        current_allocation=current_allocation_fixture([allocation_record(current=0.25)]),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "voltage_drop")
+    assert row["status"] == "blocked"
+    assert any(item["field"] == "current_source_conflict" for item in row["missing_inputs"])
+    assert any("current_source_conflict" in warning for warning in row["warnings"])
+
+
+def test_multiple_allocations_for_same_branch_conflict_when_not_deduplicable(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(current=0.25, allocation_id="alloc_a", source_current_record_ids=["cur_a"]),
+        allocation_record(current=0.30, allocation_id="alloc_b", source_current_record_ids=["cur_b"]),
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "current_density")
+    assert row["status"] == "blocked"
+    assert any(item["field"] == "current_source_conflict" for item in row["missing_inputs"])
+
+
+def test_deterministic_branch_sum_allocation_is_not_double_counted(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record(current=0.30, allocation_id="alloc_sum", allocation_type="deterministic_branch_sum", source_current_record_ids=["cur_u12", "cur_u13"]),
+        allocation_record(current=0.12, allocation_id="alloc_u12", allocation_type="explicit_branch_current", source_current_record_ids=["cur_u12"]),
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    row = result_for(read_json(out), "current_density")
+    assert row["status"] == "calculated"
+    assert math.isclose(row["intermediate_values"]["branch_current_a"]["value"], 0.30, rel_tol=1e-12)
+
+
+def test_summary_counts_include_current_allocation_usage(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    summary = read_json(out)["summary"]
+    assert summary["current_allocation_source_count"] == 1
+    assert summary["allocated_current_used_count"] == 2
+    assert summary["legacy_current_model_used_count"] == 0
+    assert summary["current_source_conflict_count"] == 0
+
+
+def test_output_json_has_no_nan_or_infinity(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture())
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    for value in all_values(read_json(out)):
+        if isinstance(value, float):
+            assert math.isfinite(value)
+
+
+def test_manual_testproject_shaped_minimal_fixture_with_current_allocation_works(tmp_path: Path) -> None:
+    result, out = invoke(tmp_path, current_allocation=current_allocation_fixture([
+        allocation_record("br_v3p3_top_trace_group_000001", 0.25, allocation_type="deterministic_branch_sum", source_current_record_ids=["cur_u12"])
+    ]))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    artifact = read_json(out)
+    assert artifact["execution_pass"] is True
+    assert artifact["topology_copper_calculation_pass"] is True
+    assert result_for(artifact, "voltage_drop")["status"] == "calculated"
+    assert result_for(artifact, "current_density")["status"] == "calculated"
+
+
 def test_copper_thickness_missing_blocks_cross_section_and_resistance(tmp_path: Path) -> None:
     branch_id = "br_v24p0_layer4_trace_group_000001"
     review = geometry_review_fixture([review_record(branch_id, thickness=None)])
@@ -389,7 +702,7 @@ def test_no_current_inference_from_rail_or_component_names(tmp_path: Path) -> No
 
 
 def test_results_validate_against_calculation_result_schema(tmp_path: Path) -> None:
-    result, out = invoke(tmp_path, current_model=current_model_fixture())
+    result, out = invoke(tmp_path, current_model=current_model_fixture(), current_allocation=current_allocation_fixture())
 
     assert result.returncode == 0, result.stderr + result.stdout
     schema = read_json(RESULT_SCHEMA)

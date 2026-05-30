@@ -105,6 +105,9 @@
     "blocked_by_manifest_items": {
       "$ref": "#/definitions/stringArray"
     },
+    "source_current_record_ids": {
+      "$ref": "#/definitions/stringArray"
+    },
     "missing_data_manifest_ref": {
       "type": ["string", "null"],
       "description": "Path or artifact identifier for the upstream missing-data manifest."
@@ -183,6 +186,7 @@
             "calculation_readiness",
             "missing_data_manifest",
             "topology_geometry_review",
+            "topology_current_allocation",
             "rail_relationships",
             "topology_role_resolution",
             "part_info",
