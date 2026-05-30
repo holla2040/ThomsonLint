@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Extraction Result",
+  "description": "Schema for saved AI extraction responses. This schema describes response structure only; packet-aware semantic validation is performed by scripts/ai_extraction_validate.py.",
+  "type": "object",
+  "required": [
+    "packet_id",
+    "schema_version",
+    "status",
+    "extracted_items",
+    "unknown_items",
+    "notes",
+    "warnings"
+  ],
+  "properties": {
+    "packet_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "ai_extraction_result_v1"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "partial", "unknown", "needs_human_review"]
+    },
+    "extracted_items": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/extractedItem"}
+    },
+    "unknown_items": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/unknownItem"}
+    },
+    "notes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "extractedItem": {
+      "type": "object",
+      "required": [
+        "item_id",
+        "missing_data_item_ids",
+        "target_type",
+        "target_refdes",
+        "field_name",
+        "value",
+        "basis",
+        "confidence"
+      ],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "missing_data_item_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        },
+        "target_type": {"type": "string"},
+        "target_refdes": {"type": ["string", "null"]},
+        "target_mpn": {"type": ["string", "null"]},
+        "field_name": {"type": "string"},
+        "value": {"type": ["number", "string", "boolean", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "normalized_value": {"type": ["number", "string", "boolean", "null"]},
+        "normalized_unit": {"type": ["string", "null"]},
+        "condition": {"type": ["string", "null"]},
+        "basis": {"type": "string"},
+        "source_file": {"type": ["string", "null"]},
+        "source_page": {"type": ["integer", "null"], "minimum": 1},
+        "evidence_quote": {"type": ["string", "null"]},
+        "evidence_ref": {"type": ["string", "null"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "human_review_needed": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "unknownItem": {
+      "type": "object",
+      "required": [
+        "missing_data_item_id",
+        "target_type",
+        "target_refdes",
+        "field_name",
+        "reason_code",
+        "detail"
+      ],
+      "properties": {
+        "missing_data_item_id": {"type": "string"},
+        "target_type": {"type": "string"},
+        "target_refdes": {"type": ["string", "null"]},
+        "field_name": {"type": "string"},
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "not_found_in_provided_context",
+            "ambiguous",
+            "insufficient_context",
+            "not_datasheet_sourced",
+            "requires_manual_requirement",
+            "unsupported_field"
+          ]
+        },
+        "detail": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}
