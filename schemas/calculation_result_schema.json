@@ -52,6 +52,15 @@
       "type": "string",
       "minLength": 1
     },
+    "branch_id": {
+      "type": ["string", "null"]
+    },
+    "refdes": {
+      "type": ["string", "null"]
+    },
+    "pin": {
+      "type": ["string", "null"]
+    },
     "status": {
       "type": "string",
       "enum": ["ready", "calculated", "blocked", "not_applicable", "error"]
@@ -173,7 +182,7 @@
     },
     "targetType": {
       "type": "string",
-      "enum": ["branch", "rail", "component", "pin", "relationship", "net", "project"]
+      "enum": ["branch", "rail", "component", "pin", "relationship", "net", "project", "fuse", "fuse_pin"]
     },
     "sourceArtifact": {
       "type": "object",
@@ -187,6 +196,7 @@
             "missing_data_manifest",
             "topology_geometry_review",
             "topology_current_allocation",
+            "rating_models_normalized",
             "rail_relationships",
             "topology_role_resolution",
             "part_info",
