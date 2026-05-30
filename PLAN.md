@@ -45,6 +45,11 @@ Phase 20 — Validate and Repair Findings
 Phase 21 — Generate Report
 Phase 22 — Final Summary
 
+Phase 12 AI Data Completion packet model:
+When the deterministic topology/missing-data pipeline needs AI-assisted data completion, it must be represented as one formal phase: `Phase 12: AI Data Completion`. Inside that phase, work is split into bounded stages and packets rather than a giant board-wide AI prompt. Stage examples include `12A` datasheet role/pin extraction, `12B` datasheet current model extraction, `12C` datasheet rating extraction, and `12D` passive/support component extraction. Each packet owns one task, prompt, bounded context, required output schema, validation result, checkpoint/status file, and accepted/rejected/human-review lifecycle state.
+
+The packet execution loop is deterministic: build `packet_queue.json`, write per-packet `request.json`, `context.json`, `prompt.md`, and `status.json`, structurally validate the generated artifacts, and checkpoint phase status before any later runner can execute prompts. AI packet construction and future AI responses must not directly mutate core topology artifacts, current/copper/margin artifacts, or findings. Any future data fill must be validated and applied through an explicit patch step before calculations are rerun.
+
 4. IMPLEMENTATION STEPS
 
 ## Phase 1 — Ingest ThomsonLint Workflow
