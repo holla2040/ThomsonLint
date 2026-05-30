@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Candidate Ingestion Workflow Outputs",
+  "description": "Schemas for isolated AI candidate ingestion workflow artifacts. These artifacts are candidate outputs only and must not overwrite core normalized/calculation outputs.",
+  "anyOf": [
+    {"$ref": "#/definitions/manifest"},
+    {"$ref": "#/definitions/status"},
+    {"$ref": "#/definitions/addendaIndex"},
+    {"$ref": "#/definitions/humanReviewIndex"},
+    {"$ref": "#/definitions/review"}
+  ],
+  "definitions": {
+    "manifest": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "source_artifacts", "source_adapter_manifest", "source_adapter_status", "workflow_pass", "outputs", "steps", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_ingestion_workflow_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_adapter_manifest": {"type": "string"},
+        "source_adapter_status": {"type": "string"},
+        "workflow_pass": {"type": "boolean"},
+        "outputs": {"$ref": "#/definitions/outputs"},
+        "steps": {"type": "array", "items": {"$ref": "#/definitions/step"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "required": ["project", "status", "workflow_pass", "safe_to_use_as_candidate_inputs", "safe_to_overwrite_core_artifacts", "safe_to_rerun_current_allocation_automatically", "safe_to_rerun_calculations_automatically", "current_ingest_pass", "rating_current_ingest_pass", "rating_ingest_pass", "requires_human_review_count", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "status": {"enum": ["completed", "completed_with_warnings", "failed"]},
+        "workflow_pass": {"type": "boolean"},
+        "safe_to_use_as_candidate_inputs": {"type": "boolean"},
+        "safe_to_overwrite_core_artifacts": {"const": false},
+        "safe_to_rerun_current_allocation_automatically": {"const": false},
+        "safe_to_rerun_calculations_automatically": {"const": false},
+        "current_ingest_pass": {"type": "boolean"},
+        "rating_current_ingest_pass": {"type": "boolean"},
+        "rating_ingest_pass": {"type": "boolean"},
+        "requires_human_review_count": {"type": "integer", "minimum": 0},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "addendaIndex": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "role_resolution_addenda_adapter", "pin_role_addenda_adapter", "rail_relationship_hints_adapter", "passive_support_adapter", "summary", "safe_to_merge_automatically", "requires_merge_validator", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_addenda_index_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "role_resolution_addenda_adapter": {"type": "string"},
+        "pin_role_addenda_adapter": {"type": "string"},
+        "rail_relationship_hints_adapter": {"type": "string"},
+        "passive_support_adapter": {"type": "string"},
+        "summary": {
+          "type": "object",
+          "required": ["role_addenda_count", "pin_role_addenda_count", "rail_relationship_hint_count", "passive_support_count"],
+          "properties": {
+            "role_addenda_count": {"type": "integer", "minimum": 0},
+            "pin_role_addenda_count": {"type": "integer", "minimum": 0},
+            "rail_relationship_hint_count": {"type": "integer", "minimum": 0},
+            "passive_support_count": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "safe_to_merge_automatically": {"const": false},
+        "requires_merge_validator": {"const": true},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "humanReviewIndex": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "human_review_records", "workflow_review_records", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_human_review_index_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "human_review_records": {"type": "array", "items": {"type": "object"}},
+        "workflow_review_records": {"type": "array", "items": {"type": "object"}},
+        "summary": {
+          "type": "object",
+          "required": ["human_review_record_count", "workflow_review_record_count", "requires_human_review_count"],
+          "properties": {
+            "human_review_record_count": {"type": "integer", "minimum": 0},
+            "workflow_review_record_count": {"type": "integer", "minimum": 0},
+            "requires_human_review_count": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "required": ["project", "schema_version", "workflow_pass", "candidate_outputs", "manual_next_steps", "known_provenance_gaps", "not_performed", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_ingestion_review_v1"},
+        "workflow_pass": {"type": "boolean"},
+        "candidate_outputs": {"type": "object"},
+        "manual_next_steps": {"$ref": "#/definitions/stringArray"},
+        "known_provenance_gaps": {"$ref": "#/definitions/stringArray"},
+        "not_performed": {"$ref": "#/definitions/stringArray"},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "required": ["current_models_normalized", "rating_current_models_normalized", "rating_models_normalized", "addenda_index", "human_review_index", "review", "status"],
+      "properties": {
+        "current_models_normalized": {"const": "ai-current-models-normalized.json"},
+        "rating_current_models_normalized": {"const": "ai-rating-current-models-normalized.json"},
+        "rating_models_normalized": {"const": "ai-rating-models-normalized.json"},
+        "addenda_index": {"const": "ai-addenda-index.json"},
+        "human_review_index": {"const": "ai-human-review-index.json"},
+        "review": {"const": "ai-candidate-ingestion-review.json"},
+        "status": {"const": "ai-candidate-ingestion-status.json"}
+      },
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "required": ["step_id", "status", "input_path", "output_path", "command", "returncode", "stdout_preview", "stderr_preview", "errors", "warnings"],
+      "properties": {
+        "step_id": {"type": "string"},
+        "status": {"enum": ["passed", "failed", "skipped"]},
+        "input_path": {"type": ["string", "null"]},
+        "output_path": {"type": ["string", "null"]},
+        "command": {"type": "array", "items": {"type": "string"}},
+        "returncode": {"type": ["integer", "null"]},
+        "stdout_preview": {"type": "string"},
+        "stderr_preview": {"type": "string"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path", "notes"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}
