@@ -1,0 +1,308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Promotion Apply Dry Run Artifacts",
+  "description": "PR34 approved-only dry-run apply artifacts. They are preview-only and cannot write core artifacts, run ingestion, run allocation, run calculations, or merge addenda.",
+  "anyOf": [
+    {"$ref": "#/definitions/dryRunArtifact"},
+    {"$ref": "#/definitions/statusArtifact"},
+    {"$ref": "#/definitions/currentPreview"},
+    {"$ref": "#/definitions/ratingPreview"},
+    {"$ref": "#/definitions/addendaPreview"},
+    {"$ref": "#/definitions/blockersArtifact"}
+  ],
+  "definitions": {
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "finding_id",
+            "issue_id",
+            "violation",
+            "severity",
+            "compliance_pass",
+            "compliance_fail",
+            "pass_fail",
+            "margin_pass",
+            "margin_fail",
+            "acceptable",
+            "unacceptable",
+            "final_finding",
+            "recommendation_severity",
+            "apply_to_artifact",
+            "mutate_artifact",
+            "overwrite",
+            "delete_existing",
+            "replace_existing"
+          ]
+        }
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path", "notes"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "coreArtifacts": {
+      "type": "object",
+      "required": ["core_current_models_normalized", "core_rating_models_normalized", "core_current_missing", "core_rating_missing"],
+      "properties": {
+        "core_current_models_normalized": {"type": ["string", "null"]},
+        "core_rating_models_normalized": {"type": ["string", "null"]},
+        "core_current_missing": {"type": "boolean"},
+        "core_rating_missing": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "operation": {
+      "type": "object",
+      "required": ["operation_id", "promotion_candidate_id", "approval_item_id", "decision_id", "candidate_kind", "dry_run_operation", "operation_status", "dry_run_only", "writes_core_artifact", "safe_to_apply_in_pr34", "requires_future_apply_stage", "target_identity", "candidate_value", "core_match", "approval", "preview_target", "blockers", "warnings"],
+      "properties": {
+        "operation_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "approval_item_id": {"type": "string"},
+        "decision_id": {"type": "string"},
+        "candidate_kind": {"enum": ["current_model", "rating_model", "role_addendum", "pin_role_addendum", "rail_relationship_hint", "passive_support"]},
+        "dry_run_operation": {"enum": ["would_add", "would_update", "would_skip_duplicate", "would_block_conflict", "would_require_merge_validator"]},
+        "operation_status": {"enum": ["preview_dry_run", "blocked_dry_run"]},
+        "dry_run_only": {"const": true},
+        "writes_core_artifact": {"const": false},
+        "safe_to_apply_in_pr34": {"const": false},
+        "requires_future_apply_stage": {"const": true},
+        "target_identity": {"$ref": "#/definitions/jsonObject"},
+        "candidate_value": {"$ref": "#/definitions/jsonObject"},
+        "core_match": {"$ref": "#/definitions/jsonObject"},
+        "approval": {"$ref": "#/definitions/jsonObject"},
+        "preview_target": {"$ref": "#/definitions/jsonObject"},
+        "blockers": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "blocker": {
+      "type": "object",
+      "required": ["approval_item_id", "decision_id", "promotion_candidate_id", "reason_code", "details"],
+      "properties": {
+        "approval_item_id": {"type": ["string", "null"]},
+        "decision_id": {"type": ["string", "null"]},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "reason_code": {"enum": ["invalid_decision", "missing_decision_validation", "approval_queue_mismatch", "promotion_candidate_missing", "decision_not_approved", "approved_decision_invalid", "core_conflict", "missing_target_identity", "missing_evidence", "addenda_requires_merge_validator", "unsupported_candidate_kind", "stale_or_failed_promotion_status", "attempted_core_write_blocked"]},
+        "details": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "skippedDecision": {
+      "type": "object",
+      "required": ["approval_item_id", "decision_id", "promotion_candidate_id", "decision", "reason_code"],
+      "properties": {
+        "approval_item_id": {"type": "string"},
+        "decision_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "decision": {"enum": ["pending", "rejected", "needs_info"]},
+        "reason_code": {"const": "decision_not_approved"}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["approval_queue_count", "decision_count", "approved_decision_count", "rejected_decision_count", "needs_info_decision_count", "pending_decision_count", "valid_approved_decision_count", "invalid_approved_decision_count", "dry_run_operation_count", "current_model_operation_count", "rating_model_operation_count", "addenda_operation_count", "would_add_count", "would_update_count", "would_skip_duplicate_count", "would_block_conflict_count", "blocked_operation_count", "skipped_decision_count", "core_current_missing", "core_rating_missing", "applied_anything", "wrote_core_artifacts", "ran_ingestion", "ran_current_allocation", "ran_calculations", "merged_addenda", "error_count", "warning_count"],
+      "properties": {
+        "approval_queue_count": {"type": "integer", "minimum": 0},
+        "decision_count": {"type": "integer", "minimum": 0},
+        "approved_decision_count": {"type": "integer", "minimum": 0},
+        "rejected_decision_count": {"type": "integer", "minimum": 0},
+        "needs_info_decision_count": {"type": "integer", "minimum": 0},
+        "pending_decision_count": {"type": "integer", "minimum": 0},
+        "valid_approved_decision_count": {"type": "integer", "minimum": 0},
+        "invalid_approved_decision_count": {"type": "integer", "minimum": 0},
+        "dry_run_operation_count": {"type": "integer", "minimum": 0},
+        "current_model_operation_count": {"type": "integer", "minimum": 0},
+        "rating_model_operation_count": {"type": "integer", "minimum": 0},
+        "addenda_operation_count": {"type": "integer", "minimum": 0},
+        "would_add_count": {"type": "integer", "minimum": 0},
+        "would_update_count": {"type": "integer", "minimum": 0},
+        "would_skip_duplicate_count": {"type": "integer", "minimum": 0},
+        "would_block_conflict_count": {"type": "integer", "minimum": 0},
+        "blocked_operation_count": {"type": "integer", "minimum": 0},
+        "skipped_decision_count": {"type": "integer", "minimum": 0},
+        "core_current_missing": {"type": "boolean"},
+        "core_rating_missing": {"type": "boolean"},
+        "applied_anything": {"const": false},
+        "wrote_core_artifacts": {"const": false},
+        "ran_ingestion": {"const": false},
+        "ran_current_allocation": {"const": false},
+        "ran_calculations": {"const": false},
+        "merged_addenda": {"const": false},
+        "error_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "dryRunArtifact": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "dry_run_only", "source_artifacts", "source_promotion_plan", "source_approval_queue", "source_decisions", "source_decision_validation", "core_artifacts", "approved_decision_count", "dry_run_operations", "blocked_operations", "skipped_decisions", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "dry_run_only": {"const": true},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_promotion_plan": {"type": "string"},
+        "source_approval_queue": {"type": "string"},
+        "source_decisions": {"type": "string"},
+        "source_decision_validation": {"type": "string"},
+        "core_artifacts": {"$ref": "#/definitions/coreArtifacts"},
+        "approved_decision_count": {"type": "integer", "minimum": 0},
+        "dry_run_operations": {"type": "array", "items": {"$ref": "#/definitions/operation"}},
+        "blocked_operations": {"type": "array", "items": {"$ref": "#/definitions/blocker"}},
+        "skipped_decisions": {"type": "array", "items": {"$ref": "#/definitions/skippedDecision"}},
+        "summary": {"$ref": "#/definitions/summary"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "statusArtifact": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "status", "dry_run_only", "applied_anything", "wrote_core_artifacts", "ran_ingestion", "ran_current_allocation", "ran_calculations", "merged_addenda", "safe_to_apply_in_pr34", "requires_future_apply_stage", "approved_decision_count", "dry_run_operation_count", "blocked_operation_count", "skipped_decision_count", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "status": {"enum": ["dry_run_pass", "dry_run_with_warnings", "dry_run_failed"]},
+        "dry_run_only": {"const": true},
+        "applied_anything": {"const": false},
+        "wrote_core_artifacts": {"const": false},
+        "ran_ingestion": {"const": false},
+        "ran_current_allocation": {"const": false},
+        "ran_calculations": {"const": false},
+        "merged_addenda": {"const": false},
+        "safe_to_apply_in_pr34": {"const": false},
+        "requires_future_apply_stage": {"const": true},
+        "approved_decision_count": {"type": "integer", "minimum": 0},
+        "dry_run_operation_count": {"type": "integer", "minimum": 0},
+        "blocked_operation_count": {"type": "integer", "minimum": 0},
+        "skipped_decision_count": {"type": "integer", "minimum": 0},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "previewEntry": {
+      "type": "object",
+      "required": ["operation_id", "promotion_candidate_id", "target_identity", "candidate_value", "core_match_status", "preview_action", "blockers", "warnings"],
+      "properties": {
+        "operation_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "target_identity": {"$ref": "#/definitions/jsonObject"},
+        "candidate_value": {"$ref": "#/definitions/jsonObject"},
+        "core_match_status": {"enum": ["no_core_match", "exact_duplicate", "value_conflict", "condition_conflict", "identity_conflict", "core_missing"]},
+        "preview_action": {"enum": ["would_add", "would_update", "would_skip_duplicate", "would_block_conflict", "would_require_merge_validator"]},
+        "blockers": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "basePreview": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "dry_run_only", "preview_type", "entries", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "dry_run_only": {"const": true},
+        "preview_type": {"type": "string"},
+        "entries": {"type": "array", "items": {"$ref": "#/definitions/previewEntry"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "currentPreview": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "dry_run_only", "preview_type", "entries", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "dry_run_only": {"const": true},
+        "preview_type": {"const": "current_model_merge_preview"},
+        "entries": {"type": "array", "items": {"$ref": "#/definitions/previewEntry"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "ratingPreview": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "dry_run_only", "preview_type", "entries", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "dry_run_only": {"const": true},
+        "preview_type": {"const": "rating_model_merge_preview"},
+        "entries": {"type": "array", "items": {"$ref": "#/definitions/previewEntry"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "addendaEntry": {
+      "type": "object",
+      "required": ["operation_id", "promotion_candidate_id", "addenda_kind", "preview_action", "safe_to_merge_in_pr34", "merged_addenda", "blockers", "warnings"],
+      "properties": {
+        "operation_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "addenda_kind": {"enum": ["role_addendum", "pin_role_addendum", "rail_relationship_hint", "passive_support"]},
+        "preview_action": {"const": "would_require_merge_validator"},
+        "safe_to_merge_in_pr34": {"const": false},
+        "merged_addenda": {"const": false},
+        "blockers": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "addendaPreview": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "dry_run_only", "preview_type", "entries", "summary", "errors", "warnings", "safe_to_merge_in_pr34", "merged_addenda"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "dry_run_only": {"const": true},
+        "preview_type": {"const": "addenda_merge_preview"},
+        "entries": {"type": "array", "items": {"$ref": "#/definitions/addendaEntry"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}},
+        "safe_to_merge_in_pr34": {"const": false},
+        "merged_addenda": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "blockersArtifact": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "dry_run_only", "blocker_records", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_promotion_apply_dry_run_v1"},
+        "dry_run_only": {"const": true},
+        "blocker_records": {"type": "array", "items": {"$ref": "#/definitions/blocker"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}
