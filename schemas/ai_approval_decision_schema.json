@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Approval Decision Artifacts",
+  "description": "Schemas for PR33 approval decision and validation artifacts. These artifacts record human decisions only; they do not apply approvals or modify core data.",
+  "anyOf": [
+    {"$ref": "#/definitions/aiApprovalDecisions"},
+    {"$ref": "#/definitions/aiApprovalDecisionValidation"}
+  ],
+  "definitions": {
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path", "notes"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "decisionItem": {
+      "type": "object",
+      "required": [
+        "decision_id",
+        "approval_item_id",
+        "promotion_candidate_id",
+        "decision",
+        "reviewer",
+        "reviewed_at_utc",
+        "approval_note",
+        "reason_code",
+        "safe_to_apply",
+        "source_queue_item"
+      ],
+      "properties": {
+        "decision_id": {"type": "string"},
+        "approval_item_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "decision": {"enum": ["pending", "approved", "rejected", "needs_info"]},
+        "reviewer": {"type": ["string", "null"]},
+        "reviewed_at_utc": {"type": ["string", "null"]},
+        "approval_note": {"type": ["string", "null"]},
+        "reason_code": {"type": ["string", "null"]},
+        "safe_to_apply": {"const": false},
+        "source_queue_item": {
+          "type": "object",
+          "required": ["review_type", "priority", "target_summary", "candidate_summary", "core_summary"],
+          "properties": {
+            "review_type": {"type": "string"},
+            "priority": {"type": "string"},
+            "target_summary": {"type": "string"},
+            "candidate_summary": {"type": "string"},
+            "core_summary": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "aiApprovalDecisions": {
+      "type": "object",
+      "required": [
+        "project",
+        "generated_at_utc",
+        "schema_version",
+        "source_artifacts",
+        "source_promotion_plan",
+        "source_approval_queue",
+        "decision_set_status",
+        "decisions",
+        "summary",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_approval_decisions_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_promotion_plan": {"type": ["string", "null"]},
+        "source_approval_queue": {"type": ["string", "null"]},
+        "decision_set_status": {"enum": ["draft", "validated", "invalid"]},
+        "decisions": {"type": "array", "items": {"$ref": "#/definitions/decisionItem"}},
+        "summary": {
+          "type": "object",
+          "properties": {
+            "approval_queue_count": {"type": "integer", "minimum": 0},
+            "decision_count": {"type": "integer", "minimum": 0},
+            "pending_count": {"type": "integer", "minimum": 0},
+            "approved_count": {"type": "integer", "minimum": 0},
+            "rejected_count": {"type": "integer", "minimum": 0},
+            "needs_info_count": {"type": "integer", "minimum": 0},
+            "invalid_decision_count": {"type": "integer", "minimum": 0},
+            "missing_decision_count": {"type": "integer", "minimum": 0},
+            "safe_to_apply_count": {"type": "integer", "minimum": 0},
+            "error_count": {"type": "integer", "minimum": 0},
+            "warning_count": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "validatedDecisionItem": {
+      "type": "object",
+      "required": [
+        "decision_id",
+        "approval_item_id",
+        "promotion_candidate_id",
+        "decision",
+        "validation_status",
+        "safe_for_future_apply_stage",
+        "reason_codes",
+        "warnings"
+      ],
+      "properties": {
+        "decision_id": {"type": "string"},
+        "approval_item_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "decision": {"enum": ["pending", "approved", "rejected", "needs_info"]},
+        "validation_status": {"enum": ["valid", "invalid", "pending"]},
+        "safe_for_future_apply_stage": {"const": false},
+        "reason_codes": {"type": ["array", "null"], "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "invalidDecisionRecord": {
+      "type": "object",
+      "required": ["decision_id", "approval_item_id", "validation_status", "reasons"],
+      "properties": {
+        "decision_id": {"type": ["string", "null"]},
+        "approval_item_id": {"type": "string"},
+        "validation_status": {"const": "invalid"},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "missingDecisionRecord": {
+      "type": "object",
+      "required": ["approval_item_id", "review_type"],
+      "properties": {
+        "approval_item_id": {"type": "string"},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "review_type": {"type": "string"},
+        "priority": {"type": "string"},
+        "target_summary": {"type": "string"},
+        "candidate_summary": {"type": "string"},
+        "core_summary": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "aiApprovalDecisionValidation": {
+      "type": "object",
+      "required": [
+        "project",
+        "generated_at_utc",
+        "schema_version",
+        "source_artifacts",
+        "source_decisions",
+        "validation_pass",
+        "validated_decisions",
+        "invalid_decisions",
+        "missing_decisions",
+        "summary",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_approval_decision_validation_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_decisions": {"type": ["string", "null"]},
+        "validation_pass": {"type": "boolean"},
+        "validated_decisions": {"type": "array", "items": {"$ref": "#/definitions/validatedDecisionItem"}},
+        "invalid_decisions": {"type": "array", "items": {"$ref": "#/definitions/invalidDecisionRecord"}},
+        "missing_decisions": {"type": "array", "items": {"$ref": "#/definitions/missingDecisionRecord"}},
+        "summary": {
+          "type": "object",
+          "properties": {
+            "decision_count": {"type": "integer", "minimum": 0},
+            "valid_decision_count": {"type": "integer", "minimum": 0},
+            "invalid_decision_count": {"type": "integer", "minimum": 0},
+            "pending_decision_count": {"type": "integer", "minimum": 0},
+            "missing_decision_count": {"type": "integer", "minimum": 0},
+            "approved_count": {"type": "integer", "minimum": 0},
+            "rejected_count": {"type": "integer", "minimum": 0},
+            "needs_info_count": {"type": "integer", "minimum": 0},
+            "safe_for_future_apply_count": {"type": "integer", "minimum": 0},
+            "error_count": {"type": "integer", "minimum": 0},
+            "warning_count": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}
