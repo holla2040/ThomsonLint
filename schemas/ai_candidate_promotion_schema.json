@@ -1,0 +1,217 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Candidate Promotion Plan Outputs",
+  "description": "Schemas for PR32 promotion-plan artifacts. These artifacts are review and approval queues only; they do not promote or apply data.",
+  "anyOf": [
+    {"$ref": "#/definitions/plan"},
+    {"$ref": "#/definitions/approvalQueue"},
+    {"$ref": "#/definitions/diff"},
+    {"$ref": "#/definitions/status"},
+    {"$ref": "#/definitions/addendaReview"},
+    {"$ref": "#/definitions/humanReviewIndex"}
+  ],
+  "definitions": {
+    "plan": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "source_artifacts", "source_ai_ingested_manifest", "source_ai_ingested_status", "core_artifacts", "promotion_plan_pass", "promotion_candidates", "blocked_candidates", "conflicts", "requires_human_approval", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_promotion_plan_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_ai_ingested_manifest": {"type": "string"},
+        "source_ai_ingested_status": {"type": "string"},
+        "core_artifacts": {
+          "type": "object",
+          "required": ["current_models_normalized", "rating_models_normalized"],
+          "properties": {
+            "current_models_normalized": {"type": ["string", "null"]},
+            "rating_models_normalized": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "promotion_plan_pass": {"type": "boolean"},
+        "promotion_candidates": {"type": "array", "items": {"$ref": "#/definitions/promotionCandidate"}},
+        "blocked_candidates": {"type": "array", "items": {"$ref": "#/definitions/promotionCandidate"}},
+        "conflicts": {"type": "array", "items": {"$ref": "#/definitions/promotionCandidate"}},
+        "requires_human_approval": {"$ref": "#/definitions/stringArray"},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "approvalQueue": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "approval_items", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_approval_queue_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "approval_items": {"type": "array", "items": {"$ref": "#/definitions/approvalItem"}},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "diff": {
+      "type": "object",
+      "required": ["project", "schema_version", "current_model_diff", "rating_model_diff", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_promotion_diff_v1"},
+        "current_model_diff": {"$ref": "#/definitions/diffSection"},
+        "rating_model_diff": {"$ref": "#/definitions/diffSection"},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "required": ["project", "status", "promotion_plan_pass", "safe_to_apply_automatically", "safe_to_overwrite_core_artifacts", "safe_to_rerun_current_allocation_automatically", "safe_to_rerun_calculations_automatically", "requires_human_approval_count", "conflict_count", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "status": {"enum": ["planned", "planned_with_warnings", "failed"]},
+        "promotion_plan_pass": {"type": "boolean"},
+        "safe_to_apply_automatically": {"const": false},
+        "safe_to_overwrite_core_artifacts": {"const": false},
+        "safe_to_rerun_current_allocation_automatically": {"const": false},
+        "safe_to_rerun_calculations_automatically": {"const": false},
+        "requires_human_approval_count": {"type": "integer", "minimum": 0},
+        "conflict_count": {"type": "integer", "minimum": 0},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "addendaReview": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "role_addenda_review", "pin_role_addenda_review", "rail_relationship_hint_review", "passive_support_review", "safe_to_merge_automatically", "requires_merge_validator", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_addenda_promotion_review_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "role_addenda_review": {"type": "array", "items": {"type": "object"}},
+        "pin_role_addenda_review": {"type": "array", "items": {"type": "object"}},
+        "rail_relationship_hint_review": {"type": "array", "items": {"type": "object"}},
+        "passive_support_review": {"type": "array", "items": {"type": "object"}},
+        "safe_to_merge_automatically": {"const": false},
+        "requires_merge_validator": {"const": true},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "humanReviewIndex": {
+      "type": "object",
+      "required": ["project", "schema_version", "source_artifacts", "human_review_records", "blocked_candidates", "conflicts", "approval_item_ids", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "schema_version": {"const": "ai_human_review_promotion_index_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "human_review_records": {"type": "array", "items": {"type": "object"}},
+        "blocked_candidates": {"type": "array", "items": {"$ref": "#/definitions/promotionCandidate"}},
+        "conflicts": {"type": "array", "items": {"$ref": "#/definitions/promotionCandidate"}},
+        "approval_item_ids": {"$ref": "#/definitions/stringArray"},
+        "summary": {"type": "object"},
+        "errors": {"$ref": "#/definitions/stringArray"},
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "promotionCandidate": {
+      "type": "object",
+      "required": ["promotion_candidate_id", "candidate_kind", "operation", "promotion_status", "safe_to_apply_automatically", "source_candidate_artifact", "source_candidate_record_id", "source_ai_packet_id", "source_ai_patch_id", "source_ai_accepted_item_id", "target_identity", "candidate_value", "core_match", "basis", "confidence", "evidence_refs", "missing_data_item_ids", "approval", "warnings"],
+      "properties": {
+        "promotion_candidate_id": {"type": "string"},
+        "candidate_kind": {"enum": ["current_model", "rating_model", "role_addendum", "pin_role_addendum", "rail_relationship_hint", "passive_support"]},
+        "operation": {"enum": ["add_candidate", "duplicate_existing", "conflict_with_core", "needs_human_review"]},
+        "promotion_status": {"const": "pending_human_approval"},
+        "safe_to_apply_automatically": {"const": false},
+        "source_candidate_artifact": {"type": "string"},
+        "source_candidate_record_id": {"type": ["string", "null"]},
+        "source_ai_packet_id": {"type": ["string", "null"]},
+        "source_ai_patch_id": {"type": ["string", "null"]},
+        "source_ai_accepted_item_id": {"type": ["string", "null"]},
+        "target_identity": {"type": "object"},
+        "candidate_value": {"type": "object"},
+        "core_match": {
+          "type": "object",
+          "required": ["match_status", "matched_core_record_ids"],
+          "properties": {
+            "match_status": {"enum": ["no_core_match", "exact_duplicate", "value_conflict", "condition_conflict", "identity_conflict", "core_missing"]},
+            "matched_core_record_ids": {"$ref": "#/definitions/stringArray"}
+          },
+          "additionalProperties": false
+        },
+        "basis": {"type": ["string", "null"]},
+        "confidence": {"type": ["number", "null"]},
+        "evidence_refs": {"$ref": "#/definitions/stringArray"},
+        "missing_data_item_ids": {"$ref": "#/definitions/stringArray"},
+        "approval": {
+          "type": "object",
+          "required": ["approval_required", "approved", "approved_by", "approved_at_utc", "approval_note"],
+          "properties": {
+            "approval_required": {"const": true},
+            "approved": {"const": false},
+            "approved_by": {"type": "null"},
+            "approved_at_utc": {"type": "null"},
+            "approval_note": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "warnings": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "approvalItem": {
+      "type": "object",
+      "required": ["approval_item_id", "promotion_candidate_id", "review_type", "priority", "reason_code", "target_summary", "candidate_summary", "core_summary", "evidence_refs", "recommended_action", "approval_required", "safe_to_apply_automatically", "status"],
+      "properties": {
+        "approval_item_id": {"type": "string"},
+        "promotion_candidate_id": {"type": "string"},
+        "review_type": {"enum": ["approve_add", "review_duplicate", "resolve_conflict", "human_review_required", "addenda_merge_review"]},
+        "priority": {"enum": ["high", "medium", "low"]},
+        "reason_code": {"type": "string"},
+        "target_summary": {"type": "string"},
+        "candidate_summary": {"type": "string"},
+        "core_summary": {"type": "string"},
+        "evidence_refs": {"$ref": "#/definitions/stringArray"},
+        "recommended_action": {"const": "review_only"},
+        "approval_required": {"const": true},
+        "safe_to_apply_automatically": {"const": false},
+        "status": {"const": "pending"}
+      },
+      "additionalProperties": false
+    },
+    "diffSection": {
+      "type": "object",
+      "required": ["add_candidates", "exact_duplicates", "conflicts", "blocked"],
+      "properties": {
+        "add_candidates": {"$ref": "#/definitions/stringArray"},
+        "exact_duplicates": {"$ref": "#/definitions/stringArray"},
+        "conflicts": {"$ref": "#/definitions/stringArray"},
+        "blocked": {"$ref": "#/definitions/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path", "notes"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}
