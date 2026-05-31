@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint AI Candidate Core Input Apply Artifacts",
+  "description": "PR35 candidate-only apply artifacts. They may create isolated candidate input files but cannot write core normalized outputs, run ingestion, run allocation, run calculations, or merge addenda.",
+  "anyOf": [
+    {"$ref": "#/definitions/manifest"},
+    {"$ref": "#/definitions/status"},
+    {"$ref": "#/definitions/currentInput"},
+    {"$ref": "#/definitions/ratingInput"},
+    {"$ref": "#/definitions/addendaInput"},
+    {"$ref": "#/definitions/diff"},
+    {"$ref": "#/definitions/blockers"}
+  ],
+  "definitions": {
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["artifact_type", "path", "notes"],
+      "properties": {
+        "artifact_type": {"type": "string"},
+        "path": {"type": "string"},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["dry_run_operation_count", "candidate_apply_operation_count", "current_model_records_added", "rating_model_records_added", "duplicate_operations_skipped", "addenda_operations_seen", "addenda_records_written", "addenda_records_blocked", "blocked_operation_count", "skipped_operation_count", "base_current_records_preserved", "base_rating_records_preserved", "candidate_current_record_count", "candidate_rating_record_count", "wrote_candidate_inputs", "wrote_core_artifacts", "wrote_normalized_outputs", "ran_ingestion", "ran_current_allocation", "ran_calculations", "merged_addenda", "safe_for_core_apply", "error_count", "warning_count"],
+      "properties": {
+        "dry_run_operation_count": {"type": "integer", "minimum": 0},
+        "candidate_apply_operation_count": {"type": "integer", "minimum": 0},
+        "current_model_records_added": {"type": "integer", "minimum": 0},
+        "rating_model_records_added": {"type": "integer", "minimum": 0},
+        "duplicate_operations_skipped": {"type": "integer", "minimum": 0},
+        "addenda_operations_seen": {"type": "integer", "minimum": 0},
+        "addenda_records_written": {"type": "integer", "minimum": 0},
+        "addenda_records_blocked": {"type": "integer", "minimum": 0},
+        "blocked_operation_count": {"type": "integer", "minimum": 0},
+        "skipped_operation_count": {"type": "integer", "minimum": 0},
+        "base_current_records_preserved": {"type": "integer", "minimum": 0},
+        "base_rating_records_preserved": {"type": "integer", "minimum": 0},
+        "candidate_current_record_count": {"type": "integer", "minimum": 0},
+        "candidate_rating_record_count": {"type": "integer", "minimum": 0},
+        "wrote_candidate_inputs": {"const": true},
+        "wrote_core_artifacts": {"const": false},
+        "wrote_normalized_outputs": {"const": false},
+        "ran_ingestion": {"const": false},
+        "ran_current_allocation": {"const": false},
+        "ran_calculations": {"const": false},
+        "merged_addenda": {"const": false},
+        "safe_for_core_apply": {"const": false},
+        "error_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "source_artifacts", "source_dry_run", "source_dry_run_status", "candidate_outputs", "core_outputs_written", "normalized_outputs_written", "ran_ingestion", "ran_current_allocation", "ran_calculations", "merged_addenda", "safe_for_core_apply", "requires_future_core_apply_stage", "applied_operation_ids", "skipped_operation_ids", "blocked_operation_ids", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/sourceArtifact"}},
+        "source_dry_run": {"type": "string"},
+        "source_dry_run_status": {"type": "string"},
+        "candidate_outputs": {"type": "object", "additionalProperties": {"type": "string"}},
+        "core_outputs_written": {"const": false},
+        "normalized_outputs_written": {"const": false},
+        "ran_ingestion": {"const": false},
+        "ran_current_allocation": {"const": false},
+        "ran_calculations": {"const": false},
+        "merged_addenda": {"const": false},
+        "safe_for_core_apply": {"const": false},
+        "requires_future_core_apply_stage": {"const": true},
+        "applied_operation_ids": {"type": "array", "items": {"type": "string"}},
+        "skipped_operation_ids": {"type": "array", "items": {"type": "string"}},
+        "blocked_operation_ids": {"type": "array", "items": {"type": "string"}},
+        "summary": {"$ref": "#/definitions/summary"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "status", "candidate_apply_only", "wrote_candidate_inputs", "wrote_core_artifacts", "wrote_normalized_outputs", "ran_ingestion", "ran_current_allocation", "ran_calculations", "merged_addenda", "safe_for_core_apply", "requires_future_core_apply_stage", "applied_operation_count", "skipped_operation_count", "blocked_operation_count", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "status": {"enum": ["candidate_apply_pass", "candidate_apply_with_warnings", "candidate_apply_failed"]},
+        "candidate_apply_only": {"const": true},
+        "wrote_candidate_inputs": {"const": true},
+        "wrote_core_artifacts": {"const": false},
+        "wrote_normalized_outputs": {"const": false},
+        "ran_ingestion": {"const": false},
+        "ran_current_allocation": {"const": false},
+        "ran_calculations": {"const": false},
+        "merged_addenda": {"const": false},
+        "safe_for_core_apply": {"const": false},
+        "requires_future_core_apply_stage": {"const": true},
+        "applied_operation_count": {"type": "integer", "minimum": 0},
+        "skipped_operation_count": {"type": "integer", "minimum": 0},
+        "blocked_operation_count": {"type": "integer", "minimum": 0},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "not": {
+          "enum": ["finding_id", "issue_id", "violation", "severity", "compliance_pass", "compliance_fail", "pass_fail", "margin_pass", "margin_fail", "acceptable", "unacceptable", "final_finding", "recommendation_severity", "apply_to_artifact", "mutate_artifact", "overwrite", "delete_existing", "replace_existing", "safe_to_apply"]
+        }
+      }
+    },
+    "currentInput": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "candidate_apply_only", "candidate_input_type", "base_input", "base_records_preserved", "current_model_inputs", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "candidate_apply_only": {"const": true},
+        "candidate_input_type": {"const": "current_model"},
+        "base_input": {"type": ["string", "null"]},
+        "base_records_preserved": {"type": "integer", "minimum": 0},
+        "current_model_inputs": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "ratingInput": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "candidate_apply_only", "candidate_input_type", "base_input", "base_records_preserved", "rating_model_inputs", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "candidate_apply_only": {"const": true},
+        "candidate_input_type": {"const": "rating_model"},
+        "base_input": {"type": ["string", "null"]},
+        "base_records_preserved": {"type": "integer", "minimum": 0},
+        "rating_model_inputs": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "addendaInput": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "candidate_apply_only", "candidate_input_type", "safe_to_merge_automatically", "merged_addenda", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "candidate_apply_only": {"const": true},
+        "candidate_input_type": {"enum": ["role_addenda", "pin_role_addenda", "rail_relationship_hints", "passive_support_inputs"]},
+        "safe_to_merge_automatically": {"const": false},
+        "merged_addenda": {"const": false},
+        "role_addenda": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "pin_role_addenda": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "rail_relationship_hints": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "passive_support_inputs": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "blocker": {
+      "type": "object",
+      "required": ["operation_id", "promotion_candidate_id", "approval_item_id", "decision_id", "candidate_kind", "reason_code", "details"],
+      "properties": {
+        "operation_id": {"type": ["string", "null"]},
+        "promotion_candidate_id": {"type": ["string", "null"]},
+        "approval_item_id": {"type": ["string", "null"]},
+        "decision_id": {"type": ["string", "null"]},
+        "candidate_kind": {"type": ["string", "null"]},
+        "reason_code": {"enum": ["missing_dry_run_dir", "missing_dry_run_artifact", "missing_dry_run_status", "malformed_dry_run_artifact", "dry_run_status_failed", "operation_not_approved_for_candidate_apply", "operation_blocked_in_pr34", "unsupported_candidate_kind", "unsupported_dry_run_operation", "missing_target_identity", "missing_candidate_value", "missing_evidence", "duplicate_skipped", "addenda_requires_merge_validator", "base_input_malformed", "output_path_outside_out_dir", "attempted_core_write_blocked"]},
+        "details": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "diff": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "candidate_apply_only", "current_model_records_added", "rating_model_records_added", "duplicate_operations_skipped", "addenda_preview_records", "blocked_operations", "source_to_candidate_record_map", "base_input_records_preserved", "candidate_input_records_added", "core_artifacts_unchanged", "normalized_outputs_unchanged", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "candidate_apply_only": {"const": true},
+        "current_model_records_added": {"type": "integer", "minimum": 0},
+        "rating_model_records_added": {"type": "integer", "minimum": 0},
+        "duplicate_operations_skipped": {"type": "array", "items": {"type": "object"}},
+        "addenda_preview_records": {"type": "array", "items": {"$ref": "#/definitions/record"}},
+        "blocked_operations": {"type": "array", "items": {"$ref": "#/definitions/blocker"}},
+        "source_to_candidate_record_map": {"type": "array", "items": {"type": "object"}},
+        "base_input_records_preserved": {"type": "object"},
+        "candidate_input_records_added": {"type": "object"},
+        "core_artifacts_unchanged": {"const": true},
+        "normalized_outputs_unchanged": {"const": true},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "blockers": {
+      "type": "object",
+      "required": ["project", "generated_at_utc", "schema_version", "candidate_apply_only", "blocker_records", "summary", "errors", "warnings"],
+      "properties": {
+        "project": {"type": "string"},
+        "generated_at_utc": {"type": "string"},
+        "schema_version": {"const": "ai_candidate_core_input_apply_v1"},
+        "candidate_apply_only": {"const": true},
+        "blocker_records": {"type": "array", "items": {"$ref": "#/definitions/blocker"}},
+        "summary": {"type": "object"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}
