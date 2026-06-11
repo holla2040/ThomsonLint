@@ -83,6 +83,38 @@ When adding new rules or examples:
 2. Update `docs/AI_Hardware_Design_Review_KnowledgeBase.md` if context is needed for new rules
 3. Run `python validate_json.py` to validate changes
 
+### Source Attribution (mandatory)
+
+Content providers supply valuable knowledge to this project, and their efforts must be acknowledged. Every knowledge-base addition derived from external material (a video, article, checklist, book, or a person's contribution) MUST include a `**Source:**` attribution line near the top of the new or updated KB section in `docs/AI_Hardware_Design_Review_KnowledgeBase.md`:
+
+```
+**Source:** <author/contributor>, <publication or channel>, <URL> — optionally followed by the specific video/article title and link.
+```
+
+Existing examples to follow:
+- Appendix J: `**Source:** Hans Rosenberg, hans-rosenberg.com`
+- Appendix I.4: `**Source:** John Teel, Predictable Designs, https://www.youtube.com/@PredictableDesigns — video "9 Voltage Regulators You Should NEVER Use in Your Product" (youtu.be/KM8I2idEsF4).`
+
+Prefer the author's main channel/site URL so readers can find their broader body of work; add the specific item for traceability. Content distilled from general engineering practice with no single identifiable source does not need an attribution line.
+
+### Ingesting YouTube Content (transcript + creator attribution)
+
+When asked to pull a transcript from a YouTube video (typically as raw material for a KB addition), use the helper script:
+
+```bash
+python tools/yt-transcript.py <youtube-url> [--output <dir>]
+```
+
+It downloads the video's English captions via yt-dlp, cleans the rolling-caption duplicates into timestamped paragraphs, and writes `<video-id>-transcript.txt` with a header containing the title, creator name, creator homepage URL, video URL, upload date, and duration. Output goes to `/tmp` by default — transcripts are working material for KB distillation and must not be committed to the repo.
+
+Notes:
+- **yt-dlp must be current** — YouTube routinely breaks old versions. If the system `yt-dlp` fails with extraction errors, install the latest into a venv and pass it explicitly:
+  ```bash
+  python3 -m venv /tmp/ytdlp-venv && /tmp/ytdlp-venv/bin/pip install -U yt-dlp
+  python tools/yt-transcript.py <url> --yt-dlp /tmp/ytdlp-venv/bin/yt-dlp
+  ```
+- **Mandatory follow-up — creator homepage.** After pulling the transcript, go to the creator's YouTube homepage (the "Creator homepage" URL in the transcript header, e.g. `https://www.youtube.com/@PredictableDesigns`) and gather the creator's information: creator/host name, channel name, channel description, and any external website or business links they list. This information is what populates the `**Source:**` attribution line (see "Source Attribution" above) when the transcript becomes a KB addition. Do not write the KB section without it.
+
 ### Ontology Rule Structure
 Each rule includes: `id`, `name`, `domain`, `description`, `applies_to`, `conditions`, `default_severity`, `failure_modes`, `recommended_actions`, `kb_references`
 

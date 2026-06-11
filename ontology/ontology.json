@@ -4274,6 +4274,43 @@
       "kb_references": [
         "Appendix K.6: Single-point chassis ground"
       ]
+    },
+    {
+      "id": "COMP_REG_001",
+      "name": "Legacy or problematic voltage regulator selection",
+      "domain": ["Component", "Power"],
+      "description": "Certain voltage regulator families are popular in tutorials, dev boards, and cheap modules but are poor choices for production designs. Known-problematic parts: 78xx series and LM317 (~2 V dropout wastes power as heat, no enable pin; the LM317 additionally requires a 3.5-10 mA minimum load to stay in regulation and its external resistor divider adds tolerance stack-up and two open-failure modes, one of which passes the full unregulated input to the output); LM2596 (150 kHz switching requires large passives and radiates high EMI; widely counterfeited); MC34063 (uncontrolled switching waveforms, poor efficiency, difficult compensation); no-name switchers such as XL6009/XL4015 (unverifiable datasheets, no application support, unreliable long-term sourcing); AMS1117 (actual dropout exceeds 1 V at rated current despite the LDO label, poor transient response, widely counterfeited); HT7333/HT7533 (no thermal shutdown, load regulation degrades above ~100 mA, PSRR rolls off above ~1 kHz); MCP1700 (1.6 uA quiescent current but only 250 mA output and slow transient response, causing brownout resets on wake-from-sleep or radio-TX load bursts). Unshielded bottom-dollar switching modules also belong here: poor layout, batch-to-batch variation, and EMI that fails FCC/CE testing. Flag any of these parts, and more generally any regulator selected on a single headline spec without verifying dropout headroom, worst-case transient load, and thermal behavior across the full operating range.",
+      "applies_to": ["Voltage Regulator", "LDO", "Buck Converter", "Boost Converter", "Power Module"],
+      "conditions": {
+        "regulator_in_known_problematic_family": true,
+        "or_dropout_headroom_insufficient_at_load": true,
+        "or_transient_load_burst_exceeds_regulator_capability": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "thermal_failure",
+        "EMC_test_failure",
+        "brownout_resets_under_load_bursts",
+        "output_out_of_regulation",
+        "counterfeit_part_variability",
+        "unreliable_long_term_sourcing",
+        "overheating_without_thermal_shutdown",
+        "overvoltage_on_divider_open_failure"
+      ],
+      "recommended_actions": [
+        "For large step-downs, use a modern synchronous buck converter switching at 500 kHz or higher instead of any linear regulator or legacy switcher.",
+        "For small step-downs, use a modern fixed-output LDO with genuine low dropout (under ~250 mV at load) and good transient response (e.g., TI TPS793/TPS799 class) instead of 78xx, LM317, or AMS1117.",
+        "Prefer fixed-output LDOs over adjustable regulators when the rail voltage is known; this removes the feedback-divider tolerance stack-up and its open-resistor failure modes.",
+        "Verify dropout voltage at the actual load current against the worst-case input-to-output differential (including battery discharge curves), not the headline spec.",
+        "Size the regulator for the worst-case load burst (radio TX, motor start, wake from deep sleep), not just steady-state or quiescent current.",
+        "Source regulators only from established manufacturers (TI, ADI, ST, onsemi, Microchip, etc.) through authorized distributors (Mouser, Digi-Key) to avoid counterfeits and sourcing gaps.",
+        "If using a switching regulator module in production, select a shielded module from a reputable supplier with an EMC-compliant layout and consistent batch sourcing.",
+        "Confirm the part has thermal shutdown and current limit protection appropriate for the application."
+      ],
+      "kb_references": [
+        "Appendix I: Component Selection Guidelines",
+        "Appendix I.4: Voltage Regulator Selection"
+      ]
     }
   ]
 }

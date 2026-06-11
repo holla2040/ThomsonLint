@@ -94,6 +94,7 @@ The repository is organized as follows:
 -   `tools/fusion-electronics-stackup.ulp`: ULP that exports the layer stack (copper ordering, used-vs-unused layers) to JSON. Run from the board editor.
 -   `tools/fusion-electronics-images.ulp`: ULP that renders the schematic sheets and per-layer board images as high-resolution PNGs (300 DPI schematic / 1200 DPI board defaults). Run from each editor.
 -   `tools/kicad-export.py`: Standalone Python script to export KiCad 9 designs for review.
+-   `tools/yt-transcript.py`: Pulls a YouTube video transcript (via yt-dlp) with creator metadata in the header, as raw material for knowledge-base additions. See CLAUDE.md "Ingesting YouTube Content" — KB additions derived from a video must credit the creator (their homepage info feeds the `**Source:**` line).
 -   `tools/validate_findings.py`: Coverage validator — schema-checks the findings JSON, lists every input in `exports/` not cited in any `evidence[].source`, and flags missing required fields. Mandatory gate before generating the HTML report.
 -   `tools/gen_report.py`: Generates the self-contained HTML review report from findings JSON; embeds image evidence as inline thumbnails.
 -   `validate_json.py`: A Python script for validating the JSON files against their schemas.
@@ -204,8 +205,9 @@ python validate_json.py
 
 1.  **Modify the JSON files:** Add new entries to `ontology/ontology.json` or `examples/examples.json` following the existing structure.
 2.  **Update the knowledge base:** If necessary, add new sections to `docs/AI_Hardware_Design_Review_KnowledgeBase.md`.
-3.  **Validate your changes:** Run `python validate_json.py`.
-4.  **Regenerate the review file:**
+3.  **Credit your sources:** If the content is derived from external material (a video, article, checklist, or another person's work), add a `**Source:** <author>, <publication or channel>, <URL>` line near the top of the new KB section. Content providers supply valuable knowledge to this project and their efforts are acknowledged in the knowledge base itself — see Appendix J and Appendix I.4 for the expected style, and CONTRIBUTING.md for details.
+4.  **Validate your changes:** Run `python validate_json.py`.
+5.  **Regenerate the review file:**
     ```bash
     ./gen_context.sh > review_instructions.txt
     ```

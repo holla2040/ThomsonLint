@@ -39,6 +39,7 @@ This repository is intended to be a **living knowledge base and ontology** for A
 - **No proprietary info:** Do not add confidential or NDA-bound material.
 - **Keep it tool-neutral:** Avoid tying rules to any single EDA tool or vendor.
 - **Maintain machine-friendliness:** When editing the ontology or examples, ensure JSON remains valid and schemas are preserved.
+- **Acknowledge your sources:** Content providers supply valuable knowledge to this project, and their efforts deserve credit. Any knowledge-base addition derived from external material (video, article, checklist, book, or another person's work) must include a `**Source:**` attribution line near the top of the relevant section in `docs/AI_Hardware_Design_Review_KnowledgeBase.md`, in the form `**Source:** <author>, <publication or channel>, <URL>`. See Appendix J (Hans Rosenberg, hans-rosenberg.com) and Appendix I.4 (John Teel, Predictable Designs, https://www.youtube.com/@PredictableDesigns) for the expected style.
 
 ---
 

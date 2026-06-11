@@ -631,6 +631,36 @@ Class 2 ceramics (X5R, X7R, Y5V) lose capacitance under DC bias:
 - Rule of thumb: SRF ≥ 10x operating frequency
 - Check impedance vs frequency curves in datasheet
 
+### I.4 Voltage Regulator Selection (`COMP_REG_001`)
+
+Regulators that dominate tutorials, dev boards, and $1 modules are frequently the wrong choice for a production design. They work on the bench, then fail in the field through thermal stress, EMC test failures, brownout resets, or counterfeit-part variability.
+
+**Source:** John Teel, Predictable Designs, https://www.youtube.com/@PredictableDesigns — video "9 Voltage Regulators You Should NEVER Use in Your Product" (youtu.be/KM8I2idEsF4).
+
+**Known-problematic parts and replacements:**
+
+| Part | Why it fails in production | Use instead |
+|---|---|---|
+| 78xx series | ~2 V dropout burns power as heat; large package; poor transient response, PSRR, and noise | Synchronous buck (large step-down) or modern LDO (small step-down) |
+| LM2596 | 150 kHz switching → large passives, high EMI; module layouts fail FCC/CE; heavily counterfeited | Synchronous buck switching ≥ 500 kHz |
+| MC34063 | Uncontrolled switching waveforms, ~80% best-case efficiency, tricky compensation, high part count | Dedicated buck or boost IC for the topology needed |
+| XL6009 / XL4015 (no-name switchers) | Unverifiable datasheets, no application support, parts vanish from the market | ICs from established vendors (TI, ADI, ST, onsemi, Microchip) stocked at authorized distributors |
+| AMS1117 | Real dropout > 1 V at rated current despite "LDO" label; poor transient response; rampant counterfeits | Modern LDO with dropout < 250 mV and fast transient response (e.g., TPS793 / TPS799 class) |
+| Cheap unshielded switcher modules | Radiated EMI fails FCC/CE; poor layout kills IC performance; batch-to-batch variation | Shielded module from a reputable supplier with EMC-compliant layout |
+| HT7333 / HT7533 | No thermal shutdown; load regulation collapses above ~100 mA; PSRR rolls off above ~1 kHz | LDO with thermal protection and specs guaranteed across temperature |
+| LM317 (and adjustable regulators generally) | Divider tolerance stack-up; open bottom resistor passes full input voltage to output; > 2 V dropout; no enable pin; 3.5–10 mA minimum load | Fixed-output LDO matched to the rail voltage |
+| MCP1700 | 1.6 µA Iq is attractive, but 250 mA max and slow transient response cause brownout resets on load bursts | LDO combining low Iq with fast transient response and headroom for worst-case bursts |
+
+**Selection principles (apply to any regulator, not just this list):**
+
+- **Dropout headroom:** verify dropout at the *actual load current* against the *worst-case* input-to-output differential — including battery end-of-discharge voltage, not the nominal pack voltage.
+- **Transient load profile:** size for the worst-case burst (Wi-Fi/cellular TX, motor start, wake from deep sleep), not steady-state. A part that passes steady-state bench testing can still brownout-reset the MCU in the field.
+- **Linear vs. switching:** all power across a linear regulator's input-output gap is dissipated as heat. Use a buck converter for any large step-down; reserve LDOs for small differentials or noise-sensitive rails.
+- **Fixed over adjustable:** if the rail voltage is known, a fixed-output part removes two resistors, their tolerance stack-up, and two open-circuit failure modes.
+- **Protection:** require thermal shutdown and current limit for production parts.
+- **Sourcing:** if it can't be bought from a major authorized distributor (Mouser, Digi-Key), it doesn't belong in the product. Verified datasheets, reference designs, and application support typically cost under $0.50/unit extra.
+- **Never select on one headline spec** (cost, Iq, "LDO" in the title) — check the full datasheet picture across temperature and load.
+
 ---
 ## Appendix J: Hans Rosenberg Checklist Reference
 
