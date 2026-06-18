@@ -382,6 +382,74 @@
           "Source the replacement from an established manufacturer through authorized distribution to eliminate counterfeit-part variability."
         ]
       }
+    },
+    {
+      "id": "EX_PROD_001",
+      "title": "Near-EOL single-source MCU carried from prototype BOM into production",
+      "description": "A product's main microcontroller was selected because it was the part on the dev board, and the prototype BOM was carried straight into the production design. The MCU is stocked by only one distributor, is marked NRND (not recommended for new designs) by the manufacturer, and no pin-compatible alternate was identified before the layout was locked to its footprint. When production ramps, the distributor's stock is depleted and the only path forward is a costly last-time-buy or a board redesign to accept a different MCU.",
+      "triggered_rules": ["PROD_SOURCE_001"],
+      "expected_issue": {
+        "rule_id": "PROD_SOURCE_001",
+        "severity": "Major",
+        "domain": "Production",
+        "summary": "The critical MCU is single-sourced, marked NRND, and has no identified second source or pin-compatible alternate; the layout is committed to its footprint, exposing the production run to obsolescence and last-time-buy risk.",
+        "recommended_actions": [
+          "Check the MCU's lifecycle status and select an active part with a published longevity program, or identify a pin-compatible alternate before design freeze.",
+          "Confirm production-quantity stock and lead time at an authorized distributor, not just sample availability.",
+          "Where the part must stay single-sourced, lay out the footprint to also accept an alternate package and document the sourcing risk and buffer-stock plan."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_002",
+      "title": "Product priced parts-only, landed cost discovered to be negative after tooling",
+      "description": "A consumer device was costed during design using only the BOM parts cost, which comfortably fit under the target manufacturing cost derived from the planned retail price. No design-to-cost target drove the layer count or enclosure, and the cost model omitted assembly labor, per-unit functional test time, scrap on a low-yield fine-pitch part, import duties, and freight. After the injection-mold tooling and PCB fab panels were committed, the true landed cost per unit came in above the target, leaving negative margin on every unit at the planned price.",
+      "triggered_rules": ["PROD_COST_001"],
+      "expected_issue": {
+        "rule_id": "PROD_COST_001",
+        "severity": "Advisory",
+        "domain": "Production",
+        "summary": "Cost was estimated parts-only with no landed-cost target driving the design; assembly, test time, scrap, duties, and shipping were omitted, and the true per-unit cost exceeded the selling-price-derived target only after tooling was committed.",
+        "recommended_actions": [
+          "Set a target manufacturing cost worked backward from the selling price and drive the design toward it from day one.",
+          "Calculate total landed cost per unit including assembly, test time, scrap, duties, and shipping, and re-cost at each revision.",
+          "Reduce part count, layer count, and over-specified tolerances where function allows, and evaluate the enclosure for assembly efficiency."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_003",
+      "title": "Battery product validated only at room temperature fails in cold and under vibration",
+      "description": "A portable Li-ion-powered instrument was validated entirely on the bench at room temperature, where it worked flawlessly. There was no plan to characterize the battery over temperature or to vibration-test the assembly. In the field the battery loses a large fraction of its capacity in the cold and the rail browns out before the fuel gauge reads empty, and after months of transport vibration several solder joints on a heavy connector crack intermittently. Both failures appear in customers' hands, long after the bench testing that never exercised these conditions.",
+      "triggered_rules": ["PROD_ENV_001"],
+      "expected_issue": {
+        "rule_id": "PROD_ENV_001",
+        "severity": "Major",
+        "domain": "Production",
+        "summary": "Validation stopped at room temperature on the bench; the battery was never characterized over temperature and the assembly was never vibration-tested, so cold capacity fade, cold brownout, and vibration-induced solder-joint cracking surface only in the field.",
+        "recommended_actions": [
+          "Characterize battery capacity and regulator dropout headroom across the full temperature range, including end-of-discharge in the cold.",
+          "Run vibration and thermal-cycle testing on solder joints, with particular attention to heavy components and connectors.",
+          "Define an environmental stress test plan that matches the product's real target use environments rather than only the bench."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_004",
+      "title": "Layout never designed for emissions; first FCC scan fails and forces a re-spin",
+      "description": "A connected product was laid out for function and density with no attention to EMI/EMC emissions: the high-speed clock and switching regulator returns were routed over plane splits, no ground stitching was added at the board edges, and no certification plan or test budget existed. The first FCC radiated-emissions scan fails by several dB. Fixing it requires a new PCB layout, a board re-spin, fresh prototypes, and a repeat lab booking, adding months and a five-figure cost that were never budgeted.",
+      "triggered_rules": ["PROD_CERT_001"],
+      "expected_issue": {
+        "rule_id": "PROD_CERT_001",
+        "severity": "Major",
+        "domain": "Production",
+        "summary": "Target-market certification was not planned and the layout was not designed for emissions margin (return paths over splits, no edge stitching), so the first FCC scan fails and forces a board re-spin, fresh prototypes, and an unbudgeted retest.",
+        "recommended_actions": [
+          "Identify required certifications for the target markets early and follow their guidelines during initial design.",
+          "Design the layout for EMI/EMC margin by applying the EMC return-path, stitching, and high-speed routing rules before the scan.",
+          "Budget for certification testing plus at least one retest, and run a pre-compliance scan before the formal test."
+        ]
+      }
     }
   ]
 }

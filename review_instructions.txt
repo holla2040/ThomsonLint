@@ -258,7 +258,8 @@ before beginning the review.
     "Mechanical",
     "Schematic",
     "Component",
-    "Aerospace"
+    "Aerospace",
+    "Production"
   ],
   "severity_levels": [
     "Critical",
@@ -4557,6 +4558,141 @@ before beginning the review.
         "Appendix I: Component Selection Guidelines",
         "Appendix I.4: Voltage Regulator Selection"
       ]
+    },
+    {
+      "id": "PROD_SOURCE_001",
+      "name": "Single-source, end-of-life, or volume-unavailable component selection",
+      "domain": ["Component", "Production"],
+      "description": "A part that works on a prototype can stall a production run if it cannot be bought in volume, has only one supplier, or is near end-of-life (EOL). Prototype BOMs are frequently carried straight into production with parts that were chosen for what was on the bench or cheapest in single quantities, with no check of production-quantity stock, lead time, lifecycle status, or whether a second source exists. Flag any critical component (the parts whose absence stops the build: the MCU, main regulators, key ICs, custom or long-lead magnetics and connectors) that is single-sourced, marked NRND/last-time-buy/obsolete, or not stocked in production quantities by an authorized distributor, as well as any part with no identified pin-compatible or qualifiable alternate. Sourcing risk is a design decision: it is locked in when the part is selected, and the cheapest time to fix it is before the layout commits to that footprint.",
+      "applies_to": ["Critical Component", "MCU", "Voltage Regulator", "IC", "Connector", "Inductor", "Crystal", "Memory"],
+      "conditions": {
+        "critical_component_single_sourced": true,
+        "or_component_near_or_at_end_of_life": true,
+        "or_not_stocked_in_production_quantities": true,
+        "or_no_second_source_or_qualifiable_alternate": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "production_line_down_on_obsolescence",
+        "last_time_buy_scramble",
+        "extended_lead_time_schedule_slip",
+        "counterfeit_substitution_under_shortage",
+        "forced_redesign_to_swap_unobtainable_part",
+        "inflated_unit_cost_from_single_supplier"
+      ],
+      "recommended_actions": [
+        "Identify at least two sources, or one pin-compatible/qualifiable alternate, for every critical component before locking the layout.",
+        "Check the lifecycle status (active / NRND / last-time-buy / obsolete) of each critical part on the manufacturer's site and with the distributor before design freeze.",
+        "Confirm production-quantity stock and lead time at an authorized distributor (Mouser, Digi-Key, Arrow, etc.), not just sample availability.",
+        "Prefer parts from established manufacturers with long production lifetimes and published longevity/obsolescence programs for parts that are hard to second-source.",
+        "Where a part is genuinely single-sourced and critical, lay out the footprint to also accept an alternate package or carry a buffer stock plan, and document the risk.",
+        "Record the approved manufacturer part numbers and distributor order codes on the BOM (see DFM_BOM_001)."
+      ],
+      "kb_references": [
+        "Appendix M.1: Manufacturing Consistency",
+        "Appendix I: Component Selection Guidelines"
+      ]
+    },
+    {
+      "id": "PROD_COST_001",
+      "name": "No design-to-cost target or landed-cost budget",
+      "domain": ["Production", "Component"],
+      "description": "Most of a product's cost is locked in at the design stage, in the parts selected and the way the product is built; by the time it reaches production the cheapest changes are off the table. A design is at risk when there is no per-unit landed-cost target driving part, layer-count, and enclosure decisions, or when cost is estimated parts-only and ignores assembly, test time, scrap, duties, and shipping. Flag designs that are not being driven toward a cost target worked backward from the target selling price, that use more PCB layers / tighter fab tolerances / more expensive parts than the function requires, or whose cost model omits the non-part contributors to landed cost. This is an advisory-to-major concern depending on volume and margin sensitivity: for a high-volume or tightly priced product, a cost miss discovered after tooling can make every unit unprofitable.",
+      "applies_to": ["Bill of Materials", "PCB Stackup", "Enclosure", "Component", "Assembly Process"],
+      "conditions": {
+        "no_per_unit_cost_target_driving_design": true,
+        "or_cost_estimated_parts_only": true,
+        "or_overspecified_layers_tolerances_or_parts_for_function": true,
+        "or_landed_cost_omits_scrap_duties_shipping_assembly_test": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "negative_unit_margin_discovered_after_tooling",
+        "forced_redesign_to_hit_cost_target",
+        "ship_at_break_even_or_loss",
+        "overspecified_stackup_or_parts_inflating_bom"
+      ],
+      "recommended_actions": [
+        "Set a target manufacturing cost worked backward from the target selling price, and drive the design toward it from day one.",
+        "Calculate total landed cost per unit (parts + assembly + test time + scrap + duties + shipping), not just the parts cost.",
+        "Optimize component selection for cost and availability together, and reduce part count where it does not compromise function.",
+        "Use the minimum PCB layer count and standard fab tolerances the design needs (see DFM_TRACE_* / DFM_VIA_* cost-breakpoint rules); justify any 4-/6-layer or tight-tolerance choice.",
+        "Evaluate the enclosure design for manufacturing efficiency (tooling, assembly time, fastener count).",
+        "Re-cost the design at each major revision so cost regressions are caught before tooling commits."
+      ],
+      "kb_references": [
+        "Appendix M.5: Design-to-Cost"
+      ]
+    },
+    {
+      "id": "PROD_ENV_001",
+      "name": "Production design not validated across its real operating environment",
+      "domain": ["Thermal", "Mechanical", "Production"],
+      "description": "Reliability failures rarely appear on the bench while the prototype is being babied; they appear months later in the field, the most expensive place to find them. A design is at risk when there is no environmental and reliability validation plan covering the conditions the product will actually see: temperature extremes (hot and cold), humidity, vibration and thermal-cycle fatigue of solder joints, mechanical shock and drop of the finished enclosure, battery capacity and regulator headroom across temperature, and long-term continuous-use endurance. Appendix K imposes this discipline for aerospace; this rule generalizes it to any product. Flag battery-powered designs validated only at room temperature, mechanically loaded designs with no vibration/drop plan, and any design whose validation stops at 'it works on my desk'.",
+      "applies_to": ["Assembly", "Enclosure", "Battery", "Solder Joint", "Power Rail", "Connector"],
+      "conditions": {
+        "no_environmental_stress_test_plan": true,
+        "or_battery_not_characterized_over_temperature": true,
+        "or_no_vibration_or_drop_test_for_mechanical_load": true,
+        "or_no_long_term_endurance_validation": true,
+        "or_validation_only_at_room_temperature": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "cold_brownout_or_reset",
+        "battery_capacity_fade_in_cold",
+        "solder_joint_cracking_from_vibration",
+        "enclosure_or_connector_failure_on_drop",
+        "field_returns_appearing_months_after_ship",
+        "humidity_induced_leakage_or_corrosion"
+      ],
+      "recommended_actions": [
+        "Define and run an environmental stress test plan across the product's specified temperature, humidity, and (where relevant) salt/condensation range.",
+        "Characterize battery performance across the full temperature range, including capacity in the cold and regulator dropout headroom at end-of-discharge.",
+        "Perform vibration and thermal-cycle testing on solder joints for any product exposed to motion or repeated heating/cooling.",
+        "Run drop testing on the finished enclosure for portable or field-installed products.",
+        "Verify long-term reliability under continuous use, and test in conditions matching the target use environments rather than only on the bench.",
+        "Treat validation failures as design feedback and re-test after each corrective change."
+      ],
+      "kb_references": [
+        "Appendix M.3: Real-World Survival",
+        "Appendix K: Aerospace & Aviation Design"
+      ]
+    },
+    {
+      "id": "PROD_CERT_001",
+      "name": "No certification plan for target-market regulatory requirements",
+      "domain": ["EMC", "Production"],
+      "description": "Certification (FCC, CE, UL, and market-specific regulatory and safety marks) is a gate to selling the product, and a single failed attempt can force a new PCB layout, a board re-spin, fresh prototypes, and another round of expensive lab testing — months of delay and tens of thousands of dollars. A design is at risk when the required certifications for the target markets have not been researched up front, when the layout was not designed for EMI/EMC emissions margin, when electrical isolation and safety spacing (creepage/clearance) were not verified, when there is no budget for certification testing plus at least one retest, or when a pre-certified module is being relied on without confirming the surrounding layout and enclosure meet the module's conditions of use. The EMC and high-speed signal-integrity rules in this knowledge base provide the emissions margin; this rule covers the planning and design-for-compliance gap.",
+      "applies_to": ["Product", "PCB Layout", "Enclosure", "Wireless Module", "Mains Interface", "External Connector"],
+      "conditions": {
+        "target_market_certifications_not_identified_early": true,
+        "or_layout_not_designed_for_emi_emc_margin": true,
+        "or_isolation_or_safety_spacing_not_verified": true,
+        "or_no_budget_for_cert_test_and_retest": true,
+        "or_relies_on_precertified_module_without_verifying_host_design": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "failed_radiated_or_conducted_emissions_scan",
+        "board_respin_and_reprototype_after_cert_failure",
+        "schedule_slip_of_months",
+        "repeat_lab_test_fees",
+        "safety_spacing_violation_blocking_approval",
+        "module_precertification_voided_by_host_layout"
+      ],
+      "recommended_actions": [
+        "Identify the required certifications and standards for each target market early, and follow their guidelines during the initial design rather than after layout.",
+        "Design the PCB layout to minimize EMI/EMC emissions (apply the EMC_* return-path, stitching, and high-speed routing rules) to leave emissions margin before the scan.",
+        "Verify electrical isolation and safety spacing (creepage/clearance) for the product's voltage class and standard.",
+        "Use pre-certified modules where possible, and confirm the host PCB layout and enclosure satisfy the module's conditions of use so its certification still applies.",
+        "Budget for certification testing including at least one retest, and consider a pre-compliance scan before the formal test.",
+        "Document the certification plan and target standards as part of the design record."
+      ],
+      "kb_references": [
+        "Appendix M.4: Certification",
+        "Appendix A: High-Speed Signal Integrity"
+      ]
     }
   ]
 }
@@ -4947,6 +5083,74 @@ before beginning the review.
           "Replace the AMS1117 with a modern LDO with genuine low dropout (under ~250 mV at load) and fast transient response, sized for the worst-case Wi-Fi TX burst current.",
           "Verify dropout at actual load current against the battery's end-of-discharge voltage, not the headline datasheet number.",
           "Source the replacement from an established manufacturer through authorized distribution to eliminate counterfeit-part variability."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_001",
+      "title": "Near-EOL single-source MCU carried from prototype BOM into production",
+      "description": "A product's main microcontroller was selected because it was the part on the dev board, and the prototype BOM was carried straight into the production design. The MCU is stocked by only one distributor, is marked NRND (not recommended for new designs) by the manufacturer, and no pin-compatible alternate was identified before the layout was locked to its footprint. When production ramps, the distributor's stock is depleted and the only path forward is a costly last-time-buy or a board redesign to accept a different MCU.",
+      "triggered_rules": ["PROD_SOURCE_001"],
+      "expected_issue": {
+        "rule_id": "PROD_SOURCE_001",
+        "severity": "Major",
+        "domain": "Production",
+        "summary": "The critical MCU is single-sourced, marked NRND, and has no identified second source or pin-compatible alternate; the layout is committed to its footprint, exposing the production run to obsolescence and last-time-buy risk.",
+        "recommended_actions": [
+          "Check the MCU's lifecycle status and select an active part with a published longevity program, or identify a pin-compatible alternate before design freeze.",
+          "Confirm production-quantity stock and lead time at an authorized distributor, not just sample availability.",
+          "Where the part must stay single-sourced, lay out the footprint to also accept an alternate package and document the sourcing risk and buffer-stock plan."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_002",
+      "title": "Product priced parts-only, landed cost discovered to be negative after tooling",
+      "description": "A consumer device was costed during design using only the BOM parts cost, which comfortably fit under the target manufacturing cost derived from the planned retail price. No design-to-cost target drove the layer count or enclosure, and the cost model omitted assembly labor, per-unit functional test time, scrap on a low-yield fine-pitch part, import duties, and freight. After the injection-mold tooling and PCB fab panels were committed, the true landed cost per unit came in above the target, leaving negative margin on every unit at the planned price.",
+      "triggered_rules": ["PROD_COST_001"],
+      "expected_issue": {
+        "rule_id": "PROD_COST_001",
+        "severity": "Advisory",
+        "domain": "Production",
+        "summary": "Cost was estimated parts-only with no landed-cost target driving the design; assembly, test time, scrap, duties, and shipping were omitted, and the true per-unit cost exceeded the selling-price-derived target only after tooling was committed.",
+        "recommended_actions": [
+          "Set a target manufacturing cost worked backward from the selling price and drive the design toward it from day one.",
+          "Calculate total landed cost per unit including assembly, test time, scrap, duties, and shipping, and re-cost at each revision.",
+          "Reduce part count, layer count, and over-specified tolerances where function allows, and evaluate the enclosure for assembly efficiency."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_003",
+      "title": "Battery product validated only at room temperature fails in cold and under vibration",
+      "description": "A portable Li-ion-powered instrument was validated entirely on the bench at room temperature, where it worked flawlessly. There was no plan to characterize the battery over temperature or to vibration-test the assembly. In the field the battery loses a large fraction of its capacity in the cold and the rail browns out before the fuel gauge reads empty, and after months of transport vibration several solder joints on a heavy connector crack intermittently. Both failures appear in customers' hands, long after the bench testing that never exercised these conditions.",
+      "triggered_rules": ["PROD_ENV_001"],
+      "expected_issue": {
+        "rule_id": "PROD_ENV_001",
+        "severity": "Major",
+        "domain": "Production",
+        "summary": "Validation stopped at room temperature on the bench; the battery was never characterized over temperature and the assembly was never vibration-tested, so cold capacity fade, cold brownout, and vibration-induced solder-joint cracking surface only in the field.",
+        "recommended_actions": [
+          "Characterize battery capacity and regulator dropout headroom across the full temperature range, including end-of-discharge in the cold.",
+          "Run vibration and thermal-cycle testing on solder joints, with particular attention to heavy components and connectors.",
+          "Define an environmental stress test plan that matches the product's real target use environments rather than only the bench."
+        ]
+      }
+    },
+    {
+      "id": "EX_PROD_004",
+      "title": "Layout never designed for emissions; first FCC scan fails and forces a re-spin",
+      "description": "A connected product was laid out for function and density with no attention to EMI/EMC emissions: the high-speed clock and switching regulator returns were routed over plane splits, no ground stitching was added at the board edges, and no certification plan or test budget existed. The first FCC radiated-emissions scan fails by several dB. Fixing it requires a new PCB layout, a board re-spin, fresh prototypes, and a repeat lab booking, adding months and a five-figure cost that were never budgeted.",
+      "triggered_rules": ["PROD_CERT_001"],
+      "expected_issue": {
+        "rule_id": "PROD_CERT_001",
+        "severity": "Major",
+        "domain": "Production",
+        "summary": "Target-market certification was not planned and the layout was not designed for emissions margin (return paths over splits, no edge stitching), so the first FCC scan fails and forces a board re-spin, fresh prototypes, and an unbudgeted retest.",
+        "recommended_actions": [
+          "Identify required certifications for the target markets early and follow their guidelines during initial design.",
+          "Design the layout for EMI/EMC margin by applying the EMC return-path, stitching, and high-speed routing rules before the scan.",
+          "Budget for certification testing plus at least one retest, and run a pre-compliance scan before the formal test."
         ]
       }
     }
@@ -5914,6 +6118,112 @@ This appendix documents conventions for identifying and looking up component par
 - **Lookup URL:** `https://www.lcsc.com/product-detail/<LCSC_PN>.html`
 - **Where they appear:** BOM exports, schematic component attributes, and `exports/*.pdf` datasheet filenames in this repo (e.g., `Boost - MT3608 - SOT23-6 - C84817.pdf`).
 - **Notes:** The LCSC product page links to the manufacturer datasheet PDF and shows package, parametric data, and stock. Fetch the product page first; follow the datasheet link only if parametric data on the page is insufficient.
+
+---
+## Appendix M: Prototype-to-Production Readiness
+
+A working prototype proves the concept; it does not prove the product can be built, tested, certified, and sold at a profit in volume. This appendix captures the five "gaps" a design must cross between a hand-tuned bench unit and a repeatable production run. For each gap it lists the design-review checks plus the field-failure pitfalls that stay hidden until scale exposes them. Many items are already enforced by other rules in this knowledge base (DFM in Appendix G, DFT in Appendix E, EMC/SI throughout, reliability in Appendix K) and are cross-referenced rather than duplicated; the four `PROD_*` ontology rules cover the gaps those appendices do not.
+
+**Source:** John Teel, Predictable Designs, https://predictabledesigns.com — checklist "The 5 Gaps From Prototype to Production" (© 2026 Predictable Designs LLC).
+
+### M.1 Manufacturing Consistency (`PROD_SOURCE_001`)
+
+**Can it be manufactured consistently?** Ensuring the design works in automated factory production, not just on the one board you hand-tuned.
+
+1. **Layout and assembly**
+   - PCB laid out for automated assembly equipment (see Appendix G, DFM, and the `DFM_*` rules).
+   - All hand-tuning removed from the build process — no trimming, selecting, or "tweak until it works" steps on the line.
+
+2. **Sourcing and lifecycle** (`PROD_SOURCE_001`)
+   - Every component verified available in production quantities, not just sample quantities.
+   - Second sources identified for critical components, and end-of-life (EOL) / lifecycle status checked before the layout is locked.
+
+3. **Margin and tolerances**
+   - Design margin added to account for component tolerances (ties to the derating rules in Appendix I and `COMP_*`).
+   - Units tested at the tolerance extremes, not just at typical values.
+
+4. **Change control**
+   - Every design change and revision documented (board revision header, see `DFT_SILK_*`).
+
+**Watch out:**
+- A design with no margin can work perfectly on the one board you hand-tuned, then fail on ~5% of units in production. On a 5,000-unit run that is 250 dead boards you pay to build, diagnose, and scrap.
+- Undocumented hand-fixes are silent killers. Every tweak, reflowed joint, or jumper wire that never makes it into the design files becomes a defect the factory faithfully builds in at scale.
+
+### M.2 Test at Scale (DFT — Appendix E, `DFT_*`)
+
+**Can it be tested at scale?** Building testability into the product from day one. This gap is largely covered by the existing DFT rules; the checklist below is the production-test overlay.
+
+1. **Access and coverage**
+   - Test points added for key signals on the board (`DFT_TP_*`, `MS_I2C_001`).
+   - Design for Testability (DFT) considered from the start, not retrofitted.
+
+2. **Procedure and criteria**
+   - Clear pass/fail criteria defined for each test.
+   - Documented factory test procedure created.
+
+3. **Cost and tooling**
+   - Custom test-fixture development budgeted.
+   - Per-unit test time verified against the cost target.
+
+**Watch out:**
+- A custom test fixture can cost thousands of dollars to design and build. If you do not plan for it, it shows up as a surprise expense right when you are trying to start production.
+- Skip testability and you are left with two bad options: ship units that were never properly tested and eat the returns, or pay people to slowly hand-test every unit and watch your margin disappear.
+
+### M.3 Real-World Survival (`PROD_ENV_001`)
+
+**Will it survive the real world?** Designing for reliability in harsh operating conditions. Appendix K covers this for aerospace; `PROD_ENV_001` generalizes the discipline to any product.
+
+1. **Environmental stress**
+   - Environmental stress testing conducted across heat, cold, and humidity.
+   - Tested in conditions matching the actual target use environments.
+
+2. **Mechanical durability**
+   - Vibration and thermal-cycle testing performed on solder joints.
+   - Drop testing run on the finished enclosure.
+
+3. **Power and longevity**
+   - Battery performance tested across the full temperature range (capacity fade in cold, dropout headroom at end-of-discharge).
+   - Long-term reliability verified under continuous use.
+
+**Watch out:**
+- A battery that behaves fine at room temperature can lose a large part of its capacity in the cold, and solder joints that look perfect can slowly crack from months of vibration.
+- Reliability failures almost never show up on your bench while you are babying the product. They show up months later, in your customers' hands — the most expensive time possible to find them.
+
+### M.4 Certification (`PROD_CERT_001`)
+
+**Can it pass certification?** Meeting FCC, CE, UL, and other regulatory requirements. The EMC/SI rules throughout this KB give you the emissions margin; `PROD_CERT_001` covers the planning gap.
+
+1. **Requirements and planning**
+   - Certification requirements researched for the target markets.
+   - Certification guidelines followed during the initial design, not after layout.
+   - Certification testing budgeted, including the possibility of a retest.
+
+2. **Design for compliance**
+   - PCB layout designed to minimize EMI/EMC emissions (`EMC_*`, plus the high-speed SI rules).
+   - Proper electrical isolation and safety spacing (creepage/clearance) ensured.
+   - Pre-certified modules used where possible.
+
+**Watch out:**
+- A single failed certification attempt can mean a new PCB layout, a board re-spin, fresh prototypes, and another round of expensive lab testing. That adds months and tens of thousands of dollars.
+- A pre-certified module will not save you if your own PCB layout or enclosure causes the problem. The rest of the product still has to be designed with testing in mind.
+
+### M.5 Design-to-Cost (`PROD_COST_001`)
+
+**Can you manufacture it at a profit?** Designing to cost from the beginning, because most of the cost is locked in at the design stage.
+
+1. **Cost targets**
+   - Total landed cost per unit calculated — not just parts.
+   - Target manufacturing cost worked backward from the target selling price.
+   - The design driven toward that cost target from day one.
+
+2. **Cost drivers**
+   - Component selection optimized for cost and availability.
+   - Enclosure design evaluated for manufacturing efficiency.
+   - Scrap rate, duties, and shipping factored into the cost model.
+
+**Watch out:**
+- Most of your product's cost is locked in at the design stage, in the parts you picked and the way you chose to build it. By the time you are in production, the cheapest changes are off the table.
+- If the math does not work in production, both options are ugly: redesign a product you already paid to tool, or ship something that barely breaks even or loses money on every unit.
 
 --- END OF KNOWLEDGE BASE DOCUMENT ---
 

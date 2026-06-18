@@ -956,3 +956,109 @@ This appendix documents conventions for identifying and looking up component par
 - **Lookup URL:** `https://www.lcsc.com/product-detail/<LCSC_PN>.html`
 - **Where they appear:** BOM exports, schematic component attributes, and `exports/*.pdf` datasheet filenames in this repo (e.g., `Boost - MT3608 - SOT23-6 - C84817.pdf`).
 - **Notes:** The LCSC product page links to the manufacturer datasheet PDF and shows package, parametric data, and stock. Fetch the product page first; follow the datasheet link only if parametric data on the page is insufficient.
+
+---
+## Appendix M: Prototype-to-Production Readiness
+
+A working prototype proves the concept; it does not prove the product can be built, tested, certified, and sold at a profit in volume. This appendix captures the five "gaps" a design must cross between a hand-tuned bench unit and a repeatable production run. For each gap it lists the design-review checks plus the field-failure pitfalls that stay hidden until scale exposes them. Many items are already enforced by other rules in this knowledge base (DFM in Appendix G, DFT in Appendix E, EMC/SI throughout, reliability in Appendix K) and are cross-referenced rather than duplicated; the four `PROD_*` ontology rules cover the gaps those appendices do not.
+
+**Source:** John Teel, Predictable Designs, https://predictabledesigns.com — checklist "The 5 Gaps From Prototype to Production" (© 2026 Predictable Designs LLC).
+
+### M.1 Manufacturing Consistency (`PROD_SOURCE_001`)
+
+**Can it be manufactured consistently?** Ensuring the design works in automated factory production, not just on the one board you hand-tuned.
+
+1. **Layout and assembly**
+   - PCB laid out for automated assembly equipment (see Appendix G, DFM, and the `DFM_*` rules).
+   - All hand-tuning removed from the build process — no trimming, selecting, or "tweak until it works" steps on the line.
+
+2. **Sourcing and lifecycle** (`PROD_SOURCE_001`)
+   - Every component verified available in production quantities, not just sample quantities.
+   - Second sources identified for critical components, and end-of-life (EOL) / lifecycle status checked before the layout is locked.
+
+3. **Margin and tolerances**
+   - Design margin added to account for component tolerances (ties to the derating rules in Appendix I and `COMP_*`).
+   - Units tested at the tolerance extremes, not just at typical values.
+
+4. **Change control**
+   - Every design change and revision documented (board revision header, see `DFT_SILK_*`).
+
+**Watch out:**
+- A design with no margin can work perfectly on the one board you hand-tuned, then fail on ~5% of units in production. On a 5,000-unit run that is 250 dead boards you pay to build, diagnose, and scrap.
+- Undocumented hand-fixes are silent killers. Every tweak, reflowed joint, or jumper wire that never makes it into the design files becomes a defect the factory faithfully builds in at scale.
+
+### M.2 Test at Scale (DFT — Appendix E, `DFT_*`)
+
+**Can it be tested at scale?** Building testability into the product from day one. This gap is largely covered by the existing DFT rules; the checklist below is the production-test overlay.
+
+1. **Access and coverage**
+   - Test points added for key signals on the board (`DFT_TP_*`, `MS_I2C_001`).
+   - Design for Testability (DFT) considered from the start, not retrofitted.
+
+2. **Procedure and criteria**
+   - Clear pass/fail criteria defined for each test.
+   - Documented factory test procedure created.
+
+3. **Cost and tooling**
+   - Custom test-fixture development budgeted.
+   - Per-unit test time verified against the cost target.
+
+**Watch out:**
+- A custom test fixture can cost thousands of dollars to design and build. If you do not plan for it, it shows up as a surprise expense right when you are trying to start production.
+- Skip testability and you are left with two bad options: ship units that were never properly tested and eat the returns, or pay people to slowly hand-test every unit and watch your margin disappear.
+
+### M.3 Real-World Survival (`PROD_ENV_001`)
+
+**Will it survive the real world?** Designing for reliability in harsh operating conditions. Appendix K covers this for aerospace; `PROD_ENV_001` generalizes the discipline to any product.
+
+1. **Environmental stress**
+   - Environmental stress testing conducted across heat, cold, and humidity.
+   - Tested in conditions matching the actual target use environments.
+
+2. **Mechanical durability**
+   - Vibration and thermal-cycle testing performed on solder joints.
+   - Drop testing run on the finished enclosure.
+
+3. **Power and longevity**
+   - Battery performance tested across the full temperature range (capacity fade in cold, dropout headroom at end-of-discharge).
+   - Long-term reliability verified under continuous use.
+
+**Watch out:**
+- A battery that behaves fine at room temperature can lose a large part of its capacity in the cold, and solder joints that look perfect can slowly crack from months of vibration.
+- Reliability failures almost never show up on your bench while you are babying the product. They show up months later, in your customers' hands — the most expensive time possible to find them.
+
+### M.4 Certification (`PROD_CERT_001`)
+
+**Can it pass certification?** Meeting FCC, CE, UL, and other regulatory requirements. The EMC/SI rules throughout this KB give you the emissions margin; `PROD_CERT_001` covers the planning gap.
+
+1. **Requirements and planning**
+   - Certification requirements researched for the target markets.
+   - Certification guidelines followed during the initial design, not after layout.
+   - Certification testing budgeted, including the possibility of a retest.
+
+2. **Design for compliance**
+   - PCB layout designed to minimize EMI/EMC emissions (`EMC_*`, plus the high-speed SI rules).
+   - Proper electrical isolation and safety spacing (creepage/clearance) ensured.
+   - Pre-certified modules used where possible.
+
+**Watch out:**
+- A single failed certification attempt can mean a new PCB layout, a board re-spin, fresh prototypes, and another round of expensive lab testing. That adds months and tens of thousands of dollars.
+- A pre-certified module will not save you if your own PCB layout or enclosure causes the problem. The rest of the product still has to be designed with testing in mind.
+
+### M.5 Design-to-Cost (`PROD_COST_001`)
+
+**Can you manufacture it at a profit?** Designing to cost from the beginning, because most of the cost is locked in at the design stage.
+
+1. **Cost targets**
+   - Total landed cost per unit calculated — not just parts.
+   - Target manufacturing cost worked backward from the target selling price.
+   - The design driven toward that cost target from day one.
+
+2. **Cost drivers**
+   - Component selection optimized for cost and availability.
+   - Enclosure design evaluated for manufacturing efficiency.
+   - Scrap rate, duties, and shipping factored into the cost model.
+
+**Watch out:**
+- Most of your product's cost is locked in at the design stage, in the parts you picked and the way you chose to build it. By the time you are in production, the cheapest changes are off the table.
+- If the math does not work in production, both options are ugly: redesign a product you already paid to tool, or ship something that barely breaks even or loses money on every unit.
