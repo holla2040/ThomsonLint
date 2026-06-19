@@ -1062,3 +1062,293 @@ A working prototype proves the concept; it does not prove the product can be bui
 **Watch out:**
 - Most of your product's cost is locked in at the design stage, in the parts you picked and the way you chose to build it. By the time you are in production, the cheapest changes are off the table.
 - If the math does not work in production, both options are ugly: redesign a product you already paid to tool, or ship something that barely breaks even or loses money on every unit.
+
+---
+## Appendix N: Rigid-Flex PCB Design Review
+
+Rigid-flex PCB design sits at the intersection of mechanical and electrical engineering in a way standard rigid-board design does not. In the flex zone, a single trace-routing decision drives impedance *and* long-term bend reliability simultaneously, and a stackup choice made in the first week of a project determines whether the bend radius is even achievable. Unlike rigid boards — where most problems can be corrected at the layout stage — rigid-flex failures are usually baked in at the stackup and floor-planning stage and only surface during fabrication, assembly, or environmental qualification, where they are expensive and often impossible to reverse.
+
+This appendix captures a pre-fabrication verification framework for rigid-flex designs, organized by the ten design domains where rigid-flex errors most commonly originate, plus the industry-specific deltas for military, aerospace/space, medical, and automotive applications. Each item is tied to its governing standard — primarily **IPC-2223E** (the sectional design standard for flex and rigid-flex), **IPC-6013** (qualification and acceptance, with the **E** revision adding explicit transition-zone criteria), **IPC-2221** (conductor sizing and annular ring), and the **IPC-TM-650** test methods — so a reviewer knows not just *what* to check but *why* and *which clause* defines the acceptance criterion.
+
+**Source:** Cadence Design Systems, www.cadence.com — design guide "Rigid-Flex PCB Design Review Checklist: A pre-fabrication design verification resource aligned with IPC-2223E, IPC-6013, IPC-2221, and IPC-TM-650" (© 2026 Cadence Design Systems, Inc.).
+
+### N.1 Why rigid-flex is different
+
+- **Mechanical and electrical are coupled.** One flex-zone trace decision sets both impedance and bend reliability at once; you cannot optimize them independently.
+- **Decisions lock early.** Stackup, material, and floor-plan choices made before routing determine feasibility and cannot be undone after lamination.
+- **Failures surface late.** Most rigid-flex defects appear at fabrication, assembly, or environmental qualification — the most expensive places to find them.
+- **The flex zone is not a rigid zone.** It uses different materials (polyimide, RA copper, coverlay) with a different dielectric constant and different design rules. Simulate and rule-check the flex and rigid regions **separately**.
+- **The transition zone is the single most failure-prone region.** Treat it as a first-class design object with its own dimensions and acceptance criteria.
+- **Scope:** review N.2–N.10 for *every* rigid-flex design regardless of industry; add only the applicable N.11 industry deltas on top — they do not repeat the core checks.
+
+### N.2 Bend Zone Design (IPC-2223E primary, IPC-6013)
+
+The bend zone is the highest-risk region in any rigid-flex design and the leading cause of field failures. All bend parameters must be established **before routing begins**.
+
+**Bend radius (calculate and document before routing):**
+- Static (fold-once during assembly): minimum **6× total flex thickness** for single- and double-layer flex; **12×** for three or more flex layers.
+- Dynamic (repeated flexing in operation): minimum **100×** single-layer, **150×** double-layer, **200×** multilayer.
+- Expressed as the bend ratio **r/h** (r = minimum bend radius, h = total flex thickness). Multipliers rise with layer count; confirm total flex thickness and the required radius with the fabricator — material choice affects it.
+
+**Construction rules:**
+- No plated through-holes or vias in the bend zone — vias crack under mechanical stress.
+- Enforce a via keepout of **0.050"–0.100" (1.27–2.54 mm)** from the flex-to-rigid transition line.
+- No components in active bend zones (rigid stress concentration cracks solder joints).
+- Route traces perpendicular to the bend line; use curved transitions, never 90° or sharp-angle turns (sharp angles concentrate stress).
+- Stagger traces across layers — do **not** stack them. Stacked traces create an "I-beam" effect that drastically reduces flexibility and increases crack risk.
+- Dimension the bend line and minimum bend radius on the fabrication drawing — the fabricator cannot verify compliance without it.
+
+**Neutral axis design:**
+- Position flex layers at the center of the stackup to locate conductors on the neutral axis, minimizing bending strain.
+- Conductors smaller than 10 mils positioned inside the neutral bend axis (thin conductors withstand compression better than stretching).
+- Maintain symmetric copper balance in the flex zone — asymmetric copper curls the board toward the heavy side.
+- For tight radii with 3+ flex layers, specify **bookbinder (unbonded)** construction so layers slide relative to one another.
+
+### N.3 Stackup and Material Selection (IPC-2223E, IPC-4203/1, IPC-6013)
+
+Material decisions cannot be reversed after fabrication begins; confirm the stackup with the fabricator before routing.
+
+**Stackup architecture:**
+- Center flex layers in the overall construction and match rigid build-up above and below the flex zone in thickness and copper weight. Unequal rigid build-up creates differential-CTE warping during reflow. (This is *distinct* from neutral-axis positioning: neutral axis governs bend performance, overall stackup balance governs reflow warping — address both. Asymmetric layer counts are not automatically invalid but require explicit fabricator review.)
+- All rigid sections share the same layer count and stackup (mixed layer counts cause differential thermal expansion and lamination problems).
+- Place power/ground plane pairs on adjacent layers for distributed capacitance and low PDN inductance.
+- Provide a stackup diagram differentiating rigid and flex zones with all layer boundaries and material callouts.
+- Specify air-gap (unbonded) construction for high-flexibility multilayer flex sections.
+
+**Flex-layer materials:**
+- **Adhesiveless polyimide core** for flex layers — adhesive-based cores have high CTE mismatch and crack vias; adhesiveless is **mandatory for dynamic** flex (acrylic adhesive through the rigid portion must not exceed **10% of total construction thickness**).
+- **Rolled-annealed (RA) copper** for all dynamic flex layers — superior ductility and fatigue resistance vs. electrodeposited (ED) copper; non-negotiable for dynamic flex. ED copper is acceptable for rigid sections only (more brittle).
+- Minimum **0.25 oz** copper for flex zones; size conductors per IPC-2221 current-capacity tables.
+
+**Rigid-section materials & the boundary:**
+- High-Tg FR-4 (**Tg > 170 °C**) for rigid sections in Class 3 / high-reliability designs.
+- **No-flow / low-flow prepreg** at the rigid-to-flex boundary to prevent resin flowing into the flex zone during lamination.
+- Acrylic adhesive in the rigid section ≤ 10% of total construction (excess causes thermal-expansion mismatch and via cracking).
+
+**Coverlay (replaces solder mask in flex):**
+- Polyimide coverlay for flex zones — LPI solder mask cracks under repeated bending and is not acceptable.
+- Coverlay engages the rigid area by **≈0.025" (0.64 mm)** overlap to seal the transition and prevent edge lifting.
+- Typical coverlay thickness 12.5 µm or 25 µm polyimide + adhesive (choose by static vs. dynamic use).
+- Laser-cut coverlay for fine-pitch component areas (≈0.2 mm minimum clearance; mechanical punching is too imprecise).
+- IPC-6013 acceptance: no adhesive voids that propagate under flexing, no lifted edges, no adhesive wicking beyond limits.
+
+**Stiffeners:**
+- Specify stiffeners under all connector mounting areas (prevents solder-joint stress during mate/unmate).
+- Material: FR-4 for components; polyimide for ZIF connectors or thin sections.
+- Stiffeners must **not** extend into the active bend zone.
+- Stiffener overlaps coverlay by **min 30 mil (0.76 mm)**; specify rounded corners (sharp corners initiate cracks).
+
+### N.4 Trace Routing in Flex Zones (IPC-2223E, IPC-2221)
+
+Routing decisions must account simultaneously for electrical performance and bending stress.
+
+**Flex-zone routing rules:**
+- Minimum trace width meets fabricator minimum (typically **0.005" / 0.127 mm**); minimum spacing typically **0.006" / 0.152 mm** (wider spacing reduces mechanical stress concentration).
+- Curved transitions at all direction changes.
+- Teardrop pad connections at all via-to-trace junctions in or near flex zones — **mandatory for Class 3**.
+- Do not run traces parallel to the bend axis in the bend zone (parallel traces are more susceptible to delamination and cracking).
+- No large solid copper pours in flex or bend areas — use a crosshatch pattern.
+
+**Ground/power planes — crosshatch.** IPC-2223E requires crosshatch in flex zones but does not mandate a specific geometry; the designer defines it and confirms against fabricator capability:
+- Hatch conductor width (HW): minimum **0.010" (0.25 mm)** for standard fabricators (narrower risks etching non-uniformity).
+- Hatch pitch (HP): the longest opening dimension should not exceed **0.050" (1.27 mm)** (larger openings reduce shielding and create stiffness discontinuities).
+- Orientation: hatch at **45°** to the bend axis (parallel/perpendicular concentrates stress at conductor junctions).
+- Copper fill %: flexibility gain is proportional to copper removal — removing 30% gives minimal gain; **60–70% removal** produces meaningful improvement. The HW/HP ratio sets the fill %.
+- Any change to hatch geometry on an impedance-controlled design requires impedance **re-simulation**.
+- For impedance-controlled signals, specify a **narrow solid reference strip ≈2× the signal trace width** beneath each trace in place of crosshatch — explicitly designed and called out, verified by simulation; the remainder of the plane uses crosshatch.
+
+**Transition-zone routing:**
+- Gradual trace-width changes at the rigid-to-flex boundary — no abrupt neckdowns (they create mechanical stress and impedance discontinuities).
+- Keep features on outer surfaces **≥0.025" (0.64 mm)** from the flex-to-rigid transition (the rolled edge can damage features placed too close).
+- Apply strain-relief fillets to traces at the rigid-to-flex boundary (required per IPC-2223E figures).
+
+**Controlled impedance in flex:**
+- Use **flex-zone material properties** — polyimide Dk ≈ 3.4 differs from FR-4 (Dk ≈ 4.2–4.5); calculating with FR-4 values yields out-of-tolerance designs. Typical targets 50 Ω single-ended, 90–100 Ω differential.
+- Impedance test coupons must reflect the composite flex structure including coverlay.
+- Tolerance: **±10%** is the achievable baseline; **±5%** is extremely difficult in flex zones due to material movement.
+- Specify IPC-TM-650 **Method 2.5.5.7** (TDR impedance) and **2.5.5.12A** (signal loss) on the fabrication drawing for high-speed designs.
+
+### N.5 Via and PTH Design (IPC-2223E, IPC-6013)
+
+Via placement relative to the flex zone and transition line is one of the most common rigid-flex failure sources.
+
+**Placement:**
+- **No vias in dynamic flex zones** (strictly prohibited — vias crack under repeated bending).
+- Vias in static flex zones reinforced with teardrop pads; blind/buried vias preferred over PTH in flex areas (less mechanically disruptive).
+- PTH/via keepout from the flex-to-rigid transition line: **min 0.050" (1.27 mm)**, **0.100" (2.54 mm) recommended** for margin.
+- Vias on or near stiffener edges maintain **50 mil (1.27 mm)** clearance from the stiffener edge (differential stiffness raises cracking risk).
+
+**Annular ring & plating (IPC-6013 class-dependent):**
+- Class 2: controlled breakout permitted. Class 3: no fractured or lifted rings, no breakout.
+- PTH copper plating: Class 3 minimum average hole-wall **0.001" (25.4 µm)**, no point below **0.0007" (17.8 µm)**; Class 2 average **0.0008" (20.3 µm)**. Confirm against IPC-6013 tables — these differ from IPC-6012 rigid-board values.
+- Plating voids: a void = plating < 80% of required thickness, max one void per panel, never at the hole-wall/internal-layer interface. **Class 3:** zero voids in the hole wall; **no voids at the knee (pad-to-hole-wall transition) for any class.** Class 2: up to 3 sidewall voids, total ≤ 5% of hole-wall surface. Class 1: up to 3 voids ≤ 10%.
+- Teardrop pads at all via-to-trace junctions in/near flex — mandatory for Class 3.
+- Pad size per IPC-2221 formula: finished hole dia. + 2× min annular ring + fabrication allowance.
+- **Button (pad) plating vs. panel plating:** flex/rigid-flex commonly use button plating (copper deposited only at the barrels and surrounding pads, not the full surface) to preserve base-copper ductility in the flex. IPC-6013 thickness minimums then apply to the **hole wall and pad surfaces only** — reviewers from a rigid-board background may wrongly expect panel-plating uniformity across the flex. Confirm with the fabricator which method is used and how compliance is measured and qualified.
+
+### N.6 Component Placement (IPC-2223E, IPC-7711/7721)
+
+- No components in active bend zones (solder joints fail during flexing).
+- Components requiring flex-zone placement mounted on stiffeners that extend beyond the component footprint.
+- Components ≥ **0.025"** from the flex-to-rigid transition on the outer edge (rollover at the rigid edge damages parts placed too close).
+- Heavy or tall components in rigid sections only (mass/height create lever-arm stress on solder joints during flex and handling).
+- Epoxy underfill or staking on large SMT components near flex zones.
+- FPC/ZIF connector insertion-force direction verified against flex-zone orientation.
+- Test points and fiducials in rigid sections only (flex-zone fiducials shift position when the board deflects during optical inspection).
+
+**Assembly process:**
+- **Pre-bake polyimide before reflow** — polyimide absorbs up to **3% moisture by weight**, which causes delamination in reflow. Typical bake **100–120 °C for several hours immediately before reflow** (confirm exact protocol with fabricator/assembler).
+- Panelization waste tabs connect rigid sections only (never flex sections — tabs on flex compromise bend geometry during handling).
+- Specify assembly fixturing/support for SMT placement on flex-adjacent rigid sections (standard conveyors can't handle unrestrained flex).
+- Verify 3D clearance in all intended folded/bent configurations.
+
+### N.7 Rigid-to-Flex Transition Zone (IPC-2223E, IPC-6013E)
+
+The transition zone is the highest-stress location in a rigid-flex PCB and the most common failure point. IPC-6013E added explicit transition-zone acceptance criteria, recognizing it as the most failure-prone area (imperfections that do not cause functional degradation are permitted within defined limits).
+
+- Gradual taper/fillet at the boundary — no abrupt thickness changes.
+- Coverlay extends past the rigid-to-flex boundary by the specified overlap (typically **0.5–1 mm**) to engage the rigid section for mechanical anchoring.
+- Note the transition-zone inspection range on the drawing: **3.0 mm from the transition centerline**.
+- Explicitly dimension the rigid-to-flex boundary on **all** fabrication drawings (the fabricator cannot assume transition locations).
+- Use stress-relief slots or diamond cutouts where transition stress is elevated.
+- Stagger flex-layer terminations (not all ending at the same location) to distribute stress across multiple planes; maintain a symmetrical stackup in the flex; avoid unbalanced copper in adjacent rigid sections (causes bowing/twisting during reflow).
+- **Soda strawing** (a lifting/tenting of the coverlay film around a conductor, tube-like in appearance) is an accepted IPC-6013 workmanship condition that does **not** appear in IPC-6012, provided the conductor is not exposed and the coverlay stays adhered at the pad openings. Inspectors from a rigid-board background may wrongly flag it — confirm before first article that acceptance is judged against IPC-6013 / IPC-A-600, not IPC-6012.
+
+### N.8 Mechanical Analysis and Testing (IPC-TM-650)
+
+FEA is **not** universally required by IPC. For static fold-once designs, manual bend-radius calculation per IPC-2223E is typically sufficient. For **dynamic applications exceeding 1,000 cycles, FEA should be treated as mandatory** before routing begins.
+
+**Pre-layout simulation:**
+- Target bending strain **< 0.3%** across the flex region for dynamic applications. This is an industry best-practice *design target*, **not** an IPC limit — it is the threshold below which RA-copper conductor fatigue life is generally acceptable; designs exceeding it should be reassessed.
+- FEA model with correct material properties: polyimide tensile strength ≈ **231 MPa**, RA copper, adhesive layers. If simulation approaches the polyimide tensile limit, increase bend radius or change material.
+- Analyze both concave and convex bending orientations.
+- Solder-joint strain below the fatigue threshold for parts adjacent to flex (target **< 500 µε** for QFP-class parts with an FR-4 stiffener, IPC-9704).
+- Verify rounded trace corners (min **0.1 mm** radius) in the flex zone — they reduce peak stress by ≈ 40% and significantly extend fatigue life.
+
+**Vibration & thermal:**
+- Modal analysis for vibration-exposed designs (rigid-flex hinge regions exhibit different modal behavior than solid boards).
+- Fully define the dynamic bending environment: cycles, bend angle, frequency, operating temperature range (all four are required for bend-life prediction).
+- Thermal-cycling stress analysis for wide-temperature designs (CTE mismatch between polyimide, FR-4, and copper drives cyclic stress at the transition).
+
+**Physical & environmental tests (key IPC-TM-650 methods):**
+- **2.4.3** flexural endurance (dynamic) — failure criterion **10% increase in trace resistance**; bend conditions must represent worst-case in-service use.
+- **2.4.8** peel strength — coverlay adhesion meets minimum.
+- **2.6.7.2** thermal shock — **−65 °C / +150 °C for 100 cycles**, no delamination or solder-joint failure.
+- **2.6.27** thermal stress / reflow simulation — **min 6 reflow cycles at 260 °C** peak, failure = **5% resistance change** (detects latent microvia / via-barrel failures; note the 5% criterion here vs. 10% for flex endurance).
+
+### N.9 Electrical Analysis and Testing (IPC-TM-650, IPC-9257)
+
+**Pre-layout signal integrity:**
+- Impedance simulation using flex-zone material properties (polyimide Dk ≈ 3.4, **not** FR-4) — flex and rigid zones simulated separately.
+- Model insertion/return loss for high-speed differential pairs crossing the flex zone (Method 2.5.5.12A; standard rigid SI simulation won't capture the flex-zone transitions).
+- Crosstalk analysis where high-speed signals run parallel through flex (reduced ground coverage from crosshatch increases coupling; no dedicated IPC-TM-650 crosstalk method exists — verify against the system SI budget).
+- Length-match differential pairs across the rigid-to-flex boundary, accounting for the Dk difference across the transition.
+
+**Power delivery network (PDN):**
+- Verify current capacity of all power/ground conductors in flex zones per IPC-2221.
+- Voltage-drop analysis for power traces routed through flex (thin flex conductors have higher resistance per unit length than rigid traces).
+
+**Post-fabrication tests:**
+- TDR impedance (**2.5.5.7**) for all impedance-controlled designs — confirms continuity across the transition.
+- Continuity test for all nets (flying probe or fixture) — detects opens, trace breaks, plating problems.
+- Insulation resistance (**2.5.1**) — min **10 MΩ** between adjacent isolated nets.
+- Dielectric withstand / HiPot (**2.5.7.2**) — confirms insulation strength of the thin flex dielectrics.
+- Moisture & insulation resistance (**2.6.3**) for high-humidity / outdoor / industrial use.
+- Post-bend-cycle continuity — verify all nets before and after the specified bend count (10% resistance increase = failure per 2.4.3).
+
+### N.10 Fabrication Documentation and DFM (IPC-2223E, IPC-6013, IPC-A-600)
+
+Every critical rigid-flex parameter must be stated explicitly — ambiguity scraps panels and produces non-conforming deliveries.
+
+- Bend-zone location and bend radius dimensioned on the drawing.
+- Flex section labeled **static or dynamic** (drives material, copper type, and bend-radius requirements).
+- **Separate** fab notes for rigid vs. flex sections (combined notes create ambiguity).
+- Stackup diagram showing all layers with material callouts (flex PI, rigid FR-4, adhesive, prepreg) and layer boundaries.
+- Impedance details: layer, trace width, target impedance, tolerance (reference the specific flex-zone layer/dielectric stack).
+- Stiffener locations, materials, thicknesses (all explicit — cannot be inferred).
+- Coverlay type, thickness, overlap distance (distinguish polyimide coverlay from flexible LPI).
+- **IPC-6013 Class** (2 or 3) declared — cannot be retroactively upgraded after fabrication.
+- **IPC-6013 Type** declared *alongside* Class — Type 1 (single-sided flex, no PTH), Type 2 (double-sided flex with PTH), Type 3 (multilayer flex, no rigid), **Type 4 (multilayer rigid-flex with PTH — most rigid-flex designs)**, Type 5 (multilayer rigid-flex, specific construction). Type determines which fabrication/acceptance requirements apply; declaring Class without Type is incomplete.
+- Layer map identifying rigid vs. flex layers by Gerber layer number (required beyond standard Gerbers).
+- Outline drawing marking bend zones, transition zones, and stiffener locations (the primary mechanical reference for fabrication/inspection).
+- Test requirements documented: impedance coupons, bend-cycle test, **IST** (required for Class 3 qualification).
+- Visual inspection criteria: IPC-A-600 class + IPC-6013 revision (used jointly).
+- **Fabricator engagement:** review the stackup with the fab **before** routing begins; complete a DFM review before final file release (it catches manufacturability issues DRC does not); confirm fabricator capabilities — impedance Cpk, microvia capability, registration accuracy.
+
+### N.11 Industry-Specific Requirements
+
+These deltas cover only what *changes* because of the end-use industry; they do not repeat the core checks in N.2–N.10.
+
+**N.11.1 Military & Defense** — Governing: MIL-PRF-50884 (legacy flex/rigid-flex spec, still governs many active programs), MIL-PRF-31032 (all PCBs, required for new programs; mandates a DLA-qualified facility on the QPL/QML), MIL-STD-810 (environmental), MIL-STD-461 (EMC), MIL-HDBK-454.
+- MIL-PRF-31032 demands a **larger minimum annular ring** than IPC-6013 Class 3 in some via/layer configurations, **stricter surface-imperfection criteria** (measling, crazing, foreign material — stricter than IPC-A-600 Class 3), stricter solder-coating thickness, and more explicit plating-void thresholds.
+- IPC-6013 Class 3 is a **prerequisite** for both MIL specs; it does not replace either. MIL-PRF-31032 supersedes MIL-PRF-50884 for new starts but cannot be interchanged on existing programs without program-office approval.
+- **Resolve the governing-document hierarchy before inspection.** Applying IPC-6013E transition-zone criteria to a MIL-PRF-31032 program (which lacks mirrored criteria) can cause either unwarranted rejections (where IPC-6013E is more permissive) or non-conforming acceptance (where MIL-PRF-31032 is stricter). Confirm with the program quality engineer.
+- Environmental qualification must include the **transition zone** in test coupons: MIL-STD-810 Method 514 (vibration), 516 (shock), 503 (thermal cycling, −55/+125 °C with continuity monitoring), 507 (humidity).
+- EMC: verify ground-plane continuity across the transition for MIL-STD-461; a dedicated shield layer / conductive coverlay in the flex may be needed where standard crosshatch can't meet radiated limits.
+
+**N.11.2 Aerospace & Space** — Governing: adds outgassing, radiation, and space-qualification constraints beyond IPC-6013 Class 3 (IPC-6012ES, ASTM E595, NASA-STD-8739.4A, GSFC-STD-7000 GEVS, J-STD-001FS).
+- **FR-4 is prohibited for space flex** — polyimide required (FR-4 lacks the thermal stability and radiation tolerance). Rigid sections may still use high-Tg FR-4 for LEO/commercial launches (confirm via mission thermal analysis).
+- **Outgassing:** all flex-zone materials (coverlay, stiffener and flex-core adhesives, conformal coating) confirmed against ASTM E595 / NASA GSFC outgassing database — **TML < 1.0%**, **CVCM < 0.1%**. Polyimide base typically passes; acrylic coverlay/stiffener adhesives may not meet CVCM limits — verify the material lot before specifying.
+- **Thermal vacuum (TVAC)** cycling with electrical continuity monitoring across the transition; thermal-cycle profile **−40/+80 °C (LEO)** or **−55/+125 °C (GEO)** taken from the mission thermal model, not assumed.
+- Random-vibration (GEVS / GSFC-STD-7000) and pyrotechnic-shock survival verified with the board in the **deployed (bent)** configuration; flexural-endurance coupons must include the transition zone (flex-only coupons miss the highest-stress region).
+- Space soldering per **J-STD-001FS** (zero-defect for bridges/cold joints near the transition); conformal coating selectively masked so it doesn't bridge/rigidize a dynamic flex; moisture bake-out immediately before integration; **IPC-6012ES** aerospace amendment applied on top of IPC-6013 Class 3 (stricter conductor and via-quality limits — specified in addition to, not instead of, Class 3).
+
+**N.11.3 Medical Devices** — Governing: adds biocompatibility, electrical-safety, and sterilization constraints (IPC-6012EM, IEC 60601-1 / -1-2, ISO 10993, ISO 14971, ISO 11135/11137).
+- **Biocompatibility (ISO 10993):** standard industrial polyimide is **not** automatically ISO 10993 approved — confirm per ISO 10993-5 (cytotoxicity) for body-contact/implantable designs; coverlay adhesive per ISO 10993-10 (sensitization); include stiffener adhesives in the assessment (commonly overlooked).
+- **Creepage/clearance (IEC 60601-1):** distances are based on working voltage, pollution degree, and material **CTI**, and are typically larger than IPC-2221 minimums — add them as DRC constraints **before** flex-zone routing. Route Functional/Protective Earth through rigid sections where possible to avoid leakage-current paths through the flex; account for the dielectric change at the transition in leakage analysis.
+- **Sterilization:** choose the surface finish for the intended method — ENIG/ENEPIG are generally sterilization-compatible; OSP can degrade under gamma/EtO. **Parylene C** is the standard biocompatible, pinhole-free, sterilization-resistant coating for implantable / surgically-adjacent flex sections.
+- **IPC-6012EM** medical amendment applied on top of IPC-6013 Class 3 for life-critical PCBs (does not replace Class 3); **IEC 60601-1-2** EMC — crosshatch reduces shielding effectiveness vs. a solid plane, so verify immunity/emissions and transition-zone ground continuity; a thin shield layer in the flex may be needed for high-frequency sections. Confirm device classification (Class I/II/III) before fixing the fabrication standard.
+
+**N.11.4 Automotive & Functional Safety** — Governing: AEC-Q200 (passives), ISO 16750-3/4 (mechanical/climatic loads), ISO 26262 (functional safety), IPC-CC-830 (conformal coating).
+- **Temperature range:** RA copper for all flex subject to the automotive thermal-cycling range (**−40/+125 °C**, AEC-Q200 Grade 2; **Grade 0 −40/+150 °C** for under-hood/powertrain). High-Tg FR-4 or polyimide rigid for continuous +150 °C; adhesiveless flex core for engine-compartment/powertrain (thermal stability, not just dynamic flex); coverlay rated for the operating environment (standard acrylic-adhesive coverlay ≈ +105/+130 °C continuous — under-hood may need a higher-temperature adhesive).
+- ISO 16750-3 vibration (vehicle body 20–2000 Hz / powertrain 10–2000 Hz) and mechanical-shock survival; ISO 16750-4 thermal cycling and humidity/condensation — all with continuity monitoring at the flex and test coupons that include the transition zone.
+- Where the board both flexes *and* thermal-cycles (e.g., articulating camera mounts, door assemblies), calculate flex-conductor fatigue life under the **combined** loading, not each load independently.
+- **ISO 26262:** confirm the **ASIL** level before design; place test points for ASIL diagnostic circuits in **rigid sections only**; route BIST signals to test points in rigid sections; perform single-point-fault analysis treating a flex-conductor open/short at the transition as a potential ASIL-relevant failure mode — mitigate by redundant routing or declare it tolerable within the ASIL budget, and capture it in the FMEDA.
+- Conformal coating selectively masked so it doesn't bridge a dynamic flex section (a coating bridge fails by cracking and creates a contamination path), while still fully covering the transition-zone edge.
+
+### N.12 Glossary of Key Rigid-Flex Terms
+
+Brief definitions a reviewer needs; the primary governing standard is cited for each.
+
+- **Bend radius** — radius of curvature at the innermost flex surface when bent; expressed as a multiple of total flex thickness (static 6×/12×, dynamic 100×/150×/200×). The most fundamental design parameter; calculate before routing. (IPC-2223E §4)
+- **Bend ratio (r/h)** — minimum bend radius ÷ total flex thickness; quantifies bend severity and indexes IPC material/construction tables. (IPC-2223E)
+- **Bend zone** — region designed to flex; governed by via prohibition, trace orientation, copper-pour prohibition, and neutral-axis rules; the highest-stress region. (IPC-2223E)
+- **Neutral axis** — the plane through a bent laminate with no tensile/compressive strain; center flex layers and place small conductors here to minimize strain. (IPC-2223E §4)
+- **Adhesiveless flex core** — copper bonded directly to polyimide with no intermediate adhesive; far lower CTE mismatch; mandatory for dynamic flex. (IPC-2223E)
+- **RA (rolled-annealed) copper** — mechanically rolled then annealed; fine directional grain giving high ductility/fatigue resistance; mandatory for dynamic flex. (IPC-2223E)
+- **ED (electrodeposited) copper** — plated copper, columnar grain, more brittle; rigid sections only, never dynamic flex. (IPC-2223E)
+- **Coverlay** — polyimide film + adhesive laminated over flex conductors in place of solder mask; overlaps the rigid ≈0.64 mm; LPI solder mask is not acceptable in flex. (IPC-4203/1, IPC-2223E, IPC-6013)
+- **Crosshatch copper** — grid/mesh ground or power plane in the flex zone that preserves flexibility while maintaining continuity; solid pours are prohibited in flex (they act as structural elements). (IPC-2223E)
+- **No-flow / low-flow prepreg** — partially-cured bonding sheet that limits resin flow; mandatory at the rigid-to-flex boundary to keep resin out of the flex zone. (IPC-2223E)
+- **Bookbinder construction** — multilayer flex with unbonded layers free to slide through the bend; required for tight radii with 3+ flex layers (bonded layers force all layers to one radius, overstraining the outer ones). (IPC-2223E)
+- **Dynamic vs. static flex** — *dynamic* flexes repeatedly in operation (highest requirements: adhesiveless core, RA copper, 100–200× radius, flexural-endurance test); *static* folds once at assembly and stays fixed (6×/12× radius). Declare the type on the drawing. (IPC-2223E)
+- **Rigid-to-flex transition zone** — boundary where the rigid structure ends and the flex begins; highest-stress location; needs gradual taper, coverlay overlap, staggered terminations, 3.0 mm inspection zone. (IPC-2223E, IPC-6013E)
+- **Transition line** — the dimensioned boundary line on the drawing; defines the via-keepout zone (min 0.050"/1.27 mm), coverlay-overlap extent, and the inspection region. (IPC-2223E)
+- **Via keepout zone** — area around the transition line where PTH/vias are prohibited; min 0.050" (1.27 mm), 0.100" (2.54 mm) recommended. (IPC-2223E)
+- **Stiffener** — rigid backing bonded to the flex for component/connector support; FR-4 (components) or polyimide (ZIF/thin sections); must not enter the bend zone; overlaps coverlay ≥0.76 mm; rounded corners; sized beyond the component footprint. (IPC-2223E)
+- **Teardrop pad** — tapered fillet blending trace into pad; reduces stress at the via-to-trace junction; mandatory at flex via-to-trace junctions for Class 3. (IPC-6013, IPC-2223E)
+- **ZIF connector (zero insertion force)** — accepts a flex tail with no insertion force; requires a polyimide stiffener (not FR-4) sized to the connector's specified tail thickness. (IPC-2223E)
+- **Soda strawing** — tube-like lifting of coverlay around a conductor; an accepted IPC-6013 workmanship condition (absent from IPC-6012); confirm acceptance against IPC-6013/IPC-A-600. (IPC-6013, IPC-A-600)
+- **Measling / crazing** — measling = discrete white spots from glass-bundle separation; crazing = connected microcracks in the glass reinforcement; MIL-PRF-31032 rejection criteria are stricter than IPC-A-600 Class 3. (IPC-A-600, MIL-PRF-31032)
+- **Knee (via)** — the pad-to-hole-wall transition; the most mechanically stressed point in a PTH and a zero-void zone for all classes; rigid-flex via failures often initiate here, especially near the transition. (IPC-6013)
+- **Void (plating)** — hole-wall plating absent or below 80% of required thickness; Class 3 = zero voids in the hole wall; no voids at the knee for any class. (IPC-6013)
+- **Flexural endurance** — number of bend cycles a flex conductor survives before a 10% resistance increase; tested per IPC-TM-650 Method 2.4.3 with bend angle/frequency/temperature matched to service. (IPC-TM-650 2.4.3)
+- **CTE (coefficient of thermal expansion)** — expansion rate per °C; CTE mismatch between polyimide flex and FR-4 rigid drives stress at the transition under thermal cycling. (IPC-2223E, IPC-6013)
+- **Dk (dielectric constant)** — polyimide ≈3.4 vs. FR-4 ≈4.2–4.5; flex traces must be wider than equivalent rigid traces for the same impedance; using FR-4 Dk for flex yields out-of-tolerance designs. (IPC-2223E)
+- **Polyimide** — base flex dielectric: Dk ≈3.4, tensile ≈231 MPa, low CTE, up to 3% moisture absorption (pre-bake before reflow); mandatory for space flex. (IPC-2223E, IPC-4203/1)
+- **LPI solder mask** — liquid photoimageable mask; standard for rigid, not acceptable in flex (lacks the elongation-at-break to survive bending). (IPC-4203/1, IPC-6013)
+- **FPC (flexible printed circuit)** — all-flex circuit with no rigid sections; the flex-section design rules of a rigid-flex board derive from FPC practice; "FPC/ZIF connector" is the mating connector for a flex tail. (IPC-2223E)
+
+> **Note on informal terminology.** "Flex zone stiffening / rigidizing," "bookbinder construction," and "transition zone" are widely used in fabricator application notes but are not all formally defined in the current IPC-2223E revision. Where this glossary uses an informal term, the closest governing clause is cited; do not rely on informal terms in fabrication drawings or quality documentation where a formally defined IPC term or parameter exists.
+
+### N.13 Governing Standards Quick Reference
+
+- **IPC-2223E** — sectional design standard for flex/rigid-flex (primary design authority).
+- **IPC-6013 / IPC-6013E** — qualification & acceptance for flex/rigid-flex (Classes 1/2/3; E adds transition-zone criteria). Declare **Class and Type** on the drawing.
+- **IPC-2221** — generic PCB design: conductor sizing, annular-ring formula, clearances.
+- **IPC-4203/1** — coverlay / bonding materials for flex.
+- **IPC-4101** — base-material (laminate/prepreg) specification.
+- **IPC-A-600** — visual acceptance (used jointly with IPC-6013).
+- **IPC-7711/7721** — rework / repair.
+- **IPC-TM-650** test methods — 2.4.3 (flex endurance, 10% R fail), 2.4.8 (peel), 2.5.1 (insulation R), 2.5.5.7 (TDR), 2.5.5.12A (signal loss), 2.5.7.2 (HiPot), 2.6.3 (moisture), 2.6.7.2 (thermal shock), 2.6.27 (thermal stress/reflow, 5% R fail).
+- **Industry:** MIL-PRF-50884 / MIL-PRF-31032, MIL-STD-810 / 461 (military); IPC-6012ES, ASTM E595, NASA-STD-8739.4A, GSFC-STD-7000, J-STD-001FS (aerospace/space); IPC-6012EM, IEC 60601-1 / -1-2, ISO 10993, ISO 11135/11137 (medical); AEC-Q200, ISO 16750-3/4, ISO 26262, IPC-CC-830 (automotive).
