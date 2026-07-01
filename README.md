@@ -15,7 +15,7 @@ cd ThomsonLint
    ```
    One command per editor produces the JSON connectivity export, layer stackup JSON (board only), and high-resolution image renders. To customise output paths or DPI, run the three underlying ULPs (`fusion-electronics-export.ulp`, `fusion-electronics-stackup.ulp`, `fusion-electronics-images.ulp`) directly — see §7.
 
-**KiCad 9:**
+**KiCad 9 / 10:**
 1. Run `python tools/kicad-export.py path/to/MyProject.kicad_pro`
 
 **Then** run Claude Code from the repo root and type `/design-review` at the prompt:
@@ -83,7 +83,7 @@ The repository is organized as follows:
 -   `examples/examples.json`: A set of example hardware design scenarios for training and testing.
 -   `docs/REVIEWER_INSTRUCTIONS.md`: The single source of truth for how a review is conducted; consumed by both Claude Code and the bundled web-AI workflow.
 -   `docs/AI_Hardware_Design_Review_KnowledgeBase.md`: A detailed, human-readable knowledge base.
--   `docs/KiCad_Review_Guide.md`: Usage guide for the KiCad 9 export workflow.
+-   `docs/KiCad_Review_Guide.md`: Usage guide for the KiCad 9 / 10 export workflow.
 -   `docs/Multi_Agent_Reasoning_Spec.md`: A specification for a conceptual multi-agent reasoning architecture.
 -   `tests/ontology_schema.json`: A JSON schema for validating `ontology/ontology.json`.
 -   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
@@ -93,7 +93,7 @@ The repository is organized as follows:
 -   `tools/fusion-electronics-export.ulp`: ULP that exports schematic and board connectivity/placement to JSON. Run from each editor.
 -   `tools/fusion-electronics-stackup.ulp`: ULP that exports the layer stack (copper ordering, used-vs-unused layers) to JSON. Run from the board editor.
 -   `tools/fusion-electronics-images.ulp`: ULP that renders the schematic sheets and per-layer board images as high-resolution PNGs (300 DPI schematic / 1200 DPI board defaults). Run from each editor.
--   `tools/kicad-export.py`: Standalone Python script to export KiCad 9 designs for review.
+-   `tools/kicad-export.py`: Standalone Python script to export KiCad 9 / 10 designs for review.
 -   `tools/yt-transcript.py`: Pulls a YouTube video transcript (via yt-dlp) with creator metadata in the header, as raw material for knowledge-base additions. See CLAUDE.md "Ingesting YouTube Content" — KB additions derived from a video must credit the creator (their homepage info feeds the `**Source:**` line).
 -   `tools/validate_findings.py`: Coverage validator — schema-checks the findings JSON, lists every input in `exports/` not cited in any `evidence[].source`, and flags missing required fields. Mandatory gate before generating the HTML report.
 -   `tools/gen_report.py`: Generates the self-contained HTML review report from findings JSON; embeds image evidence as inline thumbnails.
@@ -222,7 +222,7 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 - Claude Code CLI installed and authenticated
 - ThomsonLint repository cloned locally
-- Design exported from Fusion Electronics or KiCad 9 (see below)
+- Design exported from Fusion Electronics or KiCad 9 / 10 (see below)
 
 ### Step 1: Export Design Data from Fusion Electronics
 
@@ -276,9 +276,9 @@ RUN fusion-electronics-stackup.ulp                # layer stack JSON
 RUN fusion-electronics-images.ulp                 # PNG renders (run last — it terminates the chain)
 ```
 
-### Step 1 (Alternative): Export Design Data from KiCad 9
+### Step 1 (Alternative): Export Design Data from KiCad 9 / 10
 
-If your design is in KiCad 9, use the standalone Python exporter instead:
+If your design is in KiCad 9 or KiCad 10, use the standalone Python exporter instead:
 
 ```bash
 python tools/kicad-export.py path/to/MyProject.kicad_pro
@@ -286,7 +286,7 @@ python tools/kicad-export.py path/to/MyProject.kicad_pro
 
 This generates both `-thomson-export-sch.json` and `-thomson-export-brd.json` files in the `exports/` directory. Use `--output <dir>` to specify a different output directory.
 
-The script parses KiCad 9 S-expression files directly — no KiCad installation required, Python 3.6+ standard library only. It handles hierarchical multi-sheet schematics, reads net classes from the project file, and classifies signals (power, ground, clock, differential pairs with interface detection for USB, CAN, Ethernet, HDMI, LVDS, PCIe, SATA, MIPI).
+The script parses KiCad S-expression files directly — no KiCad installation required, Python 3.6+ standard library only. It auto-detects the board net format (KiCad 9's top-level net table vs. KiCad 10's name-only inline references), handles hierarchical multi-sheet schematics, reads net classes from the project file, and classifies signals (power, ground, clock, differential pairs with interface detection for USB, CAN, Ethernet, HDMI, LVDS, PCIe, SATA, MIPI).
 
 See [`docs/KiCad_Review_Guide.md`](docs/KiCad_Review_Guide.md) for full details on the KiCad export format.
 
