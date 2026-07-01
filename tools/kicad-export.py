@@ -165,6 +165,20 @@ def _to_int(val):
             return 0
 
 
+def _is_int_token(tok):
+    """True if tok is a bare integer literal like '0', '185', '-1'.
+
+    Used to tell a KiCad 9 net ordinal (an integer) apart from a KiCad 10
+    net name (an arbitrary string) inside a two-element (net ...) reference.
+    Every S-expression atom reaches us as a string, so this is a syntactic
+    check, not an isinstance check.
+    """
+    if not isinstance(tok, str) or not tok:
+        return False
+    body = tok[1:] if tok[0] in '+-' else tok
+    return body.isdigit()
+
+
 def _get_scalar(node, tag):
     """Get first scalar value after tag in a child list: (tag value) -> value."""
     child = find_one(node, tag)
@@ -586,19 +600,26 @@ def _extract_layers(sexpr):
 def _resolve_net(net_node, name_to_id):
     """Return (net_id, net_name) handling KiCad 9 and KiCad 10 formats.
 
-    KiCad 9: pads/tracks/vias/zones use (net N "Name") -- explicit integer
-        ID + name.
-    KiCad 10: same nodes use (net "Name") only -- the ID is no longer
-        carried inline, so we look it up in the synthesized name_to_id map
-        produced by _extract_nets.
+    KiCad 9: pads carry (net N "Name") -- explicit integer ordinal + name;
+        tracks, vias and zones carry the ordinal alone as (net N).
+    KiCad 10: pads/tracks/vias/zones all carry (net "Name") only -- the
+        integer ordinal is gone, so we look the id up in the synthesized
+        name_to_id map produced by _extract_nets.
     """
     if not net_node or len(net_node) < 2:
         return 0, ""
-    # KiCad 9: 3 elements (net id "name") with int id and string name.
+    # KiCad 9 pad: 3 elements (net id "name") with int id and string name.
     if len(net_node) >= 3 and isinstance(net_node[2], str):
         net_id = _to_int(net_node[1])
         if net_id is not None:
             return net_id, net_node[2]
+    # KiCad 9 track/via/zone: 2 elements (net <ordinal>) -- a bare integer id.
+    # This MUST be checked before the KiCad 10 name branch: every S-expression
+    # atom reaches us as a string, so an ordinal like "185" would otherwise be
+    # mistaken for a net *name*, miss the name_to_id lookup, and collapse to
+    # net_id 0 -- zeroing every per-net trace statistic on KiCad 9 boards.
+    if _is_int_token(net_node[1]):
+        return _to_int(net_node[1]), ""
     # KiCad 10: 2 elements (net "name").
     if isinstance(net_node[1], str):
         name = net_node[1]
@@ -609,9 +630,9 @@ def _resolve_net(net_node, name_to_id):
 def _extract_nets(sexpr):
     """Extract net definitions.  Returns (nets_by_id, name_to_id).
 
-    KiCad 9 (.kicad_pcb up to v20231120): top-level (net N "name") blocks
+    KiCad 9 (.kicad_pcb version 20241229): top-level (net N "name") blocks
         give the canonical id<->name map.
-    KiCad 10 (v20260206 onward): no top-level (net N "name") -- net names
+    KiCad 10 (version 20260206): no top-level (net N "name") -- net names
         only appear inline as (net "name") inside pads/segments/vias/zones.
         We synthesize sequential ids (starting at 1) by discovery order so
         downstream code keeps working unchanged.

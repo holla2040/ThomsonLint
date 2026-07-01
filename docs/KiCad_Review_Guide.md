@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python 3.6+ (no external dependencies)
-- KiCad 9.0+ project files (`.kicad_pro`, `.kicad_sch`, `.kicad_pcb`)
+- KiCad 9.0 or KiCad 10.0 project files (`.kicad_pro`, `.kicad_sch`, `.kicad_pcb`)
 
 ## Quick Start
 
@@ -75,4 +75,14 @@ Components are classified by reference designator prefix (U=IC, C=capacitor, R=r
 
 ## Supported Versions
 
-Tested with KiCad 9.0 file format (version 20241229 PCB, 20250114 schematic). Compatible with any KiCad 9.x project.
+Tested against real projects from both major releases:
+
+| KiCad | PCB format | Schematic format | Board net references |
+|-------|-----------|------------------|----------------------|
+| 9.0   | `20241229` | `20250114` | Top-level net table `(net N "name")`; pads/tracks/vias/zones reference nets by integer ordinal |
+| 10.0  | `20260206` | `20260306` | No net table; pads/tracks/vias/zones carry the name inline as `(net "name")` |
+
+The exporter detects the format automatically. For KiCad 10 boards (which
+dropped the net table and integer ordinals) it synthesizes sequential net
+ordinals in discovery order so the JSON output shape is identical across
+versions. Compatible with any KiCad 9.x or 10.x project.
