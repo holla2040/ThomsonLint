@@ -8,6 +8,9 @@ cd ThomsonLint
 ```
 
 **Fusion Electronics:**
+
+> **New — live capture:** with the design open in Fusion, Claude Code can pull the export data itself (all sheets, board, stackup, images) — no manual ULP run. Enable it once via §7 "Reading from Fusion Electronics", then just `/design-review`. The manual steps below remain the validated fallback.
+
 1. Open your circuit design in Fusion Electronics.
 2. From **both** the schematic editor and the board editor, run:
    ```
@@ -222,11 +225,33 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 - Claude Code CLI installed and authenticated
 - ThomsonLint repository cloned locally
-- Design exported from Fusion Electronics or KiCad 9 / 10 (see below)
+- Design exported from Fusion Electronics or KiCad 9 / 10 — or, for live capture, the design simply **open in Fusion** with the bridge configured (see "Reading from Fusion Electronics" below)
+
+### Reading from Fusion Electronics
+
+Live capture (Step 1 below) talks to a **running** Fusion instance over a local HTTP endpoint Fusion itself publishes — no file uploads, no manual ULP runs. One-time setup:
+
+1.  **Enable Fusion's API server.** In Fusion: **Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks reads).
+2.  **(WSL2 only) Bridge the port into WSL.** Fusion listens on the *Windows* loopback, which WSL2's NAT cannot reach. From an elevated **Windows** PowerShell, forward the WSL gateway IP to Fusion's loopback:
+    ```powershell
+    netsh interface portproxy add v4tov4 listenaddress=<WSL-gateway-IP> listenport=27182 connectaddress=127.0.0.1 connectport=27182
+    ```
+    Use the **gateway IP** — from WSL, `ip route | grep default | awk '{print $3}'` — **not** `0.0.0.0` (that hijacks Fusion's own loopback). Turn Tailscale off if it claims the route; you may also need a firewall allow-rule and `Restart-Service iphlpsvc`.
+3.  **Verify.** From the repo root in WSL:
+    ```bash
+    python tools/fusion_bridge.py ping
+    ```
+    Success prints the open design's name and sheet count. If it can't connect, override the host with `--fusion-host <ip>` or `$THOMSONLINT_FUSION_HOST`.
+
+This mirrors the setup proven by the companion `hendley` project; see its `docs/fusion-notes.md` for the deep dive and troubleshooting.
 
 ### Step 1: Export Design Data from Fusion Electronics
 
-The simplest path is the wrapper ULP — one command per editor, no flags:
+You can get the design data into `exports/` two ways:
+
+**Live capture (preferred, new).** If the design is open in Fusion Electronics, Claude Code pulls everything itself — every schematic sheet, the board, stackup, and image renders — by driving the running Fusion session over HTTP and running the export ULPs for you. You run no ULP by hand: start the review with the design open and the bridge configured (see "Reading from Fusion Electronics" above), and the reviewer follows "Step 0 — Live Fusion Capture" in `docs/REVIEWER_INSTRUCTIONS.md` using `tools/fusion_bridge.py`. It produces the same files as the manual path below. (The manual ULP export remains the validated fallback.)
+
+**Manual ULP export (fallback).** The simplest by-hand path is the wrapper ULP — one command per editor, no flags:
 
 1.  **Open your design in Fusion Electronics.**
 2.  **From the Schematic Editor**, run:

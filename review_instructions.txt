@@ -9,6 +9,57 @@ This document is the single source of truth for how a ThomsonLint review is cond
 
 ---
 
+## Step 0 — Live Fusion Capture (when the design is open in Fusion Electronics)
+
+If the design is currently open in Fusion Electronics, capture the export data **yourself** — do not ask the user to run a ULP by hand. `tools/fusion_bridge.py` drives the running Fusion session over HTTP; you sequence the steps below. This uses the existing export ULPs (so the output is identical to the manual path — same connectivity, layout, pre-computed analysis, and PNG renders), it just runs them without a human at the EAGLE prompt.
+
+Prerequisite: the Fusion-side setup in README "Reading from Fusion Electronics" (the "Fusion MCP Server" toggle enabled, the WSL `netsh` port-proxy, no modal dialog open). **If any step below fails, fall back to the Manual ULP export path** — ask the user to run `RUN fusion-electronics-all.ulp` in each editor (README §7 Step 1). Do live capture only when `exports/` lacks a current `*-thomson-export-*.json`, or the user asks for a fresh capture.
+
+1.  **Preflight.** `python tools/fusion_bridge.py ping`. A non-zero exit means the session isn't reachable — fall back to the manual path.
+2.  **Stage the ULPs** onto a Windows-visible path (Fusion runs on Windows and must `RUN` the ULP from a `C:\…` path):
+
+    ```bash
+    STAGE=$(python tools/fusion_bridge.py stage-ulps)   # prints the C:\...\tools dir; output lands in its sibling exports\
+    ```
+
+    Its stderr prints the WSL path where output will land and the exact `cp` to copy it back.
+3.  **Count sheets** so you know how many schematic PNGs to expect:
+
+    ```bash
+    python tools/fusion_bridge.py read electronics.Sheet
+    ```
+4.  **Schematic pass** — one export run captures every sheet (the ULP walks all of them):
+
+    ```bash
+    python tools/fusion_bridge.py eagle "EDIT .S1;"
+    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-export.ulp'"
+    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-images.ulp'"
+    ```
+5.  **Board pass:**
+
+    ```bash
+    python tools/fusion_bridge.py eagle "BOARD;"
+    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-export.ulp'"
+    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-stackup.ulp'"
+    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-images.ulp'"
+    ```
+6.  **Copy the results into `exports/`** using the `cp` line that `stage-ulps` printed, e.g.:
+
+    ```bash
+    cp /mnt/c/Users/Public/thomsonlint/exports/*-thomson-export-*.json \
+       /mnt/c/Users/Public/thomsonlint/exports/*-img-*.png exports/
+    ```
+7.  **Verify by the files on disk** — `Electron.run` returns no echo, so the command results don't confirm success. Check that `exports/` now holds `*-thomson-export-sch.json`, `*-thomson-export-brd.json`, `*-thomson-export-stack.json`, one `*-img-sch-p<N>.png` per sheet (matching step 3's count), and the silk/copper PNGs. A missing file usually means a modal dialog was open in Fusion, or that pass's editor wasn't the current drawing — re-run that pass, or fall back to manual.
+
+Then continue with the Process below against the now-populated `exports/`.
+
+Notes:
+- Run the child ULPs **individually** as shown — not the `fusion-electronics-all.ulp` wrapper, whose `exit(...)`-based chaining is fragile when dispatched over the bridge. Run `images` **last** in each pass (it terminates the ULP via `exit()`).
+- `WINDOW FIT` before each render is handled inside `fusion-electronics-images.ulp`; you don't issue it.
+- Quote ULP paths with **single** quotes — the bridge rejects a command containing double quotes.
+
+---
+
 ## Process
 
 Follow this multi-step process:
@@ -20,7 +71,7 @@ Follow this multi-step process:
 
     (Bundle path: the knowledge base is concatenated below the `KNOWLEDGE BASE START` marker in `review_instructions.txt`.)
 
-2.  **Pre-Review Assessment.** Analyze the user's request and any uploaded design files. Before starting the detailed review, determine if critical design-specific context is missing. This includes, but is not limited to:
+2.  **Pre-Review Assessment.** Analyze the user's request and any uploaded design files. If the design is open in Fusion Electronics and `exports/` has no current `*-thomson-export-*.json`, run **Step 0 — Live Fusion Capture** first to populate it. Before starting the detailed review, determine if critical design-specific context is missing. This includes, but is not limited to:
     *   Datasheets for critical ICs (e.g., power converters, MCUs, transceivers).
     *   Component values or ratings (e.g., inductor saturation current, fuse ratings, capacitor values).
     *   PCB manufacturing specifications (e.g., layer stackup, copper weight, dielectric material). Before asking the user, check `exports/` for `<project>-thomson-export-stack.json` — if present, ingest it and only ask the user for what the stackup JSON does not provide (typically dielectric material and copper weight).
@@ -77,7 +128,7 @@ In addition to the schematic and board JSON exports, ThomsonLint produces a stac
 *   **`<project>-img-silk-top.png`, `<project>-img-silk-bot.png`** — silkscreen renders. Cite for legibility, ref-des placement, fiducial presence, polarity/orientation marker, or component-courtyard-overlap claims.
 *   **`<project>-img-cu-L<num>-<name>.png`** — one PNG per used copper layer with traces, filled pours (RATSNEST applied), unrouted airwires, restrict zones, component outlines, and pad/via locations. Cite for decoupling proximity, pour integrity, plane splits, trace-width-vs-current, return-path discontinuities, and clearance-zone claims.
 
-Generate these alongside the JSON exports. The recommended path is the wrapper ULP — one command per editor:
+Generate these alongside the JSON exports. When the design is open in Fusion, the preferred path is **Step 0 — Live Fusion Capture** above (you run the ULPs over the bridge). Otherwise — or if the bridge is unavailable — have the user run the wrapper ULP, one command per editor:
 
 ```
 RUN fusion-electronics-all.ulp                     # one command per editor — runs all of the children below
@@ -115,7 +166,7 @@ For decoupling checks (`PWR_DECPL_001`):
 *   If pre-computed data is not available, manually compute: find the IC's power pin pad coordinates, find the nearest cap pad on the same net, and use Euclidean distance.
 *   Component centroids can be 5-10 mm from the actual power pin on larger packages (SO8, TQFP, QFN), producing inflated distances and false positives.
 
-To generate the ThomsonLint JSON exports, run the export ULP from the Fusion Electronics (EAGLE) schematic editor:
+To generate the ThomsonLint JSON exports from a live Fusion session, use **Step 0 — Live Fusion Capture** above. To generate them manually, run the export ULP from the Fusion Electronics (EAGLE) schematic editor:
 
 ```
 RUN fusion-electronics-export.ulp
