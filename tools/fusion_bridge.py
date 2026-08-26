@@ -18,11 +18,16 @@ How it talks to Fusion (vendored from the ``~/hendley`` project's verified
   Preferences > General > API > "Fusion MCP Server" is enabled. That Autodesk
   toggle is the only thing here named "MCP" — this is plain JSON-RPC over HTTP,
   no MCP client library involved.
-- On WSL2, Fusion listens on the *Windows* loopback, which WSL's NAT cannot
-  reach. Connect to the Windows host = the WSL default-gateway IP (never
-  ``127.0.0.1`` from WSL), with a Windows ``netsh interface portproxy`` rule
-  forwarding ``<gateway-ip>:27182`` → ``127.0.0.1:27182`` (bind the gateway IP,
-  not ``0.0.0.0``). See README "Reading from Fusion Electronics".
+- The right host depends on the WSL networking mode (``wslinfo
+  --networking-mode``). **Mirrored**: WSL shares the Windows loopback, so
+  ``127.0.0.1:27182`` works directly and no portproxy may exist (a stale
+  ``0.0.0.0`` rule steals Fusion's bind). **NAT**: the Windows loopback is
+  unreachable; connect to the WSL default-gateway IP through a Windows
+  ``netsh interface portproxy`` rule forwarding ``<gateway-ip>:27182`` →
+  ``127.0.0.1:27182`` (bind the gateway IP, not ``0.0.0.0``).
+  :func:`_default_host` probes loopback first and falls back to the gateway,
+  so both modes work unconfigured. See README "Reading from Fusion
+  Electronics"; troubleshoot with ``~/claude-code-fusion-mcp-check/check.sh``.
 - ...but send ``Host: 127.0.0.1:27182`` on every request — the server validates
   the ``Host`` header and 403s ("Invalid Host header") on the gateway IP.
 - Capture the ``MCP-Session-Id`` response header from ``initialize`` and resend it;
@@ -46,6 +51,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import urllib.error
@@ -58,9 +64,10 @@ SETUP_HINT = (
     "Could not reach Fusion's MCP server. Check that:\n"
     "  1. Fusion is running with an Electronics design open (no modal dialog).\n"
     "  2. Preferences > General > API > 'Fusion MCP Server' is enabled.\n"
-    "  3. From WSL, a netsh portproxy forwards <gateway-ip>:27182 -> 127.0.0.1:27182\n"
-    "     (bind the gateway IP, not 0.0.0.0; turn Tailscale off). See the README\n"
-    "     section 'Reading from Fusion Electronics'.\n"
+    "  3. NAT-mode WSL only: a netsh portproxy forwards <gateway-ip>:27182 ->\n"
+    "     127.0.0.1:27182 (bind the gateway IP, not 0.0.0.0; turn Tailscale off).\n"
+    "     Mirrored-mode WSL shares the Windows loopback and needs no portproxy.\n"
+    "  Diagnose layer-by-layer: ~/claude-code-fusion-mcp-check/check.sh\n"
     "  Override the host with --fusion-host or $THOMSONLINT_FUSION_HOST."
 )
 
@@ -83,6 +90,21 @@ def _default_gateway() -> str:
     raise BridgeError("no default gateway found; pass the Fusion host explicitly")
 
 
+def _default_host(port: int = DEFAULT_PORT) -> str:
+    """Pick the host that actually reaches Fusion, whatever the WSL mode.
+
+    Mirrored-mode WSL shares the Windows loopback (and its default gateway is
+    just the LAN router, which can never work); NAT-mode WSL reaches Fusion
+    only through the gateway portproxy. A quick connect probe on loopback
+    distinguishes the two without asking which mode this is.
+    """
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.25):
+            return "127.0.0.1"
+    except OSError:
+        return _default_gateway()
+
+
 def wsl_to_windows(path: str) -> str:
     """``/mnt/c/Users/Public/x`` -> ``C:\\Users\\Public\\x`` for use in EAGLE commands."""
     m = re.match(r"^/mnt/([a-zA-Z])/(.*)$", path)
@@ -99,7 +121,8 @@ class FusionBridge:
     """One HTTP session to Fusion's local endpoint.
 
     Host resolution order: explicit ``host`` arg → ``THOMSONLINT_FUSION_HOST`` →
-    ``HENDLEY_FUSION_HOST`` → the WSL default-gateway IP. The session id is held
+    ``HENDLEY_FUSION_HOST`` → loopback if it answers (mirrored WSL), else the
+    WSL default-gateway IP (NAT WSL). The session id is held
     in-process and created lazily on the first call.
     """
 
@@ -108,7 +131,7 @@ class FusionBridge:
             host
             or os.environ.get("THOMSONLINT_FUSION_HOST")
             or os.environ.get("HENDLEY_FUSION_HOST")
-            or _default_gateway()
+            or _default_host(port)
         )
         self.url = f"http://{self.host}:{port}/mcp"
         self._loopback = f"127.0.0.1:{port}"  # what the Host header must read as

@@ -232,7 +232,7 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 Live capture (Step 1 below) talks to a **running** Fusion instance over a local HTTP endpoint Fusion itself publishes — no file uploads, no manual ULP runs. One-time setup:
 
 1.  **Enable Fusion's API server.** In Fusion: **Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks reads).
-2.  **(WSL2 only) Bridge the port into WSL.** Fusion listens on the *Windows* loopback, which WSL2's NAT cannot reach. From an elevated **Windows** PowerShell, forward the WSL gateway IP to Fusion's loopback:
+2.  **(NAT-mode WSL2 only) Bridge the port into WSL.** Check the mode with `wslinfo --networking-mode`. **Mirrored** mode shares the Windows loopback — skip this step entirely, and make sure *no* portproxy rule exists on 27182 (a leftover `0.0.0.0` rule steals Fusion's bind). In **NAT** mode the Windows loopback is unreachable from WSL2; from an elevated **Windows** PowerShell, forward the WSL gateway IP to Fusion's loopback:
     ```powershell
     netsh interface portproxy add v4tov4 listenaddress=<WSL-gateway-IP> listenport=27182 connectaddress=127.0.0.1 connectport=27182
     ```
@@ -241,7 +241,7 @@ Live capture (Step 1 below) talks to a **running** Fusion instance over a local 
     ```bash
     python tools/fusion_bridge.py ping
     ```
-    Success prints the open design's name and sheet count. If it can't connect, override the host with `--fusion-host <ip>` or `$THOMSONLINT_FUSION_HOST`.
+    Success prints the open design's name and sheet count. The bridge probes loopback first (mirrored WSL) and falls back to the gateway (NAT WSL) automatically. If it can't connect, run `~/claude-code-fusion-mcp-check/check.sh` — it diagnoses the link layer by layer and prints the exact fix — or override the host with `--fusion-host <ip>` / `$THOMSONLINT_FUSION_HOST`.
 
 This mirrors the setup proven by the companion `hendley` project; see its `docs/fusion-notes.md` for the deep dive and troubleshooting.
 
