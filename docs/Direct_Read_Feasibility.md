@@ -5,6 +5,12 @@
 **Verified against:** live Fusion Electronics session, design `series-shunt`
 (1 sheet, 74 components placed, unrouted), Fusion MCP Server over the
 `tools/fusion_bridge.py` transport and the registered `fusion` MCP tools.
+**Independently re-verified** the same day by a fresh agent, which confirmed
+the conclusion and corrected several claims (the `objectId` quirk's scope,
+the `Layer.used` failure mode, "verified" labels that rested on empty reads)
+and surfaced gaps 5–7 below. Entities the unrouted test design had zero rows
+for — `PolyPour`, `Via`, `Hole`, signal-parented `Wire` — remain
+**schema-verified only** until the comet parity diff.
 
 ## Verdict
 
@@ -15,8 +21,9 @@ The two JSON exporters (`fusion-electronics-export.ulp` both modes,
 `fusion_mcp_electronics_read` queries: everything they write is either
 directly readable as an entity field or derivable client-side from raw
 entity rows with the same arithmetic the ULP already performs. The gaps
-found are small, enumerated below, and none regress against what the ULP
-produces today.
+found are small and enumerated below; two genuinely lose data the ULP
+exports today (net-class clearance, the active assembly variant), the rest
+have workarounds.
 
 **`fusion-electronics-images.ulp` is replaceable too — not by reads, but by
 dispatching its EAGLE command stream directly** (the pattern proven in
@@ -32,8 +39,10 @@ DISPLAY ALL; EDIT .sch;
 ```
 
 — produced a correct top-copper review PNG (copper+pads, THT pads, airwires,
-outline, placement context; 2270×1420 px at 300 DPI = exactly the 192×120 mm
-board), and the execute channel was **not latched afterward**. A schematic
+outline, placement context; 2270×1420 px at 300 DPI ≈ the 192×120 mm board —
+the outline wires read exactly 0,0→192,0→192,120→0,120, and the render adds
+a small WINDOW FIT margin), and the execute channel was **not latched
+afterward**. A schematic
 `WINDOW FIT; EXPORT IMAGE` pair worked identically. There is still no render
 *endpoint* (screenshot query returns "No active graphics view" for the 2D
 editors) — the PNGs land on the Fusion host's filesystem and are read back
@@ -54,7 +63,7 @@ and `stage-ulps` is no longer needed at all.
 | ULP output | MCP source | Status |
 |---|---|---|
 | `project.name` | `electronics.Schematic.name` (temp path; strip like `FusionBridge.design_name()`) | verified |
-| `project.variant` | `electronics.Variant` / `electronics.VariantDef` | verified (empty = no variants) |
+| `project.variant` | `electronics.Variant` / `electronics.VariantDef` — but the *active* variant is not identifiable (gap 5) | partial |
 | `project.sheets` | `electronics.Sheet` row count | verified |
 | `components[].ref`, `.value` | `electronics.Part.name`, `.value` | verified |
 | `components[].package` | `Part.device_object_id` → `Device.package_object_id` → `Package.name` | verified |
@@ -74,14 +83,14 @@ and `stage-ulps` is no longer needed at all.
 | ULP output | MCP source | Status |
 |---|---|---|
 | `components[]` placement (`x/y/rotation/side`) | `electronics.Element` (`x`, `y`, `angle`, `mirror`, plus `populate`, `locked`) | verified |
-| `components[].pads[]` (absolute) | `electronics.Smd` + `electronics.Pad` — **global board coords** with resolved `signal` name; join `contact_object_id` to `ContactRef` | verified (better than ULP: signal + drill + geometry per pad) |
+| `components[].pads[]` (absolute) | `electronics.Smd` + `electronics.Pad` — **global board coords** with resolved `signal` name; element attribution via `ContactRef` join for connected pads, `Contact`+`Element` transform for unconnected ones (gap 6) | verified for connected pads (better than ULP there: signal + drill + geometry per pad) |
 | `board.area` | **gap** — `electronics.Board` has no bbox; derive from layer-20 (`BoardOutline`) `Wire` rows with `board_object_id` set | verified (outline wires read 0,0→192,0→192,120…) |
-| `board.layers_used`, `layer_count` | `electronics.Layer` — but Fusion reports `used:1` for essentially every layer; derive copper usage from `Wire`/`Smd`/`PolyPour` presence per layer (the images ULP already uses the same workaround for its pre-scan) | workaround |
+| `board.layers_used`, `layer_count` | `electronics.Layer` — but `used` is unreliable as a content indicator (see gap 4); derive copper usage from signal-parented `Wire`/`Smd`/`PolyPour` presence per layer (the images ULP's pre-scan workaround) | workaround |
 | `board.holes` | `electronics.Hole` (`x`, `y`, `drill`) | schema verified; design had none |
 | `board.polygons` | `electronics.PolyPour` (`layer`, `isolate`, `rank`, `thermals` + `hatched`, `orphans`, `thermal_width`) via `signal_object_id` → `Signal.name` | schema verified; design had none — needs a poured design (comet) for parity |
 | `signals[]` name/classification | `electronics.Signal.name` + client-side heuristics | verified |
 | `signals[]` trace aggregates (`trace_length_mm`, min/max width, `segment_count`) | derive from `electronics.Wire` rows (`signal_object_id`, `layer`, `width`, endpoints) — same arithmetic the ULP runs | client-side |
-| `signals[].trace_segments[]` | the same `Wire` rows, verbatim | verified |
+| `signals[].trace_segments[]` | the same `Wire` rows, verbatim | schema-verified (test board unrouted — zero signal-parented copper wires; comet parity diff must exercise this) |
 | `signals[].via_count` | `electronics.Via` — richer than the ULP (drill, diameter, layer span, tenting flags) | schema verified; design unrouted |
 | `analysis.component_edge_distances` | derive: `Element` positions vs. outline bbox | client-side |
 | `analysis.decoupling_proximity` | derive: `ContactRef` ⋈ `Smd`/`Pad` (global coords) ⋈ `Signal` ⋈ `Element` | client-side |
@@ -93,10 +102,10 @@ and `stage-ulps` is no longer needed at all.
 |---|---|---|
 | `all_layers[]` | `electronics.Layer` (`number`, `name`, `used`, `visible`) + the `IsCopperLayer` port | verified (with the `used` caveat above) |
 | `copper_stack[]` physical order | same `CopperRank` logic, client-side | port |
-| `board_description` | `electronics.Board.description` | verified |
+| `board_description` | `electronics.Board.description` | field verified (empty on test design) |
 | per-layer thickness / material | not exposed — **same gap the ULP has** (.dru not reachable); no regression | parity |
 
-## Gaps (none regress vs. the ULP)
+## Gaps
 
 1. **`NetClass.clearance` is not exposed** (only `name`, `number`, `width`,
    `drill`). The ULP exports `clearance_mm` per net class. Losing it means the
@@ -110,9 +119,31 @@ and `stage-ulps` is no longer needed at all.
 3. **Board bbox** must be computed from outline wires instead of `B.area`.
    Slightly different semantics (true outline extent vs. drawing extent) —
    arguably more correct.
-4. **`Layer.used` is unreliable** in Fusion (everything reads 1); copper-layer
-   usage must be derived from object presence per layer — the images ULP
-   already ships this exact workaround, so port it.
+4. **`Layer.used` is unreliable as a content indicator — in both
+   directions.** It is *not* all-1s (Route2..Route63 read `used:0` on the
+   test board), but it over-reports (Bottom reads 1 on an unrouted board;
+   surely-empty user layers like fp8/HeatSink read 1) and — per the images
+   ULP's own documented failure mode — under-reports pour-only inner layers
+   (`used==0`). Derive copper usage from object presence per layer, and
+   **filter the presence scan to signal-parented objects**
+   (`signal_object_id != 0`): package pad geometry appears as copper-layer
+   `Wire` rows with `signal_object_id:0` and would false-positive a naive
+   scan. The ULP's prescan iterates `B.signals(S)` wires only — match that.
+5. **The active assembly variant is not readable.** The ULP writes
+   `project.variant` from `variant()` — the *currently active* variant.
+   `VariantDef` has no active/current flag and `Variant` is per-part, so on a
+   design that defines variants the direct path cannot reproduce this field.
+   Emit the `VariantDef` list and `null` for the active one; flag to
+   Autodesk.
+6. **Unconnected pads lose element attribution via the join path.**
+   `Smd`/`Pad` rows carry no element id; attribution runs through
+   `ContactRef`, which exists only for *connected* pads. An unconnected
+   pad must be attributed by transforming `Contact` (package-local x/y)
+   through `Element` placement client-side. The ULP's
+   `E.package.contacts` covers all pads unconditionally.
+7. **`electronics.Error.type` enum drift.** The schema resource documents
+   3=airwire, but live airwire rows read `type:4` (description "Air Wire",
+   layer 19). Classify by `description`/`layer`, not by the schema's enum.
 
 ## Advantages over the ULP path
 
@@ -137,9 +168,10 @@ and `stage-ulps` is no longer needed at all.
   (`FusionBridge.read_all` / steinmetz `electronics_read` both do).
 - Every response carries `coordinate_unit` (mm here). Units follow the
   document grid unit — check it per capture rather than assuming mm.
-- `electronics.Schematic` and `electronics.Board` use camelCase `objectId`;
-  every other entity uses snake_case `object_id`. Field selection must match
-  (`{"fields": ["object_id"]}` errors on Schematic).
+- `electronics.Schematic` — alone — uses camelCase `objectId`; every other
+  entity, `electronics.Board` included, uses snake_case `object_id`. Field
+  selection must match (`{"fields": ["object_id"]}` errors on Schematic;
+  `{"fields": ["objectId"]}` errors on Board).
 - Reads follow the active editor (unchanged doctrine). A pre-latched execute
   channel blocks *dispatches* (even `readOnly: true` ones, contra the tool's
   own docs — matches `~/steinmetz/docs/fusion-mcp-blocking-dialog-bug-report.md`);
@@ -174,5 +206,8 @@ dispatch-generated images above, then run the roadmap §7 acceptance test:
 capture a poured, routed design (comet) both ways and diff the data fields
 and image inventory. `PolyPour`, `Via`, `Hole`, and the trace aggregates are
 the parts today's unrouted design could not exercise — the parity diff
-covers them. Once parity holds, Step 0 drops `stage-ulps`, both `RUN`
-dispatches, and the Escape choreography entirely.
+covers them. Expect one known *favorable* mismatch: the committed comet
+stackup reports `layer_count: 3` for a 4-copper board (the ULP's copper
+heuristic misses layer 303 "POWER"), so the direct path diffing as 4 there
+is a fix, not a defect. Once parity holds, Step 0 drops `stage-ulps`, both
+`RUN` dispatches, and the Escape choreography entirely.
