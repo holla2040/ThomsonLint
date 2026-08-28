@@ -8,25 +8,44 @@
 
 ## Verdict
 
-**Yes — the two JSON exporters can be replaced by direct
-`fusion_mcp_electronics_read` queries.** Everything
-`fusion-electronics-export.ulp` (both modes) and
-`fusion-electronics-stackup.ulp` write is either directly readable as an
-entity field or derivable client-side from raw entity rows with the same
-arithmetic the ULP already performs. The gaps found are small, enumerated
-below, and none regress against what the ULP produces today.
+**Yes — all four ULPs are replaceable.**
 
-**`fusion-electronics-images.ulp` is not replaceable.** There is no render
-endpoint in the MCP surface (roadmap §"What to Ask Autodesk For" item 4), and
-Fusion's screenshot query returns "No active graphics view" for the 2D
-electronics editors. The image pass keeps the ULP + `RUN` dispatch + one
-Escape per pass.
+The two JSON exporters (`fusion-electronics-export.ulp` both modes,
+`fusion-electronics-stackup.ulp`) map to direct
+`fusion_mcp_electronics_read` queries: everything they write is either
+directly readable as an entity field or derivable client-side from raw
+entity rows with the same arithmetic the ULP already performs. The gaps
+found are small, enumerated below, and none regress against what the ULP
+produces today.
 
-The headline operational win: **the JSON capture becomes a zero-Escape
-workflow.** Reads are never latch-blocked, and — verified live today —
-dispatching `EDIT .brd;` / `EDIT .sch;` to switch editors does **not** latch
-the execute channel (a no-op `fusion_mcp_execute` succeeded immediately after
-both switches). The post-`RUN` dialog latch only remains for the image pass.
+**`fusion-electronics-images.ulp` is replaceable too — not by reads, but by
+dispatching its EAGLE command stream directly** (the pattern proven in
+`~/steinmetz/src/screenshot.py`). The ULP's only irreplaceable-looking part
+was `EXPORT IMAGE`, but that is itself just an EAGLE command; the ULP merely
+computes which sheets/layers to iterate — which the reads above already
+provide. Verified live today in one chained dispatch:
+
+```
+EDIT .brd; RATSNEST; DISPLAY NONE 20 17 18 19 21 22 39 40 41 42 1;
+WINDOW FIT; EXPORT IMAGE 'C:/tmp/thomsonlint_cu_L1_test.png' 300;
+DISPLAY ALL; EDIT .sch;
+```
+
+— produced a correct top-copper review PNG (copper+pads, THT pads, airwires,
+outline, placement context; 2270×1420 px at 300 DPI = exactly the 192×120 mm
+board), and the execute channel was **not latched afterward**. A schematic
+`WINDOW FIT; EXPORT IMAGE` pair worked identically. There is still no render
+*endpoint* (screenshot query returns "No active graphics view" for the 2D
+editors) — the PNGs land on the Fusion host's filesystem and are read back
+via `/mnt/c`, same as the ULP path.
+
+The headline operational win: **the whole capture becomes a zero-Escape,
+zero-ULP, zero-staging workflow.** Reads are never latch-blocked, and —
+verified live today — `EDIT .brd;`/`EDIT .sch;` editor switches, `RATSNEST`,
+`DISPLAY`, `WINDOW FIT`, and `EXPORT IMAGE` dispatches do **not** latch the
+execute channel (a no-op `fusion_mcp_execute` succeeded immediately after
+each). The post-`RUN` dialog latch disappears with the `RUN`s themselves,
+and `stage-ulps` is no longer needed at all.
 
 ## Field-by-field mapping
 
@@ -97,9 +116,10 @@ both switches). The post-`RUN` dialog latch only remains for the image pass.
 
 ## Advantages over the ULP path
 
-- **No dialog latch for JSON capture.** Reads never latch; `EDIT .brd;` /
-  `EDIT .sch;` editor switches verified latch-free. Only the image pass still
-  needs `RUN` + one Escape.
+- **No dialog latch anywhere.** Reads never latch; `EDIT .brd;` /
+  `EDIT .sch;`, `RATSNEST`, `DISPLAY`, `WINDOW FIT`, and `EXPORT IMAGE`
+  dispatches all verified latch-free. The latch was a post-`RUN` artifact,
+  and nothing `RUN`s anymore.
 - **UTF-8 end to end.** Python writes the JSON, retiring the Latin-1 ULP
   output wart (the `gesam-Maß` decode workaround).
 - **Richer data:** per-pad signal + drill + geometry, via drill/span/tenting,
@@ -107,8 +127,9 @@ both switches). The post-`RUN` dialog latch only remains for the image pass.
 - **`electronics.Error`** exposes the live DRC/ERC table (including airwires
   with coordinates — verified live) — a new evidence category the ULP path
   never had; the roadmap already earmarks it for findings evidence (§7 v1.5).
-- No staging of ULPs to a Windows-visible share for the JSON pass
-  (`stage-ulps` remains only for images).
+- No staging of ULPs to a Windows-visible share at all — `stage-ulps`
+  retires with the ULPs. Images land on the Fusion host (`C:/...`) and are
+  read back over `/mnt/c`, same as before.
 
 ## Transport facts confirmed today
 
@@ -125,12 +146,33 @@ both switches). The post-`RUN` dialog latch only remains for the image pass.
   reads keep working. If a dispatch fails with the dialog-open error, ask for
   one Escape, then proceed.
 
+## Image pass without the ULP
+
+Port `fusion-electronics-images.ulp`'s command generation to the bridge:
+
+- **Schematic:** `electronics.Sheet` count → per sheet
+  `EDIT .S<n>; WINDOW FIT; EXPORT IMAGE '<prefix>-img-sch-p<n>.png' 300;`.
+- **Board:** `RATSNEST;` once (pours render filled), then the silk-top,
+  silk-bottom, and per-copper-layer `DISPLAY NONE <set>; WINDOW FIT;
+  EXPORT IMAGE ... 1200;` sequences, ending `DISPLAY ALL;`. The copper-layer
+  list comes from the `Layer` read plus the object-presence scan (the ULP's
+  own poly-only inner-layer workaround, already needed for stackup).
+- **Pre-delete each target PNG** on the WSL side before dispatching
+  (steinmetz's pattern) so the overwrite prompt can never fire; the bridge's
+  `SET CONFIRM YES;` prefix is belt-and-suspenders.
+- Caveats carried over unchanged: 1200 DPI board PNGs can exceed 150 MB;
+  a failing command mid-chain (e.g. bad export path) can raise a modal and
+  corrupt the rest of the chain (steinmetz bug report incident 4) — validate
+  paths first and verify each PNG landed afterward.
+
 ## Recommended next step
 
 Implement `python tools/fusion_bridge.py export` (or a sibling
 `tools/fusion_export.py`) that emits the exact `-thomson-export-sch.json`,
-`-brd.json`, and `-stack.json` contracts from entity reads, then run the
-roadmap §7 acceptance test: capture a poured, routed design (comet) both ways
-and diff the data fields. `PolyPour`, `Via`, `Hole`, and the trace aggregates
-are the parts today's unrouted design could not exercise — the parity diff
-covers them. The images ULP and its Step 0 choreography stay as-is.
+`-brd.json`, and `-stack.json` contracts from entity reads plus the
+dispatch-generated images above, then run the roadmap §7 acceptance test:
+capture a poured, routed design (comet) both ways and diff the data fields
+and image inventory. `PolyPour`, `Via`, `Hole`, and the trace aggregates are
+the parts today's unrouted design could not exercise — the parity diff
+covers them. Once parity holds, Step 0 drops `stage-ulps`, both `RUN`
+dispatches, and the Escape choreography entirely.
