@@ -28,33 +28,31 @@ Prerequisite: the Fusion-side setup in README "Reading from Fusion Electronics" 
     ```bash
     python tools/fusion_bridge.py read electronics.Sheet
     ```
-4.  **Schematic pass** — one export run captures every sheet (the ULP walks all of them):
+4.  **Schematic pass** — one chained dispatch; one export run captures every sheet (the ULP walks all of them):
 
     ```bash
-    python tools/fusion_bridge.py eagle "EDIT .S1;"
-    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-export.ulp'"
-    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-images.ulp'"
+    python tools/fusion_bridge.py eagle "EDIT .S1; RUN '$STAGE/fusion-electronics-export.ulp'; RUN '$STAGE/fusion-electronics-images.ulp'"
     ```
-5.  **Board pass:**
+5.  **Ask the user to press Escape once in the Fusion window.** After any dispatch whose command contains a `RUN`, Fusion's MCP add-in latches into "Cannot perform 'script' while a command dialog is open" — a known Fusion issue with **no visible dialog**; only a keypress in the Fusion window clears it. Poll with a no-op until it clears, then continue.
+6.  **Board pass** — one chained dispatch:
 
     ```bash
-    python tools/fusion_bridge.py eagle "BOARD;"
-    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-export.ulp'"
-    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-stackup.ulp'"
-    python tools/fusion_bridge.py eagle "RUN '$STAGE/fusion-electronics-images.ulp'"
+    python tools/fusion_bridge.py eagle "BOARD; RUN '$STAGE/fusion-electronics-export.ulp'; RUN '$STAGE/fusion-electronics-stackup.ulp'; RUN '$STAGE/fusion-electronics-images.ulp'"
     ```
-6.  **Copy the results into `exports/`** using the `cp` line that `stage-ulps` printed, e.g.:
+7.  **Copy the results into `exports/`** using the `cp` line that `stage-ulps` printed, e.g.:
 
     ```bash
     cp /mnt/c/Users/Public/thomsonlint/exports/*-thomson-export-*.json \
        /mnt/c/Users/Public/thomsonlint/exports/*-img-*.png exports/
     ```
-7.  **Verify by the files on disk** — `Electron.run` returns no echo, so the command results don't confirm success. Check that `exports/` now holds `*-thomson-export-sch.json`, `*-thomson-export-brd.json`, `*-thomson-export-stack.json`, one `*-img-sch-p<N>.png` per sheet (matching step 3's count), and the silk/copper PNGs. A missing file usually means a modal dialog was open in Fusion, or that pass's editor wasn't the current drawing — re-run that pass, or fall back to manual.
+8.  **Verify by the files on disk** — `Electron.run` returns no echo, so the command results don't confirm success. Check that `exports/` now holds `*-thomson-export-sch.json`, `*-thomson-export-brd.json`, `*-thomson-export-stack.json`, one `*-img-sch-p<N>.png` per sheet (matching step 3's count), and the silk/copper PNGs. A missing file usually means a modal dialog was open in Fusion, or that pass's editor wasn't the current drawing — re-run that pass, or fall back to manual.
 
 Then continue with the Process below against the now-populated `exports/`.
 
 Notes:
-- Run the child ULPs **individually** as shown — not the `fusion-electronics-all.ulp` wrapper, whose `exit(...)`-based chaining is fragile when dispatched over the bridge. Run `images` **last** in each pass (it terminates the ULP via `exit()`).
+- **One chained dispatch per editor pass** is deliberate: the post-`RUN` dialog latch (step 5) bites *between* dispatches, so chaining `EDIT .S1;`/`BOARD;` and the `RUN`s onto one command line needs only one Escape between the two passes. Editor switches take effect mid-chain; later commands run in the new context. The bridge prefixes every dispatch with `SET CONFIRM YES;`, which prevents the same latch after `EDIT`/confirmation prompts (it does not prevent the post-`RUN` latch) and auto-answers ULP overwrite prompts.
+- Run the child ULPs **individually** as shown — not the `fusion-electronics-all.ulp` wrapper, whose `exit(...)`-based chaining is fragile when dispatched over the bridge. Run `images` **last** in each pass: it terminates via `exit()`, which also ends the rest of the chained command line (this is why the two passes cannot be merged into a single dispatch).
+- Reads (`ping`, `read`) follow the **active editor** and are not blocked by the dialog latch. If `ping` reports the board editor active, the schematic pass's leading `EDIT .S1;` switches back — no manual switch needed. `read electronics.Sheet` returns rows only while the schematic is active.
 - `WINDOW FIT` before each render is handled inside `fusion-electronics-images.ulp`; you don't issue it.
 - Quote ULP paths with **single** quotes — the bridge rejects a command containing double quotes.
 

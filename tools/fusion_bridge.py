@@ -241,13 +241,20 @@ class FusionBridge:
         path (``C:\\Users`` is an invalid ``\\U`` escape in a Python literal) or
         on the single quotes colliding with the source literal. Double quotes are
         rejected because they delimit the ``Electron.run`` argument itself.
+
+        Every command is prefixed with ``SET CONFIRM YES;`` — without it the
+        MCP add-in latches into "Cannot perform 'script' while a command dialog
+        is open" after dispatches like ``EDIT`` or ``RUN`` (a known Fusion
+        issue: no dialog is actually visible, and only an Escape keypress in
+        the Fusion window clears the latch). The prefix auto-confirms whatever
+        the add-in thinks is pending, so back-to-back dispatches work.
         """
         if '"' in command:
             raise ValueError(
                 f"EAGLE command may not contain double quotes: {command!r} "
                 "(quote ULP paths with single quotes, e.g. RUN '...')"
             )
-        inner = f'Electron.run "{command}"'
+        inner = f'Electron.run "SET CONFIRM YES; {command}"'
         source = (
             "import adsk.core\n"
             "def run(_context):\n"
@@ -279,6 +286,19 @@ def cmd_ping(args) -> int:
     bridge = _bridge(args)
     try:
         design = bridge.design_name()
+        if not design:
+            # Reads follow the active editor: with the board tab active the
+            # schematic reads empty. That is still a live, capturable design —
+            # the schematic pass's leading "EDIT .S1;" switches back to it.
+            boards = bridge.read_all("electronics.Board")
+            if boards:
+                stem = boards[0].get("name", "").replace("\\", "/").rsplit("/", 1)[-1]
+                design = stem.removesuffix(".brd").strip()
+                print(
+                    f"OK — Fusion reachable at {bridge.host}; design '{design}', "
+                    "board editor active (sheet count readable once the schematic is active)."
+                )
+                return 0
     except BridgeError as exc:
         print(exc, file=sys.stderr)
         return 2
