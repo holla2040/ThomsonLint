@@ -11,50 +11,27 @@ This document is the single source of truth for how a ThomsonLint review is cond
 
 ## Step 0 — Live Fusion Capture (when the design is open in Fusion Electronics)
 
-If the design is currently open in Fusion Electronics, capture the export data **yourself** — do not ask the user to run a ULP by hand. `tools/fusion_bridge.py` drives the running Fusion session over HTTP; you sequence the steps below. This uses the existing export ULPs (so the output is identical to the manual path — same connectivity, layout, pre-computed analysis, and PNG renders), it just runs them without a human at the EAGLE prompt.
+If the design is currently open in Fusion Electronics, capture the export data **yourself** — do not ask the user to run a ULP by hand. `tools/fusion_export.py` reads the design's object model over Fusion's local HTTP endpoint and writes the same `-thomson-export-{sch,brd,stack}.json` contracts plus the PNG renders directly — no ULPs involved. Parity against the ULP output was verified field-by-field on a routed, poured design (`docs/Direct_Read_Feasibility.md`; the few intentional deltas are listed in the notes below).
 
-Prerequisite: the Fusion-side setup in README "Reading from Fusion Electronics" (the "Fusion MCP Server" toggle enabled, the WSL `netsh` port-proxy, no modal dialog open). **If any step below fails, fall back to the Manual ULP export path** — ask the user to run `RUN fusion-electronics-all.ulp` in each editor (README §7 Step 1). Do live capture only when `exports/` lacks a current `*-thomson-export-*.json`, or the user asks for a fresh capture.
+Prerequisite: the Fusion-side setup in README "Reading from Fusion Electronics" (the "Fusion MCP Server" toggle enabled, the WSL `netsh` port-proxy where NAT-mode WSL applies, no modal dialog open). Do live capture only when `exports/` lacks a current `*-thomson-export-*.json`, or the user asks for a fresh capture.
 
-1.  **Preflight.** `python tools/fusion_bridge.py ping`. A non-zero exit means the session isn't reachable — fall back to the manual path.
-2.  **Stage the ULPs** onto a Windows-visible path (Fusion runs on Windows and must `RUN` the ULP from a `C:\…` path):
-
-    ```bash
-    STAGE=$(python tools/fusion_bridge.py stage-ulps)   # prints the C:\...\tools dir; output lands in its sibling exports\
-    ```
-
-    Its stderr prints the WSL path where output will land and the exact `cp` to copy it back.
-3.  **Count sheets** so you know how many schematic PNGs to expect:
+1.  **Preflight.** `python tools/fusion_bridge.py ping`. A non-zero exit means the session isn't reachable — fall back to the **Manual ULP export path**: ask the user to run `RUN fusion-electronics-all.ulp` in each editor (README §7 Step 1).
+2.  **Capture everything:**
 
     ```bash
-    python tools/fusion_bridge.py read electronics.Sheet
+    python tools/fusion_export.py all
     ```
-4.  **Schematic pass** — one chained dispatch; one export run captures every sheet (the ULP walks all of them):
 
-    ```bash
-    python tools/fusion_bridge.py eagle "EDIT .S1; RUN '$STAGE/fusion-electronics-export.ulp'; RUN '$STAGE/fusion-electronics-images.ulp'"
-    ```
-5.  **Ask the user to press Escape once in the Fusion window.** After any dispatch whose command contains a `RUN`, Fusion's MCP add-in latches into "Cannot perform 'script' while a command dialog is open" — a known Fusion issue with **no visible dialog**; only a keypress in the Fusion window clears it. Poll with a no-op until it clears, then continue.
-6.  **Board pass** — one chained dispatch:
-
-    ```bash
-    python tools/fusion_bridge.py eagle "BOARD; RUN '$STAGE/fusion-electronics-export.ulp'; RUN '$STAGE/fusion-electronics-stackup.ulp'; RUN '$STAGE/fusion-electronics-images.ulp'"
-    ```
-7.  **Copy the results into `exports/`** using the `cp` line that `stage-ulps` printed, e.g.:
-
-    ```bash
-    cp /mnt/c/Users/Public/thomsonlint/exports/*-thomson-export-*.json \
-       /mnt/c/Users/Public/thomsonlint/exports/*-img-*.png exports/
-    ```
-8.  **Verify by the files on disk** — `Electron.run` returns no echo, so the command results don't confirm success. Check that `exports/` now holds `*-thomson-export-sch.json`, `*-thomson-export-brd.json`, `*-thomson-export-stack.json`, one `*-img-sch-p<N>.png` per sheet (matching step 3's count), and the silk/copper PNGs. A missing file usually means a modal dialog was open in Fusion, or that pass's editor wasn't the current drawing — re-run that pass, or fall back to manual.
+    JSON is written straight into `exports/` (UTF-8). PNGs render on the Fusion (Windows) side under the share — default `/mnt/c/Users/Public/thomsonlint/exports/` — and are copied into `exports/` automatically. The tool switches editors itself (schematic pass, then board pass) and leaves the session on the schematic tab. Useful options: `--skip-images` (JSON only), `--sch-dpi` / `--brd-dpi` (defaults 300 / 1200 — board PNGs at 1200 DPI can exceed 150 MB on large boards; drop to `--brd-dpi 600` if size is a concern), `--out`, `--share`.
+3.  **If it prints "Press Escape once in the Fusion window; waiting..."**, relay that to the user and wait — the tool polls and continues by itself once the keypress lands. This is the known invisible-dialog latch; the tool avoids the dispatch pattern that arms it (a no-op `EDIT`), so single-sheet designs normally capture with **zero** Escapes.
+4.  **Verify by the files on disk.** The tool errors loudly if an expected image never appears, but still check that `exports/` now holds `*-thomson-export-sch.json`, `*-thomson-export-brd.json`, `*-thomson-export-stack.json`, one `*-img-sch-p<N>.png` per sheet, `*-img-silk-top/bot.png`, and one `*-img-cu-L<num>-<name>.png` per used copper layer. A missing file usually means a modal dialog was open in Fusion — re-run, or fall back to manual.
 
 Then continue with the Process below against the now-populated `exports/`.
 
 Notes:
-- **One chained dispatch per editor pass** is deliberate: the post-`RUN` dialog latch (step 5) bites *between* dispatches, so chaining `EDIT .S1;`/`BOARD;` and the `RUN`s onto one command line needs only one Escape between the two passes. Editor switches take effect mid-chain; later commands run in the new context. The bridge prefixes every dispatch with `SET CONFIRM YES;`, which prevents the same latch after `EDIT`/confirmation prompts (it does not prevent the post-`RUN` latch) and auto-answers ULP overwrite prompts.
-- Run the child ULPs **individually** as shown — not the `fusion-electronics-all.ulp` wrapper, whose `exit(...)`-based chaining is fragile when dispatched over the bridge. Run `images` **last** in each pass: it terminates via `exit()`, which also ends the rest of the chained command line (this is why the two passes cannot be merged into a single dispatch).
-- Reads (`ping`, `read`) follow the **active editor** and are not blocked by the dialog latch. If `ping` reports the board editor active, the schematic pass's leading `EDIT .S1;` switches back — no manual switch needed. `read electronics.Sheet` returns rows only while the schematic is active.
-- `WINDOW FIT` before each render is handled inside `fusion-electronics-images.ulp`; you don't issue it.
-- Quote ULP paths with **single** quotes — the bridge rejects a command containing double quotes.
+- **Intentional deltas vs. the ULP output** (all verified favorable or neutral; full list in `docs/Direct_Read_Feasibility.md`): `nets[].class.clearance_mm` is `null` (not exposed by the MCP surface); `board.area` is the true board-outline bounding box (layer-20 wires *and* circles — round boards work), not EAGLE's drawing extent, so `component_edge_distances` measures against the real edge; routing and pours on Fusion inner-copper layers 257–303 are fully counted (the ULP was blind to them); there is no `-img-cu-L19-Unrouted.png` (that ULP render was a misclassification — airwires are already visible in every copper PNG); JSON is UTF-8, so no Latin-1 decode workaround is needed for files this tool wrote.
+- Reads follow the **active editor**; the tool handles all switching itself. `python tools/fusion_bridge.py read electronics.<Class>` remains available for ad-hoc queries against whichever editor is active.
+- The export ULPs remain in `tools/` **solely for the manual fallback path** (no live Fusion HTTP endpoint, or a human running them at the EAGLE prompt).
 
 ---
 
@@ -122,11 +99,11 @@ Cross-reference the JSON data with the per-layer image PNGs (see "Layer Stack & 
 In addition to the schematic and board JSON exports, ThomsonLint produces a stackup JSON and a set of high-resolution PNG renders. When present in `exports/`, treat them as first-class inputs:
 
 *   **`<project>-thomson-export-stack.json`** — physical copper-layer order (`copper_stack[]`), full `all_layers[]` table, `copper_layer_count`, and `board_description`. Use whenever a finding involves return paths, stripline/microstrip behavior, plane references, or layer-count claims.
-*   **`<project>-img-sch-p<N>.png`** — one PNG per schematic sheet at 600 DPI. Cite when claiming completeness gaps that depend on absence (e.g., "U1 has no decoupling shown") — absences are easier to confirm visually than from JSON.
+*   **`<project>-img-sch-p<N>.png`** — one PNG per schematic sheet (300 DPI default). Cite when claiming completeness gaps that depend on absence (e.g., "U1 has no decoupling shown") — absences are easier to confirm visually than from JSON.
 *   **`<project>-img-silk-top.png`, `<project>-img-silk-bot.png`** — silkscreen renders. Cite for legibility, ref-des placement, fiducial presence, polarity/orientation marker, or component-courtyard-overlap claims.
 *   **`<project>-img-cu-L<num>-<name>.png`** — one PNG per used copper layer with traces, filled pours (RATSNEST applied), unrouted airwires, restrict zones, component outlines, and pad/via locations. Cite for decoupling proximity, pour integrity, plane splits, trace-width-vs-current, return-path discontinuities, and clearance-zone claims.
 
-Generate these alongside the JSON exports. When the design is open in Fusion, the preferred path is **Step 0 — Live Fusion Capture** above (you run the ULPs over the bridge). Otherwise — or if the bridge is unavailable — have the user run the wrapper ULP, one command per editor:
+Generate these alongside the JSON exports. When the design is open in Fusion, the preferred path is **Step 0 — Live Fusion Capture** above (`tools/fusion_export.py all` — no ULPs). Otherwise — or if the Fusion HTTP endpoint is unavailable — have the user run the wrapper ULP, one command per editor:
 
 ```
 RUN fusion-electronics-all.ulp                     # one command per editor — runs all of the children below
@@ -164,7 +141,7 @@ For decoupling checks (`PWR_DECPL_001`):
 *   If pre-computed data is not available, manually compute: find the IC's power pin pad coordinates, find the nearest cap pad on the same net, and use Euclidean distance.
 *   Component centroids can be 5-10 mm from the actual power pin on larger packages (SO8, TQFP, QFN), producing inflated distances and false positives.
 
-To generate the ThomsonLint JSON exports from a live Fusion session, use **Step 0 — Live Fusion Capture** above. To generate them manually, run the export ULP from the Fusion Electronics (EAGLE) schematic editor:
+To generate the ThomsonLint JSON exports from a live Fusion session, use **Step 0 — Live Fusion Capture** above (`tools/fusion_export.py`). To generate them manually without the live endpoint, run the export ULP from the Fusion Electronics (EAGLE) schematic editor:
 
 ```
 RUN fusion-electronics-export.ulp
@@ -180,7 +157,7 @@ Before making any recommendations, you MUST correlate and cross-reference ALL pr
 
 3.  **Cross-Reference Analysis:** Correlate schematic symbols with their physical placement on the board layout. Verify that critical signal paths identified in the schematic are properly routed in the layout. Check that power distribution visible in the schematic matches the physical implementation.
 
-4.  **Image-Based Inspection.** Open and cite the specific PNG that backs each visual claim. The PNGs are produced by `fusion-electronics-images.ulp` and live in `exports/` (see "Layer Stack & Image Inputs"). Trigger rules — when a finding's claim falls into one of these categories, the corresponding PNG must be cited in `evidence[].source`:
+4.  **Image-Based Inspection.** Open and cite the specific PNG that backs each visual claim. The PNGs are produced by Step 0's `tools/fusion_export.py` (or, on the manual fallback path, `fusion-electronics-images.ulp`) and live in `exports/` (see "Layer Stack & Image Inputs"). Trigger rules — when a finding's claim falls into one of these categories, the corresponding PNG must be cited in `evidence[].source`:
 
     *   **Decoupling proximity** (`PWR_DECPL_001` and friends) → cite the relevant `*-img-cu-L<num>-<name>.png` showing the cap-pad-to-IC-pin path on the decoupling layer.
     *   **Pour integrity / ground-plane continuity** → cite the GND or POWER copper-layer PNG. Look for visible breaks, slots, or restrict zones interrupting the pour.
