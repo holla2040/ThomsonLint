@@ -581,14 +581,26 @@ class Exporter:
                   file=sys.stderr)
 
         # -- board geometry --
-        outline = [w for w in wires
-                   if w.get("layer") == 20 and w.get("board_object_id")]
-        if outline:
-            xs = [v for w in outline for v in (w["x1"], w["x2"])]
-            ys = [v for w in outline for v in (w["y1"], w["y2"])]
+        # The outline is layer-20 board-parented geometry: wires for
+        # rectangular boards, circles for round ones (comet is a circle).
+        circles = self._read("electronics.Circle")
+        xs, ys = [], []
+        for w in wires:
+            if w.get("layer") == 20 and w.get("board_object_id"):
+                xs += [w["x1"], w["x2"]]
+                ys += [w["y1"], w["y2"]]
+        for c in circles:
+            if c.get("layer") == 20 and c.get("board_object_id"):
+                r = c.get("radius", 0)
+                xs += [c["x"] - r, c["x"] + r]
+                ys += [c["y"] - r, c["y"] + r]
+        if xs:
             x1, y1, x2, y2 = min(xs), min(ys), max(xs), max(ys)
         else:
             x1 = y1 = x2 = y2 = 0.0
+            print("WARNING: no layer-20 board outline geometry found — "
+                  "board.area is zeroed and edge distances are meaningless",
+                  file=sys.stderr)
         area = {"width_mm": r4(x2 - x1), "height_mm": r4(y2 - y1),
                 "x1_mm": r4(x1), "y1_mm": r4(y1), "x2_mm": r4(x2), "y2_mm": r4(y2)}
 
@@ -598,8 +610,11 @@ class Exporter:
         layer_count = sum(1 for l in layers
                           if l.get("used") and is_copper_layer(l["number"], l["name"]))
 
+        # B.holes() in the ULP sees board-parented holes only; the MCP read
+        # also returns footprint-definition holes in package space — exclude.
         holes_out = [{"x_mm": r4(h["x"]), "y_mm": r4(h["y"]),
-                      "drill_mm": r4(h.get("drill", 0))} for h in holes]
+                      "drill_mm": r4(h.get("drill", 0))}
+                     for h in holes if h.get("board_object_id")]
 
         polygons = []
         for pp in pours:

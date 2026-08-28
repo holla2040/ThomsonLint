@@ -233,14 +233,42 @@ ULP path the same morning, giving a real acceptance diff:
   pins** (GND stamps, +3V…) — the MCP `PinRef` table includes them, so the
   exporter filters pinrefs of package-less parts to match the contract.
 
+## Comet acceptance test — PASSED (2026-08-28)
+
+The roadmap §7 acceptance test ran against the committed 2026-07-11 ULP
+exports with comet live in Fusion. Every diff is accounted for; none is an
+exporter defect:
+
+- **Schematic:** exact parity. Only diff: D1 changed SMF5.0A → SMF7.0A
+  (value + MPN/LCSC attributes) — genuine design drift since July.
+- **Board:** all 33 components and **every pad coordinate** exact (round
+  board, so the transform saw arbitrary angles). `holes` exact after
+  filtering to board-parented rows (the MCP read also returns
+  footprint-definition holes in package space — the ULP's `B.holes()`
+  never sees those). Decoupling proximity and ground-plane arrays exact.
+- **The ULP was blind to Fusion inner copper 303, numerically:** 9V0 routes
+  12 segments on L1 + **8 on L303** (16.71 + 23.93 = 40.64 mm; the ULP
+  reported 16.71), N$2 likewise (+3 segments, +6.91 mm), and the 5V0 pour
+  on 303 was absent from the ULP's `polygons`. The direct path counts all
+  of it. `layer_count` 4 vs the ULP's 3, same cause.
+- **`board.area` semantics:** comet's outline is a layer-20 **Circle**
+  (r = 14.8 mm — round board), now included in the outline bbox
+  (29.6×29.6). The ULP's `B.area` was the drawing extent (35.6×41.3,
+  silk/docu overhang) — against which its `component_edge_distances`
+  check was effectively broken: it reported **zero** parts near the edge,
+  while the true outline puts three parts within 3 mm.
+- **Stackup:** `copper_stack` byte-equal (Top/GND/POWER/Bottom, 4/4).
+- **Images:** inventory equals the committed set minus the ULP's bogus
+  `L19-Unrouted` render; every byte-size matches the committed
+  counterpart (fixed-canvas trait); the L303 render visually shows the
+  9V0 inner-layer routing. **Zero Escape presses for the whole capture.**
+
 ## Recommended next step
 
-Run the roadmap §7 acceptance test on a **poured, routed** design: capture
-comet both ways (ULP and `tools/fusion_export.py`) and diff the data fields
-and image inventory. `PolyPour`, `Via`, `Hole`, and the trace aggregates are
-the parts today's unrouted design could not exercise — the parity diff
-covers them. Expect one known *favorable* mismatch: the committed comet
-stackup reports `layer_count: 3` for a 4-copper board (the ULP's copper
-heuristic misses layer 303 "POWER"), so the direct path diffing as 4 there
-is a fix, not a defect. Once parity holds, Step 0 drops `stage-ulps`, both
-`RUN` dispatches, and the Escape choreography entirely.
+Parity holds — retire the ULP path from Step 0: rewrite
+`docs/REVIEWER_INSTRUCTIONS.md` "Step 0 — Live Fusion Capture" around
+`tools/fusion_export.py all` (no staging, no `RUN` dispatches, no Escape
+choreography for 1-sheet designs), keep the ULPs in `tools/` for the
+manual-EAGLE-prompt fallback, and note the intentional deltas above
+(outline-based area, layer-303 coverage, `clearance_mm` null) wherever the
+old outputs are described.
