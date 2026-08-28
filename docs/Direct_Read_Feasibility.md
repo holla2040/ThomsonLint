@@ -48,13 +48,21 @@ afterward**. A schematic
 editors) — the PNGs land on the Fusion host's filesystem and are read back
 via `/mnt/c`, same as the ULP path.
 
-The headline operational win: **the whole capture becomes a zero-Escape,
-zero-ULP, zero-staging workflow.** Reads are never latch-blocked, and —
-verified live today — `EDIT .brd;`/`EDIT .sch;` editor switches, `RATSNEST`,
-`DISPLAY`, `WINDOW FIT`, and `EXPORT IMAGE` dispatches do **not** latch the
-execute channel (a no-op `fusion_mcp_execute` succeeded immediately after
-each). The post-`RUN` dialog latch disappears with the `RUN`s themselves,
-and `stage-ulps` is no longer needed at all.
+The headline operational win: **the capture becomes a zero-ULP,
+zero-staging, and (for single-sheet designs) zero-Escape workflow.** Reads
+are never latch-blocked, and the dialog-latch rule was isolated live with an
+A/B test (2026-08-28): a **real** editor/sheet switch (`EDIT .brd;`,
+`EDIT .S1;` from the board), `RATSNEST`, `DISPLAY`, `WINDOW FIT`, and
+`EXPORT IMAGE` dispatches do **not** latch the execute channel — but a
+**no-op `EDIT`** (opening the sheet that is already open) reliably does.
+That is why chains starting `EDIT .S1;` on an already-active sheet 1
+latched, and it likely explains steinmetz's "invisible block after a fully
+successful batch". `tools/fusion_export.py` avoids no-op EDITs (no `EDIT`
+for 1-sheet designs; sheet 1 captured last on multi-sheet), and its
+`wait_channel()` detects a latch before each dispatch, prompts for one
+Escape, and continues — the failure mode is a pause, not a broken capture.
+The guaranteed post-`RUN` latch disappears with the `RUN`s themselves, and
+`stage-ulps` is no longer needed at all.
 
 ## Field-by-field mapping
 
@@ -147,10 +155,11 @@ and `stage-ulps` is no longer needed at all.
 
 ## Advantages over the ULP path
 
-- **No dialog latch anywhere.** Reads never latch; `EDIT .brd;` /
-  `EDIT .sch;`, `RATSNEST`, `DISPLAY`, `WINDOW FIT`, and `EXPORT IMAGE`
-  dispatches all verified latch-free. The latch was a post-`RUN` artifact,
-  and nothing `RUN`s anymore.
+- **The dialog latch is understood and mostly gone.** Reads never latch.
+  Real editor/sheet switches, `RATSNEST`, `DISPLAY`, `WINDOW FIT`, and
+  `EXPORT IMAGE` dispatches are latch-free; only a **no-op `EDIT`** arms
+  the latch (verified by A/B isolation). The exporter avoids no-op EDITs
+  and rides out any residual latch with a prompt-and-wait.
 - **UTF-8 end to end.** Python writes the JSON, retiring the Latin-1 ULP
   output wart (the `gesam-Maß` decode workaround).
 - **Richer data:** per-pad signal + drill + geometry, via drill/span/tenting,
@@ -197,13 +206,37 @@ Port `fusion-electronics-images.ulp`'s command generation to the bridge:
   corrupt the rest of the chain (steinmetz bug report incident 4) — validate
   paths first and verify each PNG landed afterward.
 
+## Implementation and first parity results (2026-08-28)
+
+`tools/fusion_export.py` implements the direct capture (verbs `sch`, `brd`,
+`images`, `all`). The same design (`series-shunt`) had been captured by the
+ULP path the same morning, giving a real acceptance diff:
+
+- **Schematic: parity is exact** except the two documented deltas —
+  `clearance_mm` `0.0` (ULP) vs `null` (gap 1), and `export_date`. All 55
+  components byte-equal (device/package/description/populate/type/
+  attributes), all six analysis arrays identical.
+- **Board: parity is exact** on all 55 placements, **every pad coordinate**
+  (validating the mirror-then-rotate transform), area, `layer_count`,
+  all signal aggregates, and all three analysis arrays. One cosmetic delta:
+  `layers_used` has 96 rows vs the ULP's 16 — the MCP `used` flag
+  over-reports relative to the UL API's.
+- **Stackup: the direct output is *more correct* than the ULP's.** The ULP
+  emitted `copper_stack: [Top, Unrouted(19)]` for this design — its name
+  fallback classifies layer 19 "Unrouted" as copper ("ROUTE" substring) and
+  it missed the real Bottom (304). The exporter excludes system layers
+  17-52 from copper detection and produced `[Top, Bottom]`.
+- **Images:** per-sheet + silk top/bottom + per-copper-layer PNGs produced
+  by dispatch chains; all checksums distinct; board renders byte-identical
+  in *size* (known fixed-canvas trait, unchanged).
+- New parity facts learned: EAGLE's `N.pinrefs` **excludes supply-symbol
+  pins** (GND stamps, +3V…) — the MCP `PinRef` table includes them, so the
+  exporter filters pinrefs of package-less parts to match the contract.
+
 ## Recommended next step
 
-Implement `python tools/fusion_bridge.py export` (or a sibling
-`tools/fusion_export.py`) that emits the exact `-thomson-export-sch.json`,
-`-brd.json`, and `-stack.json` contracts from entity reads plus the
-dispatch-generated images above, then run the roadmap §7 acceptance test:
-capture a poured, routed design (comet) both ways and diff the data fields
+Run the roadmap §7 acceptance test on a **poured, routed** design: capture
+comet both ways (ULP and `tools/fusion_export.py`) and diff the data fields
 and image inventory. `PolyPour`, `Via`, `Hole`, and the trace aggregates are
 the parts today's unrouted design could not exercise — the parity diff
 covers them. Expect one known *favorable* mismatch: the committed comet

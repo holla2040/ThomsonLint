@@ -70,6 +70,11 @@ Non-obvious operational facts (learned the hard way — do not rediscover):
 - **Export/stackup JSONs are Latin-1, not UTF-8** (e.g. the German layer name "gesam-Maß"). Python's `json.load` raises `UnicodeDecodeError`; decode with `latin-1` first. This is a pre-existing trait of the ULP output (the committed comet stack file has the same byte), not a bridge bug.
 - ULP PNG renders are fixed-size per canvas: every board PNG of a design is **byte-identical in size** (checksums differ — they are not duplicate renders), and board PNGs can exceed 150MB.
 - `run_eagle()` embeds the command into the generated Python via `repr()` **deliberately** — single quotes and Windows backslash paths (`RUN 'C:\...'`) survive. Do not "simplify" it to an f-string.
+- **The dialog latch is not only post-`RUN`: a no-op `EDIT` (opening the sheet/editor that is already open) also arms it** — isolated by A/B test 2026-08-28 (real switch → clean; same `EDIT .S1;` repeated → latched). Real switches, `RATSNEST`, `DISPLAY`, `WINDOW FIT`, and `EXPORT IMAGE` do not latch.
+
+## Direct Capture (`tools/fusion_export.py`) — experimental
+
+ULP-free capture: emits the same `-thomson-export-{sch,brd,stack}.json` contracts from `electronics_read` queries and renders the review PNGs via dispatched `EXPORT IMAGE` chains (verbs `sch` / `brd` / `images` / `all`). Verified against a same-day ULP capture of `series-shunt`: exact parity except documented deltas (`clearance_mm` null — MCP exposes no NetClass clearance; `layers_used` over-reporting; the stackup is *more* correct — the ULP's "ROUTE" name fallback put layer 19 Unrouted in the copper stack). Zero Escapes for 1-sheet designs; its `wait_channel()` prompts and waits if the latch arms. **The ULP path in Step 0 stays canonical until the comet (routed + poured) parity diff passes** — pours, vias, holes, and trace aggregates are schema-verified only. Details: `docs/Direct_Read_Feasibility.md`.
 
 ## Pre-Commit Requirement
 
