@@ -4742,6 +4742,160 @@ before beginning the review.
         "Appendix M.4: Certification",
         "Appendix A: High-Speed Signal Integrity"
       ]
+    },
+    {
+      "id": "PWR_TRACE_003",
+      "name": "Trace width sized for continuous current per IPC-2152 with derating",
+      "domain": ["Power", "Thermal"],
+      "description": "Every power-carrying trace must be sized for its continuous current using IPC-2152 (or IPC-2221) as the basis, then derated for real conditions. Starting point: approximately 1 mm (40 mil) width per 2 A on a 1 oz external layer; use 2-3 oz copper for continuous currents above roughly 10 A. IPC tables assume airflow and ambient conditions real products rarely match, so apply a 15-20% margin on top of table minimums, and derate further for inner layers (worse heat dissipation), sealed enclosures, continuous duty, and elevated ambient temperature. The narrowest point in the path (neckdowns at pads, connector pins, fuses, MOSFET drains) sets the limit, not the nominal width.",
+      "applies_to": ["Power Trace", "Power Net", "PCB Layout"],
+      "conditions": {
+        "trace_carries_significant_continuous_current": true,
+        "width_not_verified_against_ipc_2152_with_derating": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "trace_overheating",
+        "excessive_voltage_drop",
+        "thermal_runaway_at_neckdowns",
+        "trace_fusing_open"
+      ],
+      "recommended_actions": [
+        "Verify each power trace with an IPC-2152-based calculator for temperature rise, resistance, voltage drop, and dissipation; apply a 15-20% derating margin over table minimums.",
+        "Evaluate the narrowest section of the path (pad necks, connector pins, fuse holders) separately from the nominal trace width.",
+        "Move to 2-3 oz copper, parallel traces on multiple layers, or dedicated planes for high-current rails; consider copper bus bars above ~100 A.",
+        "Prefer external layers for high-current routing, keep power tracks short, and use 45-degree or curved bends."
+      ],
+      "kb_references": [
+        "Appendix O.1: Track Width vs. Current Capacity",
+        "Appendix O.2: High-Current Design Discipline"
+      ]
+    },
+    {
+      "id": "PWR_VIA_001",
+      "name": "Via arrays required for high-current layer transitions",
+      "domain": ["Power", "Thermal"],
+      "description": "A single standard via safely carries only around 500 mA; forcing a power path through one via concentrates the full current in a small plated barrel, which becomes a hotspot and a reliability risk. Power nets that change layers (power inputs, regulator outputs, MOSFET connections, battery terminals, motor-driver paths) require via arrays sized for the current, and the array must be placed directly at the supported pad or copper region so current does not funnel through a narrow copper neck to reach it.",
+      "applies_to": ["Power Net", "Via", "PCB Layout"],
+      "conditions": {
+        "power_path_changes_layers": true,
+        "via_count_insufficient_for_current": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "via_barrel_overheating",
+        "localized_hotspot",
+        "via_plating_fatigue_failure",
+        "excessive_voltage_drop_at_transition"
+      ],
+      "recommended_actions": [
+        "Budget roughly 500 mA per standard via and add a margin; use a via array for any power-path layer change.",
+        "Place the via array immediately at the pad or copper region it feeds, not at the end of a narrow neck.",
+        "Verify via arrays at power inputs, regulator outputs, MOSFETs, battery terminals, and motor-driver paths specifically.",
+        "Check the fabricator's via plating specification when currents are high."
+      ],
+      "kb_references": [
+        "Appendix O.1: Track Width vs. Current Capacity",
+        "Appendix O.2: High-Current Design Discipline"
+      ]
+    },
+    {
+      "id": "PWR_POUR_001",
+      "name": "No narrow necks or thermal-relief bottlenecks in high-current copper",
+      "domain": ["Power", "Thermal"],
+      "description": "A copper pour or plane region carrying supply current can fail through one narrow section even when the overall region looks large: clearances around pads, vias, and mounting holes create hidden necks, and thermal-relief spokes restrict current into high-current pads. The bottleneck concentrates voltage drop and heating locally while the rest of the plane stays cool, which hides the problem from casual inspection. High-current pads (power connectors, MOSFET drains, current shunts, power terminals, bulk capacitors, regulator outputs) need solid connections or wider/multiple thermal-relief spokes, balancing solderability against current capacity.",
+      "applies_to": ["Copper Pour", "Power Plane", "Pad", "PCB Layout"],
+      "conditions": {
+        "pour_or_plane_carries_supply_current": true,
+        "narrow_neck_or_restrictive_thermal_relief_in_path": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "localized_heating_at_neck",
+        "voltage_drop_across_bottleneck",
+        "intermittent_failure_under_load",
+        "solder_joint_degradation_at_relief_spokes"
+      ],
+      "recommended_actions": [
+        "Trace the actual current path through every pour and plane region; inspect clearance keepouts around pads, vias, and mounting holes for hidden necks.",
+        "Use solid connections or wider/multiple thermal-relief spokes on high-current pads; keep standard reliefs for signal-level pads.",
+        "Rebuild pours, run DRC, and inspect Gerbers for necks and isolated islands before release.",
+        "Confirm high-speed signals do not cross power-region boundaries without continuous ground beneath them."
+      ],
+      "kb_references": [
+        "Appendix O.2: High-Current Design Discipline",
+        "Appendix O.3: Ground Plane and Power Plane Construction"
+      ]
+    },
+    {
+      "id": "EMC_GND_001",
+      "name": "Grounding topology must match signal frequency content",
+      "domain": ["EMC", "MixedSignal"],
+      "description": "Star (single-point) grounding is appropriate only for compact, low-frequency, noise-sensitive domains: DC and audio stages, bridge sensors, slow control loops, precision measurement, or where a datasheet explicitly requires it. Roughly 1 MHz is a screening aid, but fast edges in nominally slow signals still demand loop-area analysis. Fast digital, RF, and mixed-signal designs require a continuous ground plane with return current beneath each signal; star or split-ground topologies applied to boards carrying USB, Ethernet, DDR, RF, or fast clocks force return currents through distant paths, enlarge loops, and turn plane gaps into slot radiators. Long star branches (several centimeters, tens of nanohenries) act as antenna loops, and unintended secondary connections (mounting holes, connector shells, thermal pads, test points, same-net pours) silently defeat the single point. The best modern boards are hybrids: a solid plane for digital and general returns, with local Kelvin or single-point connections for shunt amplifiers, audio inputs, power stages, or precision references.",
+      "applies_to": ["Ground Net", "PCB Layout", "Mixed-Signal Design"],
+      "conditions": {
+        "star_or_split_ground_topology_present": true,
+        "board_carries_high_speed_or_rf_signals": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "reference_disturbance_from_shared_return_impedance",
+        "radiated_emissions_from_enlarged_loops",
+        "slot_radiation_at_domain_gaps",
+        "susceptibility_via_antenna_loop_branches",
+        "isolation_defeated_by_secondary_connections"
+      ],
+      "recommended_actions": [
+        "Reserve star grounding for compact low-frequency domains; use a continuous ground plane for fast digital, RF, and general mixed-signal returns.",
+        "Keep star branches short, wide, and direct (roughly 1 mm minimum width for low-current branches), and place the star point at the actual current loops, near the main supply return or per the datasheet.",
+        "Verify branch isolation at high zoom: no secondary connections through vias, mounting holes, connector shells, thermal pads, test points, or pours; a CAD net-tie does not guarantee the physical return path.",
+        "Place converters at the analog-digital boundary and follow the manufacturer's AGND/DGND guidance rather than a generic split diagram.",
+        "Prefer a hybrid: solid plane plus local Kelvin/single-point connections for current-sense, audio, power-stage, and precision-reference paths."
+      ],
+      "kb_references": [
+        "Appendix O.4: Star Grounding: Where It Belongs and Where It Fails",
+        "Appendix F: Advanced Analog and Mixed-Signal Design"
+      ]
+    },
+    {
+      "id": "COMP_SENSOR_001",
+      "name": "Hobbyist-grade sensor in a production design",
+      "domain": ["Component", "Production"],
+      "description": "Certain sensors dominate tutorials, breadboards, and cheap modules but fail in a manufactured product, where a part is judged on accuracy, lifecycle, compliance, power, and safety rather than bench behavior. Known-problematic parts: DHT11/DHT22 (accuracy only +/-2 C, worse humidity, batch-to-batch disagreement, nonstandard one-wire protocol with strict timing that randomly corrupts readings, unknown-origin manufacturing); HC-SR04 ultrasonic module (5 V module needing level shifting in 3.3 V systems, large through-hole form factor, no temperature compensation so readings drift with weather, fragile exposed transducers); HC-SR501 PIR module (sensitivity and timing set by screw trimpots that cannot be replicated across production units, inconsistent retrigger, chronic false triggers especially near Wi-Fi antennas); MQ-2/MQ-135 gas sensors (heater burns roughly 750-900 mW continuously, day-plus burn-in, lifetime drift, responds to nearly every gas, meaningless without reference-gas calibration, and never acceptable for safety functions since gas/CO detection is a certified category); MPU-6050 IMU (discontinued and flagged NRND by TDK InvenSense, hobby modules carry remarked or counterfeit silicon); CdS photoresistors/LDRs (cadmium is RoHS-restricted, effectively banning them from EU products, plus slow unspecified response and extreme part-to-part variance); ACS712 hobby modules on mains voltage (mains routed through PCB traces without required creepage/clearance, no reinforced isolation, exposed terminals - a shock hazard, fire hazard, and automatic certification failure; escalate to Critical severity when mains is involved). Flag these parts, and more generally any sensor module with trimpots, through-hole hobby form factors, or unknown-origin silicon in a design headed for production.",
+      "applies_to": ["Sensor", "Sensor Module", "Temperature Sensor", "Humidity Sensor", "Distance Sensor", "PIR Sensor", "Gas Sensor", "IMU", "Light Sensor", "Current Sensor"],
+      "conditions": {
+        "sensor_in_known_problematic_family": true,
+        "or_hobby_module_form_factor_in_production_design": true,
+        "or_part_discontinued_or_nrnd": true,
+        "or_rohs_restricted_substance": true,
+        "or_uncertified_part_in_safety_function": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "inaccurate_or_inconsistent_readings",
+        "corrupted_sensor_data",
+        "unit_to_unit_variation_in_production",
+        "battery_life_destroyed_by_sensor_power_draw",
+        "stopped_production_line_from_discontinued_part",
+        "counterfeit_part_variability",
+        "rohs_noncompliance_blocking_market_entry",
+        "failed_safety_certification",
+        "shock_or_fire_hazard_on_mains"
+      ],
+      "recommended_actions": [
+        "Temperature/humidity: replace DHT11/DHT22 with Sensirion SHT40/SHT41, TI HDC3020, or Bosch BME280 (factory calibrated, standard I2C, specified across the full operating range).",
+        "Distance: replace HC-SR04 with the ST VL53 time-of-flight family (VL53L1X, VL53L4CD), a product-grade MaxBotix ultrasonic sensor, or a reflective IR sensor for basic presence detection.",
+        "Motion: replace HC-SR501 with Panasonic EKMC (or EKMB for battery products) or ST STHS34PF80 for true presence detection.",
+        "Gas/air quality: replace MQ-series with Sensirion SGP40/SGP41 (VOC), SCD40/SCD41 (CO2), or SPEC Sensors/Figaro electrochemical cells for a specific gas; use a certified detection module for any safety claim.",
+        "IMU: replace MPU-6050 with TDK ICM-42688-P, Bosch BMI270, or the ST LSM6 family (e.g., LSM6DSO).",
+        "Ambient light: replace CdS photoresistors with Vishay VEML7700, TI OPT3001, or Lite-On LTR-303 (calibrated lux over I2C, RoHS compliant).",
+        "Mains current: replace ACS712 hobby modules with a shunt plus TI AMC1302 isolated amplifier laid out with proper creepage/clearance, a current transformer, Allegro ACS37800, or a certified energy-metering module.",
+        "Screen every sensor against the five production filters: accuracy specified across the full operating range, active production lifecycle, regulatory compliance in every target market, fit within the power budget, and proper isolation/certification for anything touching mains or making a safety claim."
+      ],
+      "kb_references": [
+        "Appendix I.5: Sensor Selection",
+        "Appendix M: Prototype-to-Production Readiness"
+      ]
     }
   ]
 }
@@ -5200,6 +5354,106 @@ before beginning the review.
           "Identify required certifications for the target markets early and follow their guidelines during initial design.",
           "Design the layout for EMI/EMC margin by applying the EMC return-path, stitching, and high-speed routing rules before the scan.",
           "Budget for certification testing plus at least one retest, and run a pre-compliance scan before the formal test."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_005",
+      "title": "Undersized motor supply trace on 1 oz copper",
+      "description": "A motor driver drawing 8 A continuous is fed by a 1 mm (40 mil) trace on a 1 oz outer layer, sized by eye rather than calculated. Per IPC-2152 a 1 mm / 1 oz external trace is appropriate for roughly 2 A; at 8 A the trace overheats, and the neckdown where it enters the driver's pad is the hottest point. The board runs in a sealed enclosure with no airflow, so the IPC table assumptions do not hold even before derating.",
+      "triggered_rules": ["PWR_TRACE_003"],
+      "expected_issue": {
+        "rule_id": "PWR_TRACE_003",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "8 A continuous motor supply routed on a 1 mm 1 oz trace (roughly a 2 A geometry per IPC-2152), with an unevaluated neckdown at the driver pad and no derating for the sealed enclosure.",
+        "recommended_actions": [
+          "Recalculate the trace with an IPC-2152-based tool for 8 A continuous at worst-case ambient and apply a 15-20% margin.",
+          "Widen the trace or move to 2-3 oz copper or a dedicated pour, and evaluate the pad neckdown separately.",
+          "Verify the result with an IR-drop/thermal check and a thermal-camera load test in the enclosure."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_006",
+      "title": "Buck output crosses layers through a single via",
+      "description": "A 5 V / 6 A buck converter output routes from the top layer to a bottom-layer pour through one 0.3 mm via. A single standard via safely carries only around 500 mA, so the full load current concentrates in one plated barrel, which heats, drops voltage, and fatigues over thermal cycles.",
+      "triggered_rules": ["PWR_VIA_001"],
+      "expected_issue": {
+        "rule_id": "PWR_VIA_001",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "6 A buck output changes layers through a single via rated for roughly 500 mA, concentrating the full current in one plated barrel.",
+        "recommended_actions": [
+          "Replace the single via with an array sized at roughly 500 mA per via plus margin (a dozen or more vias for 6 A).",
+          "Place the array directly at the output pad or pour region so current does not funnel through a narrow neck.",
+          "Check the fabricator's via plating specification for the load."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_007",
+      "title": "Power pour necks down between mounting-hole clearances",
+      "description": "A 12 V input pour looks generous, but between a mounting-hole keepout and a connector clearance it narrows to a 0.6 mm neck that carries the entire input current. The power connector's pins also join the pour through standard four-spoke thermal reliefs. Under full load the neck and the relief spokes heat while the rest of the pour stays cool, so the bottleneck is invisible without tracing the actual current path.",
+      "triggered_rules": ["PWR_POUR_001"],
+      "expected_issue": {
+        "rule_id": "PWR_POUR_001",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "The 12 V input pour carries its full current through a 0.6 mm neck between clearance keepouts, and the power connector joins the pour through standard thermal-relief spokes.",
+        "recommended_actions": [
+          "Rework the placement or keepouts so the pour maintains adequate width along the whole current path, verified per IPC-2152.",
+          "Use solid or wide-spoke connections on the power connector pads, balancing solderability against current capacity.",
+          "Inspect the Gerbers for remaining necks and isolated islands before release."
+        ]
+      }
+    },
+    {
+      "id": "EX_EMC_004",
+      "title": "Star grounding imposed on a board with USB and fast clocks",
+      "description": "A mixed-signal board with a USB 2.0 high-speed interface and a 48 MHz clocked MCU is laid out with a star-ground scheme: analog, digital, and power grounds run as long radial branches meeting at a single point near the connector. The USB pair and clock traces cross between the separated ground regions, so their return currents detour through the distant star point; the gaps behave like slot radiators, and the several-centimeter branches add tens of nanohenries of return inductance. A mounting hole also bridges the analog and power branches, silently defeating the single point.",
+      "triggered_rules": ["EMC_GND_001"],
+      "expected_issue": {
+        "rule_id": "EMC_GND_001",
+        "severity": "Major",
+        "domain": "EMC",
+        "summary": "Star grounding applied to a board carrying USB high-speed and a 48 MHz clock: signals cross split ground regions, long branches form antenna loops, and a mounting hole creates an unintended secondary ground connection.",
+        "recommended_actions": [
+          "Replace the board-wide star scheme with a continuous ground plane so USB and clock return currents stay beneath their traces.",
+          "Retain only local single-point or Kelvin connections where genuinely needed (current sense, precision reference), per the component datasheets.",
+          "Verify no unintended connections through mounting holes, connector shells, or pours, and re-check return paths at every layer transition."
+        ]
+      }
+    },
+    {
+      "id": "EX_COMP_002",
+      "title": "DHT22 carried from the prototype into a production climate monitor",
+      "description": "A commercial greenhouse climate monitor ships with the DHT22 used on the breadboard prototype. Accuracy is only rated +/-2 C with humidity worse, so units disagree with the customer's reference instruments; two sensors from the same production batch noticeably disagree with each other; and the nonstandard one-wire protocol's strict timing randomly corrupts readings under interrupt load, producing support tickets and returns. The parts come from unknown-origin factories, so behavior shifts between reels.",
+      "triggered_rules": ["COMP_SENSOR_001"],
+      "expected_issue": {
+        "rule_id": "COMP_SENSOR_001",
+        "severity": "Major",
+        "domain": "Component",
+        "summary": "DHT22 in a production design: +/-2 C accuracy, batch-to-batch disagreement, and a timing-fragile nonstandard protocol produce bad data, support tickets, and returns.",
+        "recommended_actions": [
+          "Replace with a factory-calibrated I2C sensor specified across the full operating range: Sensirion SHT40/SHT41, TI HDC3020, or Bosch BME280 if barometric pressure is also wanted.",
+          "Screen the replacement against the five production filters (accuracy, lifecycle, compliance, power, safety) before locking the layout."
+        ]
+      }
+    },
+    {
+      "id": "EX_COMP_003",
+      "title": "ACS712 hobby module measuring mains current inside a product",
+      "description": "A smart power strip design drops in an ACS712 breakout module to measure mains current. The Allegro chip itself is legitimate, but the hobby module routes mains voltage through PCB traces with nowhere near the creepage and clearance that safety standards require, has no reinforced isolation, and exposes mains on screw terminals. Inside a product this is a shock hazard, a fire hazard, and an automatic safety-certification failure all at once.",
+      "triggered_rules": ["COMP_SENSOR_001"],
+      "expected_issue": {
+        "rule_id": "COMP_SENSOR_001",
+        "severity": "Critical",
+        "domain": "Component",
+        "summary": "ACS712 hobby module carries mains through traces without required creepage/clearance or reinforced isolation, with exposed terminals: a shock hazard, fire hazard, and automatic certification failure.",
+        "recommended_actions": [
+          "Replace the module with a shunt plus TI AMC1302 isolated amplifier laid out on the product PCB with proper creepage and clearance, a current transformer that keeps mains off the board entirely, an Allegro ACS37800 integrated correctly, or a certified energy-metering module.",
+          "Verify isolation, spacing, and certification requirements for the target markets before layout (see PROD_CERT_001)."
         ]
       }
     }
@@ -5871,6 +6125,34 @@ Regulators that dominate tutorials, dev boards, and $1 modules are frequently th
 - **Protection:** require thermal shutdown and current limit for production parts.
 - **Sourcing:** if it can't be bought from a major authorized distributor (Mouser, Digi-Key), it doesn't belong in the product. Verified datasheets, reference designs, and application support typically cost under $0.50/unit extra.
 - **Never select on one headline spec** (cost, Iq, "LDO" in the title) — check the full datasheet picture across temperature and load.
+
+### I.5 Sensor Selection (`COMP_SENSOR_001`)
+
+Seven sensors that dominate tutorials, breadboards, and $2 modules fail once they are inside a manufactured product, where a part is judged on accuracy, lifecycle, compliance, power, and safety — not on whether it works on the bench. Each entry below fails at least one of those tests; some fail several at once. The common thread: hobbyist *modules* (through-hole boards, trimpots, exposed transducers, unknown-origin silicon) are not production components, even when the sensing principle itself is sound.
+
+**Source:** John Teel (john@predictabledesigns.com), Predictable Designs, https://predictabledesigns.com — guide "Production-Grade Sensor Swap List" (doc SNS-07 Rev A, © Predictable Designs LLC).
+
+**Known-problematic parts and replacements:**
+
+| Part | Why it fails in production | Use instead |
+|---|---|---|
+| DHT11 / DHT22 (temp/humidity) | Accuracy only ±2 °C, humidity worse; two sensors from one batch noticeably disagree; nonstandard one-wire protocol with strict timing randomly corrupts readings; made by countless factories of unknown origin (DHT22 shares all of it) | Sensirion SHT40/SHT41 (factory calibrated, standard I²C, accuracy specified across the full operating range); TI HDC3020; Bosch BME280 (adds barometric pressure). A couple of dollars in volume |
+| HC-SR04 ultrasonic module | 5 V module in a 3.3 V world (needs level shifting); large through-hole module, not a placeable component; no temperature compensation, so readings drift with weather; condensation, fragile exposed transducers, and enclosure acoustics shift readings further | ST VL53 time-of-flight family (VL53L1X, VL53L4CD) for short range; MaxBotix ultrasonic (product-grade); simple reflective IR for basic presence. Ultrasonic sensing is valid — the $2 module is the problem |
+| HC-SR501 PIR module | Sensitivity and timing set by two screw trimpots — impossible to replicate across thousands of units; inconsistent retrigger, quirky onboard regulator, chronic false triggers (worst near a Wi-Fi antenna); module form factor | Panasonic EKMC series (clean digital output, specified sensitivity, lens options, solderable package); EKMB series for battery products (a few µA); ST STHS34PF80 (true presence — still detects a person after they stop moving) |
+| MQ-2 / MQ-135 gas sensors | Heater burns ~750–900 mW continuously (battery product dead on arrival); day-plus burn-in, lifetime drift, responds to practically every gas; meaningless without reference-gas calibration; **never for safety functions** — gas/CO detection is a certified category and the liability lands on you | Sensirion SGP40/SGP41 (VOC / general air quality); SCD40/SCD41 (real CO₂); SPEC Sensors or Figaro electrochemical cells (one specific target gas); a certified detection module for any safety claim |
+| MPU-6050 IMU | Works well — that's the trap: TDK InvenSense flagged it NRND years ago and it is discontinued; hobby modules carry remarked or counterfeit silicon, so every reel behaves differently; one supply hiccup from a stopped production line | TDK ICM-42688-P (modern successor, better specs, lower power); Bosch BMI270 (low power, wearables); ST LSM6 family (e.g., LSM6DSO — mature software support, actually in production) |
+| CdS photoresistor (LDR) | Cadmium sulfide is RoHS-restricted — effectively banned from products sold in the EU; slow response, unspecified spectral response, part-to-part variance so wide they barely qualify as sensors | Vishay VEML7700 (wide dynamic range); TI OPT3001 (human-eye response); Lite-On LTR-303 (compact, low cost). All give calibrated lux over I²C, RoHS-compliant, ~$1 or less in volume |
+| ACS712 module on mains | The Allegro chip is legitimate; the hobby breakout is not — mains routed through PCB traces with nowhere near required creepage/clearance, no reinforced isolation, often exposed screw terminals. Shock hazard, fire hazard, and automatic certification failure in one | Shunt + TI AMC1302 isolated amplifier on your own board with proper spacing (the standard approach); a current transformer (isolated by design, keeps mains off the board); Allegro ACS37800 (made to integrate correctly); a certified energy-metering module |
+
+**A warning from the real world (lifecycle):** a designer who built around the 9-axis MPU-9250 had to switch parts mid-development when it went EOL — and the swap was not trivial, because the replacement ran its data lines at 1.8 V and needed level shifting. A part marked "not recommended for new designs" is living on borrowed time.
+
+**The Five Production Filters** — run every sensor (any component, really) through all five before committing to a layout:
+
+1. **Accuracy** — the datasheet must specify performance across the full operating range, not just room temperature.
+2. **Lifecycle** — the part must be in active production; NRND parts are living on borrowed time (see `PROD_SOURCE_001`, Appendix M.1).
+3. **Compliance** — every substance in the part must clear RoHS and the regulations of every market where you plan to sell (see `PROD_CERT_001`, Appendix M.4).
+4. **Power** — the sensor has to fit the power budget; this matters most in battery products.
+5. **Safety** — anything that touches mains voltage or makes a safety claim needs proper isolation, spacing, and certification behind it. Mains is the one category where a bad sensor choice can actually hurt somebody.
 
 ---
 ## Appendix J: Hans Rosenberg Checklist Reference
@@ -6563,6 +6845,128 @@ Brief definitions a reviewer needs; the primary governing standard is cited for 
 - **IPC-7711/7721** — rework / repair.
 - **IPC-TM-650** test methods — 2.4.3 (flex endurance, 10% R fail), 2.4.8 (peel), 2.5.1 (insulation R), 2.5.5.7 (TDR), 2.5.5.12A (signal loss), 2.5.7.2 (HiPot), 2.6.3 (moisture), 2.6.7.2 (thermal shock), 2.6.27 (thermal stress/reflow, 5% R fail).
 - **Industry:** MIL-PRF-50884 / MIL-PRF-31032, MIL-STD-810 / 461 (military); IPC-6012ES, ASTM E595, NASA-STD-8739.4A, GSFC-STD-7000, J-STD-001FS (aerospace/space); IPC-6012EM, IEC 60601-1 / -1-2, ISO 10993, ISO 11135/11137 (medical); AEC-Q200, ISO 16750-3/4, ISO 26262, IPC-CC-830 (automotive).
+
+---
+## Appendix O: Power Delivery & Grounding Layout
+
+This appendix distills five JLCPCB design guides covering the power-delivery and grounding side of PCB layout: conductor sizing for current, high-current design discipline, ground/power plane construction, star-grounding applicability, and bypass-capacitor layout. Much of the grounding and decoupling material reinforces rules that already exist in this knowledge base (`PWR_DECPL_*`, `EMC_PATH_001`, `EMC_STITCH_*`, `EMC_PLANE_002`, `EMC_VIA_003`, Appendix F) and is cross-referenced rather than duplicated. Four new ontology rules cover the gaps: `PWR_TRACE_003` (trace width vs. current), `PWR_VIA_001` (via current capacity), `PWR_POUR_001` (copper-pour bottlenecks), and `EMC_GND_001` (grounding topology vs. frequency content).
+
+### O.1 Track Width vs. Current Capacity (`PWR_TRACE_003`)
+
+**Source:** JLCPCB, JLCPCB Blog, https://jlcpcb.com/blog — article "Track Width v/s Current Capacity: PCB Layout Tips for Power Routing" (https://jlcpcb.com/blog/track-width-vs-current-capacity-pcb-layout-tips).
+
+Conductor sizing is governed by **IPC-2221** and **IPC-2152** (temperature rise of a trace for a given current). Review every power-carrying trace against these, not against "it looks wide enough."
+
+**Copper weight classes:**
+
+| Class | Thickness | Typical use |
+|---|---|---|
+| Standard | 1 oz/ft² (35 µm) | Most PCBs |
+| Medium power | 2 oz/ft² (70 µm) | Higher-current rails |
+| High power | 3 oz/ft² or more | Power-dense designs |
+
+**Sizing checks:**
+- Starting point: **~1 mm (40 mil) width per 2 A on a 1 oz external layer**. Verify each power trace with an IPC-2152-based calculator for temperature rise, resistance, voltage drop, and power dissipation — do not scale linearly by eye.
+- **A single standard via carries only ~500 mA safely.** Power nets that change layers need multiple vias (see O.2 and `PWR_VIA_001`).
+- External layers dissipate heat better than internal layers; derate traces routed on inner layers.
+- Higher ambient/operating temperature reduces current capacity — size for the worst-case environment, not the bench.
+- Long traces add resistance: heat and voltage drop grow with length. Keep power tracks short.
+
+**Layout practices:**
+- Use 45° or curved bends on power tracks rather than sharp right angles.
+- For very high currents, use parallel traces on multiple layers, dedicated power/ground planes instead of trace-only routing, or (above ~100 A, e.g. inverters and EV systems) copper bus bars.
+- Removing solder mask over a power trace to expose (and optionally tin) the copper is a low-cost capacity boost, at the price of an exposed conductor — confirm it is acceptable for the product's environment.
+
+### O.2 High-Current Design Discipline (`PWR_VIA_001`, `PWR_POUR_001`)
+
+**Source:** JLCPCB, JLCPCB Blog, https://jlcpcb.com/blog — article "The Engineer's Guide to High Current PCB Design" (https://jlcpcb.com/blog/high-current-pcb-design-guide-2026).
+
+There is no single current threshold that makes a board "high current" — treat a board as high-current whenever current flow becomes critical to its electrical and thermal design. High-current design is *system-level*: traces, vias, planes, connectors, pads, and return paths form one power system; no single wide trace or calculator result solves it alone.
+
+**The five recurring failure modes:**
+1. **Undersized traces** — thermal runaway starts at narrow sections: neckdowns at pads, connector pins, fuses, and MOSFET drains. The narrowest point in the path sets the limit, so evaluate necks separately from the nominal trace width.
+2. **Insufficient via capacity** — a single via forces the full current through a small plated barrel and becomes a hotspot. Power inputs, regulator outputs, MOSFET connections, battery terminals, and motor-driver paths need **via arrays**, placed directly at the supported pad or copper region so current does not funnel through a narrow copper neck to reach them (`PWR_VIA_001`).
+3. **Poor plane continuity** — broken planes, thin necks, and unnecessary cutouts lengthen return paths and add voltage drop (see O.3).
+4. **IPC-table over-reliance** — IPC-2152 tables assume conditions (airflow, copper, ambient) that real products rarely match. Apply a **15–20% derating margin** on top of table minimums, more for sealed enclosures, continuous load, or no airflow.
+5. **Ignored connector resistance** — contact resistance dissipates real power: **a 10 mΩ connection carrying 20 A dissipates 4 W**. Verify the current rating *and* contact resistance of every connector, terminal block, fuse holder, and crimped contact in the path (ties to the rating-margin discipline of `PWR_RATING_*`).
+
+**Copper and thermal checks:**
+- Use **2–3 oz copper for continuous currents above roughly 10 A**.
+- Thermal reliefs are fine on signal pads, but high-current pads (power connectors, MOSFET drains, current shunts, power terminals) need solid connections or wider/multiple spokes — balance solderability against current capacity (`PWR_POUR_001`).
+- Copper pours require inspection of the *actual current path*: clearances around pads, vias, and mounting holes create hidden necks; visual copper area does not guarantee path quality. Dedicated planes are more predictable on 4+ layer boards.
+- Exposed pads need copper underneath plus thermal via arrays (`THM_VIA_001`), planned during placement — heat spreading cannot be retrofitted after routing.
+- Use Kelvin connections for current shunts: two heavy connections carry the load, two separate thin sense traces connect directly to the shunt pads away from the high-current copper.
+
+**EMI without compromising power:** keep supply and return paths close together, place input capacitors at the switching device with short direct returns, keep switching nodes small, and put filters at noise entry points (input filter at the connector, regulator filter at the load). This is the same loop-area discipline as `EMC_PATH_001` and `PWR_BUCK_001/002`.
+
+**Validation before production:** run IR-drop and thermal simulation before the first spin; then load-test at real operating current — full load, startup surge, worst-case duty cycle, target ambient, inside the enclosure if there is one — and map hotspots with a thermal camera or thermocouples (`THM_RISE_001`). Revise the layout if measurement disagrees with the design analysis.
+
+### O.3 Ground Plane and Power Plane Construction
+
+**Source:** JLCPCB, JLCPCB Blog, https://jlcpcb.com/blog — article "Circuit Board Ground Plane and Power Plane Guide" (https://jlcpcb.com/blog/circuit-board-ground-plane-and-power-plane-guide-2026).
+
+**Solid over split.** A solid ground plane gives every signal a low-impedance return directly beneath it and is usually safer than split planes. Split only when a component datasheet specifically requires isolation, and never let critical signals cross the split boundary — a trace over a gap forces its return current to detour around it, enlarging the loop (`EMC_PLANE_002`, Appendix F.1). Clocks, USB, differential pairs, and memory buses are the classic victims. Correction priority: (1) reroute over continuous ground; (2) if changing layers, keep the same reference plane and place return vias next to the signal vias (`EMC_VIA_003`, Appendix D.2); never rely on downstream filtering to fix a broken reference path.
+
+**Reference stack-ups** (choose the stackup *before* routing clocks, buses, or controlled-impedance traces):
+- 4-layer: signal / **ground** / power + slow signals / signal.
+- 6-layer: signal / **ground** / signal / power / **ground** / signal.
+- Adjacent power–ground planes add distributed capacitance and reduce inductance — beneficial, but never a replacement for discrete capacitors at IC pins.
+
+**Decoupling routing order** (reinforces `PWR_DECPL_001/005`): the supply path should pass through or immediately beside the capacitor before reaching the IC power pin — a capacitor hung off a side branch after the IC connection decouples nothing. Ground via close to the capacitor pad.
+
+**Multi-voltage power regions:** group components by rail before drawing copper regions; verify each rail has a continuous path from regulator to loads. Even a large region fails through one narrow neck carrying all the current — voltage drop and local heating concentrate there while the rest of the plane stays cool, which hides the bottleneck (`PWR_POUR_001`). High-speed signals must not cross power-region boundaries unless continuous ground remains beneath them.
+
+**Via stitching with purpose** (`EMC_STITCH_001/002`): a smaller number of well-positioned vias beats a carpet of purposeless ones. Priority locations: next to every signal-layer transition, board edges (a stitching row along the edge reduces edge radiation), around noisy circuits and RF sections, and around shield-can perimeters (several short connections — one long narrow connection just adds inductance). Spacing depends on frequency, board size, stackup, and EMI requirements — there is no fixed number.
+
+**Floating copper:** isolated copper islands couple noise unpredictably — either connect them deliberately to ground with stitching vias or remove them.
+
+**Ground loops are a system problem:** loops form through cables, shields, chassis, external supplies, and test equipment, not just on the PCB. Review every connection to protective earth, chassis, cable shields, and external gear. Low-frequency analog may warrant one controlled single-point connection; high-frequency designs want short low-impedance chassis connections at the connector, not long wires across the board. Never leave a cable shield floating, and avoid multiple distant shield grounds.
+
+**Pre-fabrication:** rebuild all pours, run DRC, and inspect the Gerbers for narrow necks, isolated islands, and plane continuity under critical routes; confirm the stackup and copper weight against the fabricator's actual capabilities.
+
+### O.4 Star Grounding: Where It Belongs and Where It Fails (`EMC_GND_001`)
+
+**Source:** JLCPCB, JLCPCB Blog, https://jlcpcb.com/blog — article "Understanding Star Grounding in PCB Design: A Practical Guide" (https://jlcpcb.com/blog/understanding-star-grounding-pcb-design-ultimate-guide).
+
+Star grounding is **intentional control of shared impedance**: selected circuit blocks get separate return paths that meet at one controlled physical point, so a high-di/dt block cannot drop voltage across copper that a sensitive block uses as its reference.
+
+**Where it applies:**
+- DC and low-frequency domains — audio stages, bridge sensors, slow control loops, precision measurement. "Below ~1 MHz" is a screening aid, not a law: fast *edges* in a nominally slow signal still demand loop-area analysis.
+- Compact layouts where branches stay short; physically distinct analog/digital/power domains that signals rarely cross; one block carrying much more current than the rest (relays, motors, speakers, converters); or a datasheet that explicitly requires single-point connection.
+
+**Where a plane wins:** fast digital, RF, and mixed-signal boards; anywhere high-frequency return current must hug the signal trace; large boards where radial branches grow long. **Never apply star grounding to USB, Ethernet, DDR, RF, or fast clocks** — these need a continuous nearby return.
+
+**Failure modes to flag in review:**
+- *Shared return impedance* — e.g., an LED driver and a sensor amplifier sharing one thin return track: the driver's pulsed current drops voltage that the ADC reads as sensor noise.
+- *Signals crossing domain gaps* — a trace crossing between separated ground regions loses its return; the current detours through the distant star point or stray capacitance, the loop grows, and for fast edges the gap behaves like a slot radiator.
+- *Long branches as antenna loops* — branches of several centimeters carry tens of nanohenries; V = L·di/dt turns transitions into reference disturbance, and widening a long trace does not fix its loop area.
+- *Unintended secondary connections* — vias, mounting holes, connector shells, thermal pads, test points, or same-net pours that quietly bridge branches and defeat the single point. Verify isolation at high zoom; a CAD net-tie controls connectivity, not the physical return path.
+- *Star point placed by geometry* (board center, remote edge) instead of at the actual current loops — place it near the main supply return or per the datasheet.
+
+**Branch design:** short, wide, direct; ~1 mm width as a visual floor for low-current branches, calculated from copper thickness, temperature rise, and acceptable drop otherwise (`PWR_TRACE_003`).
+
+**Mixed-signal practice** (reinforces Appendix F): place converters at the analog–digital boundary with analog support routed on the analog side and digital on the digital side; follow the manufacturer's AGND/DGND guidance — some ICs require joining directly under the package, and no generic diagram replaces the datasheet. **The best modern boards are hybrids:** a solid plane carries digital and general returns, while a shunt amplifier, audio input, power stage, or precision reference gets a local Kelvin or single-point connection. Star grounding should be intentional and local, never a decorative pattern imposed across the board. (For single-point *chassis* grounding in aircraft systems, see `AERO_GND_001`.)
+
+### O.5 Bypass Capacitor Layout (`PWR_DECPL_001`–`PWR_DECPL_005`)
+
+**Source:** JLCPCB, JLCPCB Blog, https://jlcpcb.com/blog — article "The Definitive Guide to Bypass Capacitor in PCB Layout" (https://jlcpcb.com/blog/bypass-capacitor-in-pcb-layout).
+
+The governing number: **every millimeter of trace adds roughly 1 nH of parasitic inductance**, and that inductance's impedance rises with frequency (Z = 2πfL). All placement rules follow from minimizing the loop.
+
+**Roles (both usually needed):**
+- *Bypass* capacitor: shunts high-frequency noise on the rail directly to ground (typically 1 µF–10 µF).
+- *Decoupling* capacitor: local charge reservoir supplying instantaneous switching current so the rail does not droop (typically 0.01 µF–0.1 µF).
+- Wideband strategy: parallel a bulk 10 µF, a mid-range 0.1 µF, and a high-frequency 10 nF to cover the spectrum. Mind self-resonance: above its SRF (set by ESL/ESR) a capacitor is an inductor — smaller packages have lower ESL (`PWR_DECPL_004`).
+
+**Placement and routing checks:**
+- Capacitor immediately beside the IC power pin; connection short, direct, and *wide* (wide traces have lower inductance).
+- Correct current order: **IC pin → capacitor pad → via → plane**. A via *between* the IC and the capacitor inserts via inductance into the high-frequency loop — a classic violation.
+- **Dedicated vias per capacitor**, ground and power, close to the pads — shared vias create a common impedance path (`PWR_DECPL_005`, `EMC_VIA_003`).
+- The return path matters as much as the supply side: a solid ground plane gives the noise current a near-zero-impedance path home via a short via (`EMC_PATH_001`). Verify the loop, not just the trace.
+- On boards with high-speed components, prefer a 4+ layer stackup with dedicated internal power and ground planes.
+- Keep temperature-sensitive capacitors (electrolytics especially) away from hot components — temperature shifts both capacitance and ESR (Appendix I.1, `COMP_CAP_*`).
+
+**Symptoms of getting it wrong** (useful for failure-mode reasoning): random MCU resets, unstable or drifting ADC readings, high-speed bus errors, shrunken logic noise margins, and degraded analog signal paths.
 
 --- END OF KNOWLEDGE BASE DOCUMENT ---
 

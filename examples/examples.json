@@ -450,6 +450,106 @@
           "Budget for certification testing plus at least one retest, and run a pre-compliance scan before the formal test."
         ]
       }
+    },
+    {
+      "id": "EX_PWR_005",
+      "title": "Undersized motor supply trace on 1 oz copper",
+      "description": "A motor driver drawing 8 A continuous is fed by a 1 mm (40 mil) trace on a 1 oz outer layer, sized by eye rather than calculated. Per IPC-2152 a 1 mm / 1 oz external trace is appropriate for roughly 2 A; at 8 A the trace overheats, and the neckdown where it enters the driver's pad is the hottest point. The board runs in a sealed enclosure with no airflow, so the IPC table assumptions do not hold even before derating.",
+      "triggered_rules": ["PWR_TRACE_003"],
+      "expected_issue": {
+        "rule_id": "PWR_TRACE_003",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "8 A continuous motor supply routed on a 1 mm 1 oz trace (roughly a 2 A geometry per IPC-2152), with an unevaluated neckdown at the driver pad and no derating for the sealed enclosure.",
+        "recommended_actions": [
+          "Recalculate the trace with an IPC-2152-based tool for 8 A continuous at worst-case ambient and apply a 15-20% margin.",
+          "Widen the trace or move to 2-3 oz copper or a dedicated pour, and evaluate the pad neckdown separately.",
+          "Verify the result with an IR-drop/thermal check and a thermal-camera load test in the enclosure."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_006",
+      "title": "Buck output crosses layers through a single via",
+      "description": "A 5 V / 6 A buck converter output routes from the top layer to a bottom-layer pour through one 0.3 mm via. A single standard via safely carries only around 500 mA, so the full load current concentrates in one plated barrel, which heats, drops voltage, and fatigues over thermal cycles.",
+      "triggered_rules": ["PWR_VIA_001"],
+      "expected_issue": {
+        "rule_id": "PWR_VIA_001",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "6 A buck output changes layers through a single via rated for roughly 500 mA, concentrating the full current in one plated barrel.",
+        "recommended_actions": [
+          "Replace the single via with an array sized at roughly 500 mA per via plus margin (a dozen or more vias for 6 A).",
+          "Place the array directly at the output pad or pour region so current does not funnel through a narrow neck.",
+          "Check the fabricator's via plating specification for the load."
+        ]
+      }
+    },
+    {
+      "id": "EX_PWR_007",
+      "title": "Power pour necks down between mounting-hole clearances",
+      "description": "A 12 V input pour looks generous, but between a mounting-hole keepout and a connector clearance it narrows to a 0.6 mm neck that carries the entire input current. The power connector's pins also join the pour through standard four-spoke thermal reliefs. Under full load the neck and the relief spokes heat while the rest of the pour stays cool, so the bottleneck is invisible without tracing the actual current path.",
+      "triggered_rules": ["PWR_POUR_001"],
+      "expected_issue": {
+        "rule_id": "PWR_POUR_001",
+        "severity": "Major",
+        "domain": "Power",
+        "summary": "The 12 V input pour carries its full current through a 0.6 mm neck between clearance keepouts, and the power connector joins the pour through standard thermal-relief spokes.",
+        "recommended_actions": [
+          "Rework the placement or keepouts so the pour maintains adequate width along the whole current path, verified per IPC-2152.",
+          "Use solid or wide-spoke connections on the power connector pads, balancing solderability against current capacity.",
+          "Inspect the Gerbers for remaining necks and isolated islands before release."
+        ]
+      }
+    },
+    {
+      "id": "EX_EMC_004",
+      "title": "Star grounding imposed on a board with USB and fast clocks",
+      "description": "A mixed-signal board with a USB 2.0 high-speed interface and a 48 MHz clocked MCU is laid out with a star-ground scheme: analog, digital, and power grounds run as long radial branches meeting at a single point near the connector. The USB pair and clock traces cross between the separated ground regions, so their return currents detour through the distant star point; the gaps behave like slot radiators, and the several-centimeter branches add tens of nanohenries of return inductance. A mounting hole also bridges the analog and power branches, silently defeating the single point.",
+      "triggered_rules": ["EMC_GND_001"],
+      "expected_issue": {
+        "rule_id": "EMC_GND_001",
+        "severity": "Major",
+        "domain": "EMC",
+        "summary": "Star grounding applied to a board carrying USB high-speed and a 48 MHz clock: signals cross split ground regions, long branches form antenna loops, and a mounting hole creates an unintended secondary ground connection.",
+        "recommended_actions": [
+          "Replace the board-wide star scheme with a continuous ground plane so USB and clock return currents stay beneath their traces.",
+          "Retain only local single-point or Kelvin connections where genuinely needed (current sense, precision reference), per the component datasheets.",
+          "Verify no unintended connections through mounting holes, connector shells, or pours, and re-check return paths at every layer transition."
+        ]
+      }
+    },
+    {
+      "id": "EX_COMP_002",
+      "title": "DHT22 carried from the prototype into a production climate monitor",
+      "description": "A commercial greenhouse climate monitor ships with the DHT22 used on the breadboard prototype. Accuracy is only rated +/-2 C with humidity worse, so units disagree with the customer's reference instruments; two sensors from the same production batch noticeably disagree with each other; and the nonstandard one-wire protocol's strict timing randomly corrupts readings under interrupt load, producing support tickets and returns. The parts come from unknown-origin factories, so behavior shifts between reels.",
+      "triggered_rules": ["COMP_SENSOR_001"],
+      "expected_issue": {
+        "rule_id": "COMP_SENSOR_001",
+        "severity": "Major",
+        "domain": "Component",
+        "summary": "DHT22 in a production design: +/-2 C accuracy, batch-to-batch disagreement, and a timing-fragile nonstandard protocol produce bad data, support tickets, and returns.",
+        "recommended_actions": [
+          "Replace with a factory-calibrated I2C sensor specified across the full operating range: Sensirion SHT40/SHT41, TI HDC3020, or Bosch BME280 if barometric pressure is also wanted.",
+          "Screen the replacement against the five production filters (accuracy, lifecycle, compliance, power, safety) before locking the layout."
+        ]
+      }
+    },
+    {
+      "id": "EX_COMP_003",
+      "title": "ACS712 hobby module measuring mains current inside a product",
+      "description": "A smart power strip design drops in an ACS712 breakout module to measure mains current. The Allegro chip itself is legitimate, but the hobby module routes mains voltage through PCB traces with nowhere near the creepage and clearance that safety standards require, has no reinforced isolation, and exposes mains on screw terminals. Inside a product this is a shock hazard, a fire hazard, and an automatic safety-certification failure all at once.",
+      "triggered_rules": ["COMP_SENSOR_001"],
+      "expected_issue": {
+        "rule_id": "COMP_SENSOR_001",
+        "severity": "Critical",
+        "domain": "Component",
+        "summary": "ACS712 hobby module carries mains through traces without required creepage/clearance or reinforced isolation, with exposed terminals: a shock hazard, fire hazard, and automatic certification failure.",
+        "recommended_actions": [
+          "Replace the module with a shunt plus TI AMC1302 isolated amplifier laid out on the product PCB with proper creepage and clearance, a current transformer that keeps mains off the board entirely, an Allegro ACS37800 integrated correctly, or a certified energy-metering module.",
+          "Verify isolation, spacing, and certification requirements for the target markets before layout (see PROD_CERT_001)."
+        ]
+      }
     }
   ]
 }
