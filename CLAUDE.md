@@ -57,6 +57,20 @@ Claude Code is the tested reviewer driver. A second path exists for single-file-
 
 The reviewer-facing flow (inputs, outputs, prompts) is documented in README.md §5 "Running a Review".
 
+## Live Fusion Capture (`tools/fusion_bridge.py`)
+
+The bridge drives a running Fusion Electronics session over Autodesk's "Fusion MCP Server" HTTP endpoint to run the export ULPs without a human at the EAGLE prompt. The orchestration sequence is `docs/REVIEWER_INSTRUCTIONS.md` "Step 0 — Live Fusion Capture" — follow it exactly; it encodes the workarounds below. Verified end-to-end 2026-08-28 against a live 1-sheet design (all 8 outputs produced, structural parity with the committed `exports/comet_*` files).
+
+Non-obvious operational facts (learned the hard way — do not rediscover):
+
+- **Dialog latch (known Fusion issue).** After any dispatch whose EAGLE command contains `RUN`, the MCP add-in refuses further scripts with "Cannot perform 'script' while a command dialog is open" — **no dialog is actually visible**; only a keypress (Escape) in the Fusion window clears it. Detect the clear by polling a no-op `execute_script`. `run_eagle()` auto-prefixes every command with `SET CONFIRM YES;`, which prevents the same latch after `EDIT`/confirmation prompts and auto-answers ULP overwrite prompts — but does **not** prevent the post-`RUN` latch. Hence Step 0's shape: one chained dispatch per editor pass, one user Escape between passes.
+- The schematic and board passes **cannot merge into a single dispatch**: the images ULP terminates via `exit()`, which also ends the rest of the chained command line.
+- **Reads follow the active editor** and are never latch-blocked. With the board tab active, `electronics.Schematic`/`Sheet`/`Part` read empty — that means "wrong editor", not "no design open" (`ping` detects and reports this case).
+- Fusion's screenshot query returns "No active graphics view" for the 2D electronics editors — you cannot remotely see what is on screen.
+- **Export/stackup JSONs are Latin-1, not UTF-8** (e.g. the German layer name "gesam-Maß"). Python's `json.load` raises `UnicodeDecodeError`; decode with `latin-1` first. This is a pre-existing trait of the ULP output (the committed comet stack file has the same byte), not a bridge bug.
+- ULP PNG renders are fixed-size per canvas: every board PNG of a design is **byte-identical in size** (checksums differ — they are not duplicate renders), and board PNGs can exceed 150MB.
+- `run_eagle()` embeds the command into the generated Python via `repr()` **deliberately** — single quotes and Windows backslash paths (`RUN 'C:\...'`) survive. Do not "simplify" it to an f-string.
+
 ## Pre-Commit Requirement
 
 **Before every commit**, regenerate the `review_instructions.txt` file:
