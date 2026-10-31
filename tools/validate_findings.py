@@ -43,6 +43,7 @@ DESIGN_INPUT_SUFFIXES = (
     "-thomson-export-sch.json",
     "-thomson-export-brd.json",
     "-thomson-export-stack.json",
+    "-thomson-export-drc.json",
 )
 
 

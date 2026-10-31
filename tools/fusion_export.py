@@ -12,7 +12,7 @@ post-``RUN`` dialog latch never arms: the whole capture is zero-Escape.
 Verbs (run with the wanted editor's design open; the tool switches tabs):
 
     python tools/fusion_export.py sch      # -sch.json
-    python tools/fusion_export.py brd      # -brd.json + -stack.json
+    python tools/fusion_export.py brd      # -brd.json + -stack.json (+ -drc.json)
     python tools/fusion_export.py images   # schematic + board PNG passes
     python tools/fusion_export.py all      # everything
 
@@ -30,6 +30,11 @@ see the feasibility doc):
 - ``project.variant`` is ``"''"`` (what Fusion's ``variant()`` returns) when
   the design defines no variants, else ``null`` — the *active* variant is
   not readable over MCP (gap 5).
+
+New in this path (no ULP equivalent): ``brd`` also writes
+``-thomson-export-drc.json`` — Fusion's own DRC results from
+``electronics.Error`` (Fusion Insider 2707.0.73, preview API). It reflects the
+last DRC run in Fusion; on builds without the entity it is skipped.
 """
 
 from __future__ import annotations
@@ -63,6 +68,10 @@ _HS_TOKENS = ("USB", "ETH", "HDMI", "PCIE", "SATA", "MIPI", "LVDS")
 
 PIN_DIRECTION = {0: "NC", 1: "IN", 2: "OUT", 3: "IO", 4: "OC",
                  5: "PWR", 6: "PAS", 7: "HIZ", 8: "SUP"}
+
+# adsk.electron.ErrorTypes / ErrorStates (preview API).
+DRC_TYPE = {0: "warning", 1: "failure", 2: "consistency", 3: "airwire"}
+DRC_STATE = {0: "active", 1: "processed", 2: "approved"}
 
 
 def is_power_net(name: str) -> bool:
@@ -767,6 +776,38 @@ class Exporter:
         }
         return brd, stack
 
+    def gather_drc(self) -> dict | None:
+        """Fusion's DRC results for the board, or None if this build can't say.
+
+        Reads ``electronics.Error`` (board editor active). Rows reflect the
+        last DRC run in Fusion — an empty list may just mean DRC wasn't run.
+        Approved errors are kept (``state: "approved"``) so the reviewer can see
+        what the designer already waived.
+        """
+        self.ensure_board()
+        try:
+            rows = self._read("electronics.Error")
+        except (BridgeError, ValueError, KeyError):
+            return None
+        errors = [{
+            "code": r.get("code"),
+            "description": r.get("description", ""),
+            "type": DRC_TYPE.get(r.get("type"), r.get("type")),
+            "state": DRC_STATE.get(r.get("state"), r.get("state")),
+            "layer": r.get("layer"),
+            "x_mm": r4(r.get("x", 0.0)),
+            "y_mm": r4(r.get("y", 0.0)),
+            "signature": r.get("signature", ""),
+        } for r in rows]
+        return {
+            "version": VERSION,
+            "generated": self._now(),
+            "source": "fusion electronics.Error (last DRC run in Fusion)",
+            "error_count": len(errors),
+            "active_count": sum(e["state"] == "active" for e in errors),
+            "errors": errors,
+        }
+
     # -- images ------------------------------------------------------------
 
     def images_schematic(self, prefix_wsl: str, dpi: int) -> list[str]:
@@ -884,6 +925,9 @@ def cmd_brd(exp: Exporter, args) -> None:
     name = _design_name(exp, board_side=True)
     _write_json(brd, Path(args.out) / f"{name}-thomson-export-brd.json")
     _write_json(stack, Path(args.out) / f"{name}-thomson-export-stack.json")
+    drc = exp.gather_drc()
+    if drc is not None:
+        _write_json(drc, Path(args.out) / f"{name}-thomson-export-drc.json")
 
 
 def _image_prefix(exp: Exporter, args, board_side: bool) -> str:
