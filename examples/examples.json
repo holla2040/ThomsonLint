@@ -550,6 +550,85 @@
           "Verify isolation, spacing, and certification requirements for the target markets before layout (see PROD_CERT_001)."
         ]
       }
+    },
+    {
+      "id": "EX_EMC_005",
+      "title": "Ground pour under a Wi-Fi module's antenna",
+      "description": "A product uses a pre-certified ESP32 module placed in the middle of a 4-layer board, with the bottom ground pour and an inner-layer plane running under the module's PCB antenna, and a metal standoff 3 mm from it. Range in the field is a fraction of the dev board's.",
+      "triggered_rules": ["EMC_ANT_001"],
+      "expected_issue": {
+        "rule_id": "EMC_ANT_001",
+        "severity": "Critical",
+        "domain": "EMC",
+        "summary": "Copper on all layers and a metal standoff sit inside the module's datasheet antenna keepout, detuning the antenna and voiding the conditions of the module's certification.",
+        "recommended_actions": [
+          "Move the module to the board edge with the antenna overhanging or over the datasheet keepout, cleared on every layer.",
+          "Relocate the metal standoff out of the antenna's near field."
+        ]
+      }
+    },
+    {
+      "id": "EX_SCH_001",
+      "title": "Four sensor breakouts each adding 4.7k I2C pull-ups on a 5 V bus",
+      "description": "A 5 V I2C bus carries four sensor breakout boards, each with its own 4.7k pull-ups on SDA and SCL, plus 4.7k pull-ups on the main board. The bus drops bits intermittently.",
+      "triggered_rules": ["SCH_I2C_003"],
+      "expected_issue": {
+        "rule_id": "SCH_I2C_003",
+        "severity": "Major",
+        "domain": "Schematic",
+        "summary": "Five 4.7k pull-ups in parallel (~940 ohm) need ~5 mA to pull low at 5 V, above the I2C 3 mA guaranteed sink current.",
+        "recommended_actions": [
+          "Keep one set of pull-ups on the main board and remove the module pull-ups.",
+          "Size the remaining pull-up between the sink-current minimum and the rise-time maximum."
+        ]
+      }
+    },
+    {
+      "id": "EX_SCH_002",
+      "title": "18 pF load caps on an 18 pF crystal feeding a BLE radio",
+      "description": "A BLE SoC's 32 MHz crystal is specified for CL = 18 pF, and the schematic places two 18 pF load capacitors on it.",
+      "triggered_rules": ["SCH_XTAL_001"],
+      "expected_issue": {
+        "rule_id": "SCH_XTAL_001",
+        "severity": "Major",
+        "domain": "Schematic",
+        "summary": "The crystal sees ~9 pF plus stray instead of 18 pF, pulling the reference high so the radio's channel frequency can fall outside the certification limit.",
+        "recommended_actions": [
+          "Use C = 2 x (CL - Cstray), about 27-30 pF with ~3-4.5 pF stray.",
+          "Measure the oscillator frequency on the first prototype."
+        ]
+      }
+    },
+    {
+      "id": "EX_SCH_003",
+      "title": "ESP32 MTDI strap shared with an SD-card pull-up",
+      "description": "An ESP32 design routes the SD card's data line, with its required 10k pull-up, to GPIO12 (MTDI), which straps the flash supply voltage at reset. Some units fail to boot with flash errors.",
+      "triggered_rules": ["SCH_STRAP_001"],
+      "expected_issue": {
+        "rule_id": "SCH_STRAP_001",
+        "severity": "Major",
+        "domain": "Schematic",
+        "summary": "The SD pull-up overrides MTDI's weak internal pull-down during the reset window, selecting the wrong flash voltage on some units.",
+        "recommended_actions": [
+          "Move the SD line off MTDI, or burn the flash-voltage eFuse so the strap is ignored.",
+          "Pull every strapping pin to its required level and confirm no other circuit can override it during reset."
+        ]
+      }
+    },
+    {
+      "id": "EX_SCH_004",
+      "title": "3.3 V MCU UART driving a 5 V module's RX directly",
+      "description": "A 3.3 V MCU's TX connects straight to a 5 V CMOS module's RX, and the module's TX connects straight back to the MCU's RX pin, which is not 5 V tolerant.",
+      "triggered_rules": ["SCH_LVL_001"],
+      "expected_issue": {
+        "rule_id": "SCH_LVL_001",
+        "severity": "Major",
+        "domain": "Schematic",
+        "summary": "3.3 V is below the 5 V input's 3.5 V VIH (marginal high on some units), and the module's 5 V TX back-feeds the MCU's 3.3 V rail through the input protection diode.",
+        "recommended_actions": [
+          "Use a level translator, or a divider on the 5 V-to-3.3 V line and a MOSFET with pull-up on the 3.3 V-to-5 V line."
+        ]
+      }
     }
   ]
 }

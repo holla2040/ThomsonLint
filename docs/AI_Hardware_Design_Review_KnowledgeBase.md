@@ -1502,3 +1502,57 @@ The governing number: **every millimeter of trace adds roughly 1 nH of parasitic
 - Keep temperature-sensitive capacitors (electrolytics especially) away from hot components — temperature shifts both capacitance and ESR (Appendix I.1, `COMP_CAP_*`).
 
 **Symptoms of getting it wrong** (useful for failure-mode reasoning): random MCU resets, unstable or drifting ADC readings, high-speed bus errors, shrunken logic noise margins, and degraded analog signal paths.
+
+## Appendix P: Predictable Designs Rules and Pre-Order Checks
+
+This appendix distills three Predictable Designs pieces: 11 PCB layout rules, 9 schematic rules, and 9 checks to run before ordering a PCB. Most items reinforce rules that already exist and are cross-referenced rather than duplicated. Thirteen new ontology rules cover the gaps: `DFM_VIP_001`, `EMC_ANT_001`, `EMC_PLANE_003`, `PWR_TVS_001`, `SCH_DRIVE_001`, `SCH_STRAP_001`, `SCH_I2C_003`, `SCH_GPIO_001`, `SCH_LVL_001`, `SCH_XTAL_001`, `DFM_FAB_001`, `DFT_PWR_ISO_001`, `DFM_GERBER_001`. Where an item adds a nuance to an existing rule, that rule's recommended actions were extended (`DFT_TP_001`, `SCH_FET_001`, `DFM_LIB_002`, `HS_DIFF_005`, `PWR_DECPL_003`, `MS_I2C_001`).
+
+### P.1 PCB Layout Rules to Never Break
+
+**Source:** John Teel, Predictable Designs, https://www.youtube.com/@PredictableDesigns — "11 PCB Layout Rules to NEVER Break" (https://predictabledesigns.com/PCB-rules-never-break/).
+
+| # | Rule | Ontology |
+|---|---|---|
+| 11 | Via-in-pad wicks solder from the joint; avoid it, or specify filled-and-capped vias and budget the cost. Thermal-pad via arrays are the accepted exception. | `DFM_VIP_001` (new), `THM_VIA_003`, `PWR_DECPL_003` |
+| 10 | Production test fixtures (pogo pins / bed of nails) need dedicated test pads; add them on every rail, bus, and programming/debug signal, especially under QFN/BGA. | `DFT_TP_001`, `DFT_TP_003` |
+| 9 | Exposed power pads need the datasheet's thermal-via array into a large copper pour; otherwise the part reaches thermal shutdown and resets in the field. | `THM_VIA_001`, `THM_PWR_001` |
+| 8 | Fast traces near the board edge fringe past the plane and radiate; keep them ≥ 4–5× the trace-to-plane height from the edge (often ~1 mm), preferably on inner layers. | `HS_DIFF_005` (extended) |
+| 7 | Stitch ground planes together generously, especially along edges, around high-speed routing, and around RF feeds. | `EMC_STITCH_001`, `EMC_STITCH_002` |
+| 6 | Keep the switching regulator hot loop tiny: input cap tight to the IC, single layer, copy the datasheet layout. | `PWR_BUCK_001`, `PWR_BUCK_003` |
+| 5 | Differential pairs need matched length, controlled impedance, an unbroken reference plane, and no stubs; get the stackup from the fab. | `HS_DIFF_001`–`HS_DIFF_003`, `HS_SER_001`, `DFM_FAB_001` |
+| 4 | Size power traces and vias for actual current with margin; use pours for high current and parallel vias at layer changes. | `PWR_TRACE_003`, `PWR_VIA_001`, `PWR_POUR_001` |
+| 3 | No copper, traces, components, or metal hardware in an antenna's datasheet keepout on any layer; violating it also undermines the module's certification. | `EMC_ANT_001` (new) |
+| 2 | Decoupling caps belong at the pin: smallest value closest, short wide connections, ground vias at the cap pads. | `PWR_DECPL_001`, `PWR_DECPL_005` |
+| 1 | Never route a signal across a plane split: the return current detours, forming a radiating loop that is invisible in CAD. Check every trace against the planes beneath it on every layer. | `EMC_PLANE_003` (new), `HS_DIFF_001` |
+
+### P.2 Schematic Rules to Never Break
+
+**Source:** John Teel, Predictable Designs, https://www.youtube.com/@PredictableDesigns — "9 Schematic Rules to NEVER Break" (https://predictabledesigns.com/schematic-rules-never-break/).
+
+| # | Rule | Ontology |
+|---|---|---|
+| 9 | ESD diodes where every external signal enters the board (low-capacitance for USB); a TVS on power inputs with stand-off above the operating voltage and clamp below the regulator's absolute maximum (hot-plug can ring to ~2× nominal). | `EMC_ESD_001`, `EMC_ESD_006`, `PWR_TVS_001` (new) |
+| 8 | An MCU pin sources/sinks only ~8–20 mA; drive relays, motors, and LED strings through a transistor or driver, with a flyback diode on every coil. | `SCH_DRIVE_001` (new), `PWR_RELAY_001` |
+| 7 | Pull every boot/strapping pin (ESP32 GPIO0/GPIO2/MTDI, STM32 BOOT0) to its level with a resistor, and make sure shared functions can't override it during the reset window. | `SCH_STRAP_001` (new) |
+| 6 | Put test pads in the schematic (needed for QFN/BGA probing and production fixtures), but keep them off crystal pins and high-speed lines. | `DFT_TP_001` (extended) |
+| 5 | I2C needs pull-ups, but stacked module pull-ups in parallel (4× 4.7k ≈ 1.2k) can exceed the 3 mA guaranteed sink current; pick one location. | `MS_I2C_001`, `SCH_I2C_003` (new) |
+| 4 | Check each assigned pin's real capabilities (input-only pins, ADC availability with the radio on, PWM, wake). | `SCH_GPIO_001` (new) |
+| 3 | Level-shift between voltage domains: 5 V into 3.3 V back-feeds through the protection diode; 3.3 V into 5 V CMOS falls short of the 3.5 V VIH. Check the fine print on "5 V tolerant". | `SCH_LVL_001` (new) |
+| 2 | Size crystal load caps as 2 × (CL − Cstray); two caps equal to CL halve the load and shift the frequency, which can fail radio certification or USB. | `SCH_XTAL_001` (new) |
+| 1 | Never leave a MOSFET gate or driver input floating during reset: add a pull resistor, and check the driving pin's reset/boot behaviour. | `SCH_FET_001` (extended), `MS_RST_001` |
+
+### P.3 Checks Before Ordering a PCB
+
+**Source:** John Teel, Predictable Designs, https://www.youtube.com/@PredictableDesigns — "9 Things You MUST Check Before Ordering Any PCB" (https://predictabledesigns.com/must-check-before-ordering-pcb/).
+
+| # | Check | Ontology |
+|---|---|---|
+| 9 | Run ERC and clear every error and warning; then review each chip against its datasheet pin by pin, and get a second reviewer. ERC won't catch a missing pull-up, missing decoupling, or swapped TX/RX. | `DFT_DRC_001`, `SCH_IC_001`, `SCH_UART_001` |
+| 8 | Load the fabricator's real limits into DRC (stay above the minimums) and design controlled-impedance traces for their actual stackup; order impedance control where critical. | `DFM_FAB_001` (new), `DFM_TRACE_001` |
+| 7 | Every part in stock at two or more distributors, lifecycle active (not NRND), searched by exact full part number; order parts immediately. | `PROD_SOURCE_001`, `DFM_BOM_001` |
+| 6 | Trace each supply from entry to load for thin traces, necks, and single vias; fast signals over unbroken ground (4 layers make this practical). | `PWR_TRACE_003`, `PWR_POUR_001`, `PWR_VIA_001`, `EMC_PLANE_003`, `HS_STACK_002` |
+| 5 | Check the assembled board in 3D (collisions, overhangs, heights, cable-plug clearance) and inside the enclosure model. | `MEC_HEIGHT_001`, `MEC_OUTLINE_001`, `MEC_UI_001` |
+| 4 | Make first articles debuggable: zero-ohm isolation per section's supply, test points, and access to programming/boot pins. | `DFT_PWR_ISO_001` (new), `DFT_TP_001`, `SCH_STRAP_001` |
+| 3 | Re-sync, refill pours, rerun DRC, then inspect the exported Gerber/drill/placement files in an independent viewer; check part rotations for assembly. | `DFM_GERBER_001` (new) |
+| 2 | Compare every footprint to the datasheet land pattern and pin numbering: three-pin parts vary by manufacturer, diode A/K vs pad 1/2, connector and BGA/QFN view direction. | `DFM_LIB_002` (extended), `DFM_LIB_003`, `SCH_SYMBOL_001` |
+| 1 | Print the layout at 1:1, confirm the scale with a ruler, and set the real parts on it. | `DFM_LIB_001` |

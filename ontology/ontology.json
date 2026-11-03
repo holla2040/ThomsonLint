@@ -161,10 +161,14 @@
       ],
       "recommended_actions": [
         "Add test pads or vias on all major rails.",
-        "Expose test points for critical clocks and reset lines."
+        "Expose test points for critical clocks and reset lines.",
+        "Place test pads where production bed-of-nails/pogo-pin fixtures can reach them, and on signals hidden under leadless packages (QFN, BGA).",
+        "Keep test pads off crystal pins and high-speed lines (e.g. USB); the added capacitance degrades them.",
+        "Draw test points into the schematic, not as a layout afterthought."
       ],
       "kb_references": [
-        "Section 1.8 Design for Test & Bring-Up"
+        "Section 1.8 Design for Test & Bring-Up",
+        "Appendix P.2: Schematic Rules to Never Break"
       ]
     },
     {
@@ -887,10 +891,12 @@
         "Add pull-up resistors on SDA and SCL (typically 2.2k-10k ohm depending on bus speed and capacitance).",
         "Use lower resistance for faster I2C speeds or higher bus capacitance.",
         "Add solderable test points on SDA and SCL for logic analyzer/scope access.",
-        "Consider 0-ohm jumper option for pull-ups if multiple masters exist."
+        "Consider 0-ohm jumper option for pull-ups if multiple masters exist.",
+        "When adding modules with their own pull-ups, check the combined value (see SCH_I2C_003)."
       ],
       "kb_references": [
-        "Section 1.8 Design for Test & Bring-Up"
+        "Section 1.8 Design for Test & Bring-Up",
+        "Appendix P.2: Schematic Rules to Never Break"
       ]
     },
     {
@@ -1140,10 +1146,12 @@
       "recommended_actions": [
         "Use via-in-pad for decoupling capacitors under BGA packages.",
         "Fill and cap vias to prevent solder wicking during assembly.",
-        "Place capacitors as close as possible to power/ground ball pairs."
+        "Place capacitors as close as possible to power/ground ball pairs.",
+        "Via-in-pad adds a per-board fabrication cost; use it only where the decoupling benefit requires it (see DFM_VIP_001)."
       ],
       "kb_references": [
-        "Section 2.2 Power Integrity & Decoupling"
+        "Section 2.2 Power Integrity & Decoupling",
+        "Appendix P.1: PCB Layout Rules to Never Break"
       ]
     },
     {
@@ -1266,10 +1274,12 @@
       "recommended_actions": [
         "Maintain minimum 10-15 mil clearance from board and plane edges.",
         "Avoid routing high-speed signals near cutouts or slots in reference planes.",
-        "Add ground stitching vias along board edges for EMI containment."
+        "Add ground stitching vias along board edges for EMI containment.",
+        "For EMI, keep fast signals (clocks, USB, memory buses) at least 4-5x the trace-to-reference-plane height from the board edge (often about 1 mm or more), and on inner layers where possible."
       ],
       "kb_references": [
-        "Section 2.3 High-Speed Routing"
+        "Section 2.3 High-Speed Routing",
+        "Appendix P.1: PCB Layout Rules to Never Break"
       ]
     },
     {
@@ -1846,10 +1856,14 @@
         "Add pull-down resistor (10k-100k) on N-channel MOSFET gates.",
         "Add pull-up resistor on P-channel MOSFET gates.",
         "Ensure gate driver can override pull resistor during normal operation.",
-        "Consider gate resistor for switching speed control."
+        "Consider gate resistor for switching speed control.",
+        "Check the reset/boot state of the specific MCU pin driving the gate: some pins enable internal pull-ups or output signals during boot, which a gate pull resistor cannot override.",
+        "Apply the same pull resistor to gate-driver IC inputs and enable pins.",
+        "Treat FETs switching off-board loads (motors, heaters, pumps) as safety-relevant: they can run before firmware starts."
       ],
       "kb_references": [
-        "Section 2.1 Power Systems"
+        "Section 2.1 Power Systems",
+        "Appendix P.2: Schematic Rules to Never Break"
       ]
     },
     {
@@ -3428,10 +3442,14 @@
         "Compare footprint pin map to datasheet drawing.",
         "Verify pin 1 marker matches datasheet convention.",
         "Check for different views (top vs bottom, schematic vs package).",
-        "Verify thermal/exposed pad connections."
+        "Verify thermal/exposed pad connections.",
+        "Three-pin parts (regulators, transistors) can have different pinouts across manufacturers in the identical package; verify the exact part.",
+        "Verify diode symbol pin names (A/K) map to the footprint's pad numbers (1/2) in the correct direction.",
+        "BGA/QFN datasheets often draw bottom views while footprints are top views; connector drawings may show the mating side."
       ],
       "kb_references": [
-        "Appendix J: Hans Rosenberg Checklist Reference"
+        "Appendix J: Hans Rosenberg Checklist Reference",
+        "Appendix P.3: Checks Before Ordering a PCB"
       ]
     },
     {
@@ -4600,6 +4618,346 @@
       "kb_references": [
         "Appendix I.5: Sensor Selection",
         "Appendix M: Prototype-to-Production Readiness"
+      ]
+    },
+    {
+      "id": "DFM_VIP_001",
+      "name": "Via-in-pad must be filled and capped, or avoided",
+      "domain": ["DFT", "Production"],
+      "description": "An open via inside a solder pad wicks molten solder away from the joint during reflow, starving it and leaving weak or open connections. The fix (epoxy-filled, copper-capped vias, e.g. IPC-4761 Type VII) adds a fabrication cost to every board built. Flag any via-in-pad on a signal or component pad that is not specified as filled and capped in the fab notes, and any via-in-pad used where a via beside the pad with a short trace would fit. Exception: thermal-via arrays inside an exposed power/thermal pad are normally acceptable unfilled, since wicking there mostly produces small voids rather than failed joints (see THM_VIA_001, THM_VIA_003).",
+      "applies_to": ["Via", "Pad", "BGA", "QFN", "Footprint"],
+      "conditions": {
+        "via_in_signal_or_component_pad": true,
+        "via_fill_and_cap_not_specified": true,
+        "or_via_beside_pad_would_fit": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "solder_starved_joint",
+        "open_or_intermittent_connection",
+        "unbudgeted_fabrication_cost"
+      ],
+      "recommended_actions": [
+        "Place the via next to the pad and connect it with a short trace wherever space allows.",
+        "Where via-in-pad is required (e.g. fine-pitch BGA escape, PWR_DECPL_003), specify filled and capped vias in the fabrication notes and budget the per-board cost from the start.",
+        "Leave thermal-via arrays in exposed power pads as specified by the part's datasheet land pattern."
+      ],
+      "kb_references": [
+        "Appendix P.1: PCB Layout Rules to Never Break",
+        "Section 2.2 Power Integrity & Decoupling"
+      ]
+    },
+    {
+      "id": "EMC_ANT_001",
+      "name": "Antenna keepout must be free of copper, components, and metal",
+      "domain": ["EMC", "HighSpeed"],
+      "description": "Copper, traces, components, or metal (screws, standoffs, shields) inside an antenna's keepout zone detune the antenna and absorb its energy, collapsing wireless range. Every chip antenna and pre-certified wireless module defines a keepout region in its datasheet, applying to all layers. A pre-certified module is only certified when used as its datasheet specifies, so a keepout violation also undermines the module certification the product relies on.",
+      "applies_to": ["Antenna", "Wireless Module", "RF"],
+      "conditions": {
+        "copper_or_component_in_antenna_keepout": true,
+        "or_metal_hardware_near_antenna": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "antenna_detuning",
+        "reduced_wireless_range",
+        "module_certification_invalidated",
+        "failed_compliance_testing"
+      ],
+      "recommended_actions": [
+        "Copy the keepout region from the antenna or module datasheet exactly, on every layer: no pour, traces, components, or vias.",
+        "Keep metal mounting screws, standoffs, shields, and enclosure metal out of the antenna's near field.",
+        "Use the module vendor's reference/dev board layout as the template for antenna placement at the board edge."
+      ],
+      "kb_references": [
+        "Appendix P.1: PCB Layout Rules to Never Break",
+        "Section 4.1.4 EMC / ESD"
+      ]
+    },
+    {
+      "id": "EMC_PLANE_003",
+      "name": "No signal may be routed across a reference-plane split",
+      "domain": ["EMC", "HighSpeed"],
+      "description": "At high frequency a signal's return current flows in the plane directly beneath the trace. Where a trace crosses a split or gap in that plane the return current must detour around the gap, creating a large loop that radiates, couples noise into neighbouring circuits, and causes EMI failures and intermittent glitches. Nothing looks wrong in CAD: the trace and every net check out. This applies to single-ended signals on every layer, not just differential pairs (HS_DIFF_001). Plane splits themselves can be correct (e.g. isolating an analog section); the rule concerns what is routed over them.",
+      "applies_to": ["Net", "Clock", "USB", "Ethernet", "SPI", "Ground Plane", "Power Plane"],
+      "conditions": {
+        "trace_crosses_reference_plane_gap": true
+      },
+      "default_severity": "Critical",
+      "failure_modes": [
+        "return_path_disruption",
+        "emi_radiation",
+        "crosstalk",
+        "intermittent_glitches",
+        "failed_emc_testing"
+      ],
+      "recommended_actions": [
+        "Before release, check every trace against the plane(s) beneath it on every layer and reroute anything that crosses a gap.",
+        "If a crossing is unavoidable, place a stitching capacitor across the gap next to the crossing, or route the signal over a continuous plane on another layer.",
+        "Keep fast signals (clocks, USB, Ethernet, memory buses) over unbroken ground for their entire length."
+      ],
+      "kb_references": [
+        "Appendix P.1: PCB Layout Rules to Never Break",
+        "Appendix P.3: Checks Before Ordering a PCB",
+        "Section 4.1.4 EMC / ESD"
+      ]
+    },
+    {
+      "id": "PWR_TVS_001",
+      "name": "Power-input TVS must be sized between operating voltage and downstream maximum",
+      "domain": ["Power", "EMC"],
+      "description": "Power inputs need a TVS diode to clamp transients: hot-plugging an adapter alone can ring the input to nearly twice its nominal voltage for an instant. The TVS must stay off at the highest normal input voltage (stand-off voltage at or above it) yet clamp below the absolute-maximum input voltage of the regulator or first device it protects. A TVS chosen by nominal voltage alone either conducts in normal operation or clamps too high to protect anything.",
+      "applies_to": ["Power Input", "Connector", "TVS", "Voltage Regulator"],
+      "conditions": {
+        "external_power_input": true,
+        "tvs_missing_or_unsized": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "regulator_overvoltage_damage",
+        "hot_plug_failure",
+        "tvs_conduction_in_normal_operation"
+      ],
+      "recommended_actions": [
+        "Add a TVS at every external power input, placed at the connector.",
+        "Choose stand-off voltage >= maximum normal input voltage, and clamping voltage at peak pulse current < the downstream regulator's absolute-maximum input.",
+        "Account for hot-plug overshoot (up to ~2x nominal) and cable inductance when checking the margin."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break",
+        "Section 4.1.4 EMC / ESD"
+      ]
+    },
+    {
+      "id": "SCH_DRIVE_001",
+      "name": "MCU pins must not drive loads beyond their current rating",
+      "domain": ["Schematic", "MixedSignal", "Power"],
+      "description": "A typical microcontroller pin can source or sink only about 8-20 mA; one bright LED is near the limit, and a relay coil or motor is far beyond it. Driving such loads directly either fails to actuate them or damages the pin's output driver, and inductive loads add a turn-off voltage spike the pin cannot survive.",
+      "applies_to": ["MCU", "GPIO", "Relay", "Motor", "LED", "Solenoid"],
+      "conditions": {
+        "gpio_drives_load_directly": true,
+        "load_current_exceeds_pin_rating": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "load_fails_to_actuate",
+        "gpio_driver_damage",
+        "inductive_kickback_damage",
+        "mcu_reset"
+      ],
+      "recommended_actions": [
+        "Compare each load's current against the pin's and the package's total source/sink limits in the datasheet.",
+        "Use a BJT or MOSFET switch for simple DC loads, or a driver IC for LED strings and steppers.",
+        "Give every coil a flyback path (see PWR_RELAY_001)."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break",
+        "Section 2.1 Power Systems"
+      ]
+    },
+    {
+      "id": "SCH_STRAP_001",
+      "name": "Boot and strapping pins must be held at defined levels through reset",
+      "domain": ["Schematic", "MixedSignal"],
+      "description": "Many MCUs and wireless SoCs sample strapping pins as they leave reset to choose boot mode or configuration (ESP32: GPIO0, GPIO2 boot mode and MTDI flash voltage; STM32: BOOT0). The level must hold through the sampling window given in the datasheet. Undefined or contested straps produce batches where some units sit in the bootloader. Failure patterns: a floating strap on a chip without internal pulls; something else sharing the pin (e.g. an SD-card pull-up on ESP32 MTDI) overpowering a weak internal pull during the reset window.",
+      "applies_to": ["MCU", "SoC", "Wireless Module", "Boot Pin"],
+      "conditions": {
+        "strapping_pin_undefined": true,
+        "or_shared_function_can_override_strap_during_reset": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "unit_boots_into_bootloader",
+        "wrong_flash_voltage",
+        "batch_to_batch_boot_failures"
+      ],
+      "recommended_actions": [
+        "List every strapping pin from the datasheet and pull each to its required level with an external resistor.",
+        "For dual-use pins, verify that nothing else connected can override the strap during the reset sampling window.",
+        "Keep programming/boot-select pins accessible for production programming (see DFT_TP_001)."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break",
+        "Section 2.1 Power Systems"
+      ]
+    },
+    {
+      "id": "SCH_I2C_003",
+      "name": "Combined I2C pull-up resistance must stay within sink-current limits",
+      "domain": ["Schematic", "MixedSignal"],
+      "description": "Sensor breakout modules usually ship with their own I2C pull-ups. Several modules on one bus put those resistors in parallel (four 4.7k pull-ups make about 1.2k), raising the current every device must sink to pull the line low. The I2C specification guarantees only 3 mA of sink current in standard/fast mode: about 1.2k is at that limit at 3.3 V and over it at 5 V, so weaker devices cannot reach a valid low and bits are dropped. Conversely, missing or weak pull-ups (MS_I2C_001) slow the rising edge as bus capacitance grows.",
+      "applies_to": ["I2C", "Sensor Module"],
+      "conditions": {
+        "multiple_pullups_on_same_i2c_line": true,
+        "combined_pullup_sink_current_exceeds_spec": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "i2c_dropped_bits",
+        "invalid_low_level",
+        "intermittent_communication"
+      ],
+      "recommended_actions": [
+        "Choose one location for the bus pull-ups and remove or DNP the pull-ups on added modules.",
+        "Bound the value: the minimum from bus voltage and the weakest device's sink current (R >= (Vdd - Vol_max) / Iol), the maximum from bus capacitance and speed (rise-time limit)."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break",
+        "Section 1.8 Design for Test & Bring-Up"
+      ]
+    },
+    {
+      "id": "SCH_GPIO_001",
+      "name": "Pin assignments must match the pin's actual capabilities",
+      "domain": ["Schematic", "MixedSignal"],
+      "description": "Pins labelled GPIO often carry datasheet exceptions: input-only pins without output drivers or internal pulls (several on the ESP32), ADC channels available only on certain pins or disabled while the radio is active (ESP32 ADC2 with Wi-Fi), and pins without PWM or wake capability. A signal assigned to an incapable pin never works and can only be fixed with a board revision.",
+      "applies_to": ["MCU", "SoC", "GPIO"],
+      "conditions": {
+        "signal_requirement_not_supported_by_assigned_pin": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "output_never_toggles",
+        "adc_reads_invalid",
+        "feature_unavailable_requiring_respin"
+      ],
+      "recommended_actions": [
+        "Check every assigned signal against the pin-function table: output drive, internal pulls, analog/ADC (including radio-on restrictions), PWM/timer, and wake-from-sleep.",
+        "Record pin requirements in a pin map reviewed alongside the schematic."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break"
+      ]
+    },
+    {
+      "id": "SCH_LVL_001",
+      "name": "Signals between voltage domains must be level-translated",
+      "domain": ["Schematic", "MixedSignal"],
+      "description": "Wiring signals directly between voltage domains fails in two ways. A 5 V output into a 3.3 V input forward-biases the input's protection diode and back-feeds the 3.3 V rail, which can lock up or slowly damage the chip. A 3.3 V output into a 5 V CMOS input (VIH typically 0.7 x VCC = 3.5 V) is not guaranteed to read high and works on some units but not others. '5 V tolerant' pins can lose tolerance in analog mode or when the chip is unpowered.",
+      "applies_to": ["Net", "GPIO", "UART", "SPI", "I2C"],
+      "conditions": {
+        "signal_crosses_voltage_domains": true,
+        "no_level_translation": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "rail_back_feeding",
+        "latch_up",
+        "marginal_logic_high",
+        "unit_to_unit_failures"
+      ],
+      "recommended_actions": [
+        "Identify every net that connects devices on different supply voltages.",
+        "Slow, unidirectional high-to-low: resistor divider. Low-to-high: MOSFET with pull-up to the higher rail. Fast or bidirectional: a rated buffer or level-translator IC.",
+        "If relying on a 5 V-tolerant pin, confirm the tolerance holds in the pin's configured mode and when the device is unpowered."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break"
+      ]
+    },
+    {
+      "id": "SCH_XTAL_001",
+      "name": "Crystal load capacitors must be sized from the crystal's load capacitance",
+      "domain": ["Schematic", "HighSpeed"],
+      "description": "The two load capacitors appear in series to the crystal, so using caps equal to the specified load capacitance CL halves it and pulls the frequency. Each cap should be C = 2 x (CL - Cstray), with Cstray (pins plus traces) typically a few pF; an 18 pF crystal usually needs about 27-33 pF per cap. The circuit still oscillates when wrong, so the error hides until a radio transmits off-channel at the certification lab or USB fails to enumerate; grossly oversized caps can also prevent the oscillator from starting.",
+      "applies_to": ["Crystal", "MCU", "Wireless Module", "USB"],
+      "conditions": {
+        "crystal_load_caps_equal_cl": true,
+        "or_load_cap_value_unjustified": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "frequency_offset",
+        "radio_out_of_channel",
+        "usb_enumeration_failure",
+        "oscillator_start_failure"
+      ],
+      "recommended_actions": [
+        "Compute each load cap as 2 x (CL - Cstray) using the crystal datasheet CL and an estimated or vendor-given Cstray.",
+        "Check the oscillator's gain margin / maximum load capacitance in the MCU datasheet.",
+        "Measure the frequency on the first prototype and adjust."
+      ],
+      "kb_references": [
+        "Appendix P.2: Schematic Rules to Never Break",
+        "Section 2.3 High-Speed Routing"
+      ]
+    },
+    {
+      "id": "DFM_FAB_001",
+      "name": "Design rules and stackup must come from the chosen fabricator",
+      "domain": ["DFT", "HighSpeed", "Production"],
+      "description": "DRC is only as good as the numbers loaded into it. Software defaults often differ from the fabricator's real limits for trace width/spacing, drill size, annular ring, and copper-to-edge distance, so a board can pass DRC and still be built with shorts or opens. Controlled-impedance traces depend on the fabricator's actual stackup (dielectric thickness and constant): the same 50 ohm antenna feed can be ~3 mm wide on a 2-layer board and a tenth of that on a 4-layer board.",
+      "applies_to": ["PCB", "Design Rules", "Stackup", "RF", "USB", "Ethernet"],
+      "conditions": {
+        "drc_rules_not_from_fabricator": true,
+        "or_impedance_designed_for_unconfirmed_stackup": true
+      },
+      "default_severity": "Major",
+      "failure_modes": [
+        "manufacturing_shorts_or_opens",
+        "impedance_mismatch",
+        "reduced_wireless_range",
+        "data_errors"
+      ],
+      "recommended_actions": [
+        "Load the fabricator's published capabilities into the design rules and rerun DRC; stay above the absolute minimums where space allows.",
+        "Obtain the fabricator's stackup before routing controlled-impedance nets and use their trace width/spacing figures.",
+        "Order impedance control where it is critical."
+      ],
+      "kb_references": [
+        "Appendix P.3: Checks Before Ordering a PCB",
+        "Appendix G: Design for Manufacturing (DFM)"
+      ]
+    },
+    {
+      "id": "DFT_PWR_ISO_001",
+      "name": "Board sections should be power-isolatable for bring-up",
+      "domain": ["DFT", "Power"],
+      "description": "If every rail feeds every section directly, a single short brings down the whole board and hides its location. A zero-ohm resistor (or jumper) in the supply feeding each major section lets first articles be powered one section at a time, and its pads double as a current-measurement point for that section.",
+      "applies_to": ["Power Rail", "PCB"],
+      "conditions": {
+        "sections_not_supply_isolatable": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "difficult_debug",
+        "slow_bringup",
+        "fault_localization_impossible"
+      ],
+      "recommended_actions": [
+        "Add a zero-ohm resistor sized for the section's current in each major section's supply feed.",
+        "Make sure programming-mode/boot pins are reachable on the first boards (see SCH_STRAP_001)."
+      ],
+      "kb_references": [
+        "Appendix P.3: Checks Before Ordering a PCB",
+        "Section 1.8 Design for Test & Bring-Up"
+      ]
+    },
+    {
+      "id": "DFM_GERBER_001",
+      "name": "Review the exported manufacturing files in an independent viewer",
+      "domain": ["DFT", "Production"],
+      "description": "The board that gets built is the exported Gerber, drill, and placement data, not the CAD design. Release checklist: update the layout from the latest schematic, refill pours, run DRC, export, then inspect every exported layer in a separate Gerber viewer (or the fabricator's upload preview) for missing layers, drill offsets, a missing board outline, or solder mask over pads that must be soldered. For assembled boards, check the pick-and-place file for rotations, a very common assembly error. ThomsonLint cannot see exported files; raise this as a release-checklist item when the review is pre-order.",
+      "applies_to": ["PCB", "Gerber", "Placement File"],
+      "conditions": {
+        "exported_files_not_independently_reviewed": true
+      },
+      "default_severity": "Advisory",
+      "failure_modes": [
+        "missing_layer",
+        "drill_offset",
+        "missing_board_outline",
+        "masked_pads",
+        "rotated_parts_at_assembly"
+      ],
+      "recommended_actions": [
+        "Re-sync layout from schematic, refill pours, and run DRC immediately before export.",
+        "Open the exported files in a viewer other than the CAD tool and inspect every layer.",
+        "For assembly orders, verify part rotations in the placement file against the fabricator's preview."
+      ],
+      "kb_references": [
+        "Appendix P.3: Checks Before Ordering a PCB",
+        "Appendix G: Design for Manufacturing (DFM)"
       ]
     }
   ]
