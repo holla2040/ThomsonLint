@@ -33,26 +33,37 @@ cd ThomsonLint
 
 ## Prerequisites
 
-- **Python 3** (3.8+)
-- **jsonschema** — required for JSON validation and report generation:
-  ```bash
-  pip install jsonschema
+The tools run natively wherever Fusion runs — **Windows** (PowerShell) and **macOS** — with the same commands on both. No WSL is needed (see "Running under WSL2 (legacy)" in §7 if you still use it).
+
+- **Python 3.10+**
+- **jsonschema** (validation and report generation) — install into a virtual environment from the repo root:
+  ```powershell
+  # Windows (PowerShell)
+  py -m venv .venv
+  .venv\Scripts\Activate.ps1
+  python -m pip install -r requirements.txt
   ```
+  ```bash
+  # macOS
+  python3 -m venv .venv
+  source .venv/bin/activate
+  python -m pip install -r requirements.txt
+  ```
+  With the venv active, `python` below means the venv's interpreter on either platform. `pytest` is only needed to run the tests in `tests/`.
 
 ### Automated run script
 
-On UNIX and UNIX-like operating systems (Linux, *BSD, MacOS etc), you can run the
-`run_review.sh` script from the shell with auto-detection of the project name from the `exports/` directory:
+`tools/run_review.py` runs the whole review non-interactively, auto-detecting the project name from the `exports/` directory:
    ```bash
-   ./run_review.sh
+   python tools/run_review.py
    ```
 
 If there are more than one project outputs in the directory, then specify it explicitly on the command line:
    ```bash
-   ./run_review.sh MySpecialProject
+   python tools/run_review.py MySpecialProject
    ```
 
-It require the `jq` and `claude` shell commands. To install these on MacOS using `brew`: `brew install jq claude-code`.
+It needs the `claude` command (Claude Code CLI) on your PATH; `jq` is not needed. The model and spend cap come from `THOMSONLINT_MODEL` / `THOMSONLINT_BUDGET`. The original `run_review.sh` (bash, needs `jq`) still works on Linux/macOS.
 
 ## 1. Project Overview
 
@@ -100,8 +111,11 @@ The repository is organized as follows:
 -   `tools/yt-transcript.py`: Pulls a YouTube video transcript (via yt-dlp) with creator metadata in the header, as raw material for knowledge-base additions. See CLAUDE.md "Ingesting YouTube Content" — KB additions derived from a video must credit the creator (their homepage info feeds the `**Source:**` line).
 -   `tools/validate_findings.py`: Coverage validator — schema-checks the findings JSON, lists every input in `exports/` not cited in any `evidence[].source`, and flags missing required fields. Mandatory gate before generating the HTML report.
 -   `tools/gen_report.py`: Generates the self-contained HTML review report from findings JSON; embeds image evidence as inline thumbnails.
--   `validate_json.py`: A Python script for validating the JSON files against their schemas.
--   `gen_context.sh`: A bash script to generate the review instructions file.
+-   `tools/fusion_bridge.py` / `tools/fusion_export.py`: Live capture from a running Fusion session (see §7 "Reading from Fusion Electronics").
+-   `tools/run_review.py`: Non-interactive review pipeline (`run_review.sh` is the original bash version).
+-   `validate_json.py`: A Python script for validating the JSON files against their schemas; exits non-zero if any file fails.
+-   `tools/gen_context.py`: Generates the review instructions file (`gen_context.sh` is the original bash version; both produce identical output).
+-   `requirements.txt`: Python dependencies (`jsonschema`).
 -   `review_instructions.txt`: Pre-generated file containing the complete knowledge base and AI instructions. Ready to use immediately.
 
 ## 5. Running a Review
@@ -200,7 +214,7 @@ cd ThomsonLint
 
 #### Validate JSON Files
 ```bash
-pip install jsonschema  # if not installed
+python -m pip install -r requirements.txt  # if not installed (see Prerequisites)
 python validate_json.py
 ```
 
@@ -212,8 +226,9 @@ python validate_json.py
 4.  **Validate your changes:** Run `python validate_json.py`.
 5.  **Regenerate the review file:**
     ```bash
-    ./gen_context.sh > review_instructions.txt
+    python tools/gen_context.py -o review_instructions.txt
     ```
+    (Use `-o` rather than `>` in Windows PowerShell 5.1, whose redirection re-encodes the file as UTF-16. `./gen_context.sh > review_instructions.txt` is equivalent in bash.)
 
 ---
 
@@ -231,21 +246,29 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 Live capture (Step 1 below) talks to a **running** Fusion instance over a local HTTP endpoint Fusion itself publishes — no file uploads, no manual ULP runs. One-time setup:
 
-1.  **Enable Fusion's API server.** In Fusion: **Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks command dispatch; reads still work).
-2.  **(NAT-mode WSL2 only) Bridge the port into WSL.** Check the mode with `wslinfo --networking-mode`. **Mirrored** mode shares the Windows loopback — skip this step entirely, and make sure *no* portproxy rule exists on 27182 (a leftover `0.0.0.0` rule steals Fusion's bind). In **NAT** mode the Windows loopback is unreachable from WSL2; from an elevated **Windows** PowerShell, forward the WSL gateway IP to Fusion's loopback:
-    ```powershell
-    netsh interface portproxy add v4tov4 listenaddress=<WSL-gateway-IP> listenport=27182 connectaddress=127.0.0.1 connectport=27182
-    ```
-    Use the **gateway IP** — from WSL, `ip route | grep default | awk '{print $3}'` — **not** `0.0.0.0` (that hijacks Fusion's own loopback). Turn Tailscale off if it claims the route; you may also need a firewall allow-rule and `Restart-Service iphlpsvc`.
-3.  **Verify.** From the repo root in WSL:
+1.  **Enable Fusion's API server.** In Fusion: **Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on `127.0.0.1` port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks command dispatch; reads still work).
+2.  **Verify.** From the repo root, on the same machine as Fusion (Windows PowerShell or macOS Terminal — no port forwarding):
     ```bash
     python tools/fusion_bridge.py ping
     ```
-    Success prints the open design's name and sheet count (or notes that the board editor is active — that's fine too). The bridge probes loopback first (mirrored WSL) and falls back to the gateway (NAT WSL) automatically. If it can't connect, run `~/claude-code-fusion-mcp-check/check.sh` — it diagnoses the link layer by layer and prints the exact fix — or override the host with `--fusion-host <ip>` / `$THOMSONLINT_FUSION_HOST`.
+    Success prints the open design's name and sheet count (or notes that the board editor is active — that's fine too). Override the host with `--fusion-host <ip>` or the `THOMSONLINT_FUSION_HOST` environment variable.
+
+Fusion writes the rendered PNGs into a share directory it can write, then the tools copy them into `exports/`: `C:\Users\Public\thomsonlint` on Windows, `~/.thomsonlint` on macOS. Override with `--share` (or `THOMSONLINT_FUSION_SHARE`); the path may not contain quote characters.
 
 **During capture you'll be asked to press Escape once.** After running a ULP, Fusion's MCP add-in latches into a "command dialog is open" state with **no dialog visible** — a known Fusion issue — and refuses further commands until a key is pressed in the Fusion window. The capture flow batches everything into one dispatch per editor (schematic, then board), so the reviewer will prompt you for a single Escape between the two passes. Nothing is wrong when that happens.
 
 This mirrors the setup proven by the companion `hendley` project; see its `docs/fusion-notes.md` for the deep dive and troubleshooting.
+
+#### Running under WSL2 (legacy)
+
+The tools were originally developed under WSL2; that still works as a fallback. The `wsl-final` git tag marks the last WSL-only version. Under WSL the share directory defaults to `/mnt/c/Users/Public/thomsonlint` (it must be under `/mnt/<drive>`) and paths are translated to `C:\...` for Fusion.
+
+-   **(NAT-mode WSL2 only) Bridge the port into WSL.** Check the mode with `wslinfo --networking-mode`. **Mirrored** mode shares the Windows loopback — skip this step entirely, and make sure *no* portproxy rule exists on 27182 (a leftover `0.0.0.0` rule steals Fusion's bind). In **NAT** mode the Windows loopback is unreachable from WSL2; from an elevated **Windows** PowerShell, forward the WSL gateway IP to Fusion's loopback:
+    ```powershell
+    netsh interface portproxy add v4tov4 listenaddress=<WSL-gateway-IP> listenport=27182 connectaddress=127.0.0.1 connectport=27182
+    ```
+    Use the **gateway IP** — from WSL, `ip route | grep default | awk '{print $3}'` — **not** `0.0.0.0` (that hijacks Fusion's own loopback). Turn Tailscale off if it claims the route; you may also need a firewall allow-rule and `Restart-Service iphlpsvc`.
+-   **Verify** with `python tools/fusion_bridge.py ping` from the repo root in WSL. The bridge probes loopback first (mirrored WSL) and falls back to the gateway (NAT WSL) automatically. If it can't connect, run `~/claude-code-fusion-mcp-check/check.sh` — it diagnoses the link layer by layer and prints the exact fix — or override the host with `--fusion-host <ip>` / `$THOMSONLINT_FUSION_HOST`.
 
 ### Step 1: Export Design Data from Fusion Electronics
 
@@ -361,12 +384,12 @@ Claude Code will:
 4. Run through all applicable rules and report issues with specific `rule_id` citations, recording datasheet verifications in `verified_checks[]` and design-wide analyses in `cross_checks[]`
 5. Write findings to `exports/<project>-findings.json`, run `tools/validate_findings.py` (mandatory coverage gate), and produce `exports/<project>-review.html` via `tools/gen_report.py` (see §5 "Outputs")
 
-It is also possible to run this whole process automatically on a UNIX or UNIX-Like operating system
-by running the `run_review.sh` script:
+It is also possible to run this whole process automatically (Windows, macOS, or Linux)
+with the `tools/run_review.py` script (`run_review.sh` is the bash original):
 
 ```bash
 cd ThomsonLint
-run_review.sh
+python tools/run_review.py
 ```
 
 ### Step 4: Provide Additional Context (if asked)
@@ -400,7 +423,9 @@ Answer these in the chat and Claude will proceed with the full review.
 
 ## 8. Development Setup
 
-Development (including Claude Code) runs on an **Ubuntu 24.04** host. The repository can be mounted into **Windows 11 WSL** via SSHFS so that Fusion Electronics (running on Windows) can execute the ULP exporter directly:
+Clone the repository on the machine that runs Fusion (Windows or macOS) and set up the venv as in "Prerequisites"; Claude Code and the tools run there natively.
+
+**Legacy (WSL / remote Linux host):** development originally ran on an **Ubuntu 24.04** host. The repository can be mounted into **Windows 11 WSL** via SSHFS so that Fusion Electronics (running on Windows) can execute the ULP exporter directly:
 
 ```bash
 sshfs -o allow_other,default_permissions host:/home/user/ThomsonLint ThomsonLint/

@@ -1,0 +1,5 @@
+# Runtime: validate_json.py, tools/validate_findings.py, tools/gen_report.py.
+# Everything else (fusion_bridge, fusion_export, kicad-export, gen_context,
+# run_review) is standard library only.
+jsonschema
+# Development: the tests in tests/ also need pytest (pip install pytest).

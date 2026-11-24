@@ -17,16 +17,26 @@ The framework is named after J.J. Thomson, discoverer of the electron, reflectin
 
 ## Commands
 
+The tools run natively on Windows (PowerShell) and macOS with identical commands — Python 3.10+, a venv at `.venv`, `python -m pip install -r requirements.txt` (README "Prerequisites"). WSL2 is a legacy fallback (README §7 "Running under WSL2 (legacy)"; the `wsl-final` tag is the last WSL-only version). The `.sh` scripts remain for bash users; the Python ports below are the primary path.
+
 ### Validate JSON files
 ```bash
-pip install jsonschema  # if not installed
+python -m pip install -r requirements.txt  # if not installed
 python validate_json.py
 ```
+Exits non-zero if any file fails validation.
 
 ### Generate review instructions file
 ```bash
-./gen_context.sh > review_instructions.txt
+python tools/gen_context.py -o review_instructions.txt
 ```
+Byte-identical to `./gen_context.sh > review_instructions.txt`. Use `-o`, not `>`, in Windows PowerShell 5.1 (its redirection writes UTF-16).
+
+### Non-interactive review pipeline
+```bash
+python tools/run_review.py [project]
+```
+Port of `run_review.sh`: needs `claude` on PATH, no `jq`; validate/report steps run under the same interpreter.
 
 ### Validate findings coverage (mandatory before report)
 ```bash
@@ -53,13 +63,15 @@ Claude Code is the tested reviewer driver. A second path exists for single-file-
 
   Do **not** read `review_instructions.txt` from Claude Code. The bundle (~260KB / 5700 lines) is intended for single-file upload to a web AI and exceeds Claude Code's per-file `Read` limit. The source files are the truth; the bundle is a concatenation of them.
 
-- **Web AI with single-file upload (Gemini, Claude.ai, ChatGPT, etc.) — untested.** The `review_instructions.txt` bundle is produced by `gen_context.sh`, which concatenates `docs/REVIEWER_INSTRUCTIONS.md` with the three knowledge base files. The maintainers have not validated this path; treat as experimental.
+- **Web AI with single-file upload (Gemini, Claude.ai, ChatGPT, etc.) — untested.** The `review_instructions.txt` bundle is produced by `tools/gen_context.py` (or `gen_context.sh`), which concatenates `docs/REVIEWER_INSTRUCTIONS.md` with the three knowledge base files. The maintainers have not validated this path; treat as experimental.
 
 The reviewer-facing flow (inputs, outputs, prompts) is documented in README.md §5 "Running a Review".
 
 ## Live Fusion Capture (`tools/fusion_bridge.py`)
 
 The bridge is the HTTP transport to a running Fusion Electronics session over Autodesk's "Fusion MCP Server" endpoint (`ping` / `eagle` / `read` / `stage-ulps` verbs). Step 0 of `docs/REVIEWER_INSTRUCTIONS.md` now runs on `tools/fusion_export.py` (next section), which imports this bridge; driving the ULPs over the bridge (`stage-ulps` + `RUN` dispatches) remains only as a fallback pattern. The ULP-over-bridge path was verified end-to-end 2026-08-28 against a live 1-sheet design before being superseded.
+
+Platform: natively (Windows / macOS) the bridge talks to `127.0.0.1:27182` and Fusion's share directory (`C:\Users\Public\thomsonlint` / `~/.thomsonlint`, override `THOMSONLINT_FUSION_SHARE`) is the same path on both sides. Only under WSL (legacy) does it fall back to the default gateway (NAT mode) and translate `/mnt/<drive>/...` paths to `C:\...` (`to_fusion_path()` in `fusion_bridge.py`).
 
 Non-obvious operational facts (learned the hard way — do not rediscover):
 
@@ -82,8 +94,9 @@ ULP-free capture: emits the same `-thomson-export-{sch,brd,stack}.json` contract
 
 **Before every commit**, regenerate the `review_instructions.txt` file:
 ```bash
-./gen_context.sh > review_instructions.txt
+python tools/gen_context.py -o review_instructions.txt
 ```
+(`./gen_context.sh > review_instructions.txt` in bash is equivalent.)
 
 This ensures `review_instructions.txt` is always up-to-date in the repository, allowing users to immediately use it with their design files without needing to run any scripts.
 
