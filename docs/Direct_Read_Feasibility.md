@@ -132,9 +132,10 @@ must cite it when present.
 > preview write API (setters plus `EcadDrawing.executeCommands`). Neither
 > closes a gap below. Gaps 1–6 were **not re-checked on Insider** — whether
 > `NetClass.clearance`, the active variant, etc. are now readable over MCP is
-> unknown. Gap 7 was also not re-checked: the exporter still maps `type`
-> with the schema's enum (`DRC_TYPE` in `tools/fusion_export.py`), so an
-> unmapped value such as `4` passes through as the raw integer.
+> unknown. Gap 7 was re-checked on 2707.1.13 (2026-11-24): airwire rows still
+> read `type: 4`. The exporter now names a row "airwire" from its description
+> (`drc_type_name` in `tools/fusion_export.py`) and uses the schema's enum
+> only for other rows.
 
 1. **`NetClass.clearance` is not exposed** (only `name`, `number`, `width`,
    `drill`). The ULP exports `clearance_mm` per net class. Losing it means the

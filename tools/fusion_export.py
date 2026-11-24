@@ -74,6 +74,19 @@ DRC_TYPE = {0: "warning", 1: "failure", 2: "consistency", 3: "airwire"}
 DRC_STATE = {0: "active", 1: "processed", 2: "approved"}
 
 
+def drc_type_name(row: dict):
+    """Name an ``electronics.Error`` row's type.
+
+    The schema documents 3 as airwire, but live airwire rows read ``type: 4``
+    (description "Air Wire", layer 19; seen on Fusion 2707.0.73 and 2707.1.13).
+    So an airwire is recognised by its description, and only other rows use the
+    schema's enum. An unknown number is passed through unchanged.
+    """
+    if str(row.get("description", "")).strip().lower() == "air wire":
+        return "airwire"
+    return DRC_TYPE.get(row.get("type"), row.get("type"))
+
+
 def is_power_net(name: str) -> bool:
     upper = name.upper()
     return any(t in upper for t in _POWER_TOKENS)
@@ -792,7 +805,7 @@ class Exporter:
         errors = [{
             "code": r.get("code"),
             "description": r.get("description", ""),
-            "type": DRC_TYPE.get(r.get("type"), r.get("type")),
+            "type": drc_type_name(r),
             "state": DRC_STATE.get(r.get("state"), r.get("state")),
             "layer": r.get("layer"),
             "x_mm": r4(r.get("x", 0.0)),
