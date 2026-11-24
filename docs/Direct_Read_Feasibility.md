@@ -113,7 +113,28 @@ The guaranteed post-`RUN` latch disappears with the `RUN`s themselves, and
 | `board_description` | `electronics.Board.description` | field verified (empty on test design) |
 | per-layer thickness / material | not exposed — **same gap the ULP has** (.dru not reachable); no regression | parity |
 
+### DRC results (`-thomson-export-drc.json`) — new, no ULP counterpart
+
+Added 2026-10-30, verified on Fusion Insider 2707.0.73 (preview API).
+
+| Output | MCP source | Status |
+|---|---|---|
+| `errors[]` (`code`, `description`, `type`, `state`, `layer`, `x_mm`/`y_mm`, `signature`) | `electronics.Error`, board editor active — Fusion's results from the last DRC run; `state` includes `approved` (designer waivers) | verified live (full `brd` export); skipped on builds without the entity |
+| `error_count`, `active_count` | derived client-side from the rows | client-side |
+
+`tools/validate_findings.py` treats the file as a design input, so a review
+must cite it when present.
+
 ## Gaps
+
+> **Status on Fusion Insider 2707.0.73 (2026-10-30).** That build adds
+> `electronics.Error` as an exported capability (DRC results, above) and a
+> preview write API (setters plus `EcadDrawing.executeCommands`). Neither
+> closes a gap below. Gaps 1–6 were **not re-checked on Insider** — whether
+> `NetClass.clearance`, the active variant, etc. are now readable over MCP is
+> unknown. Gap 7 was also not re-checked: the exporter still maps `type`
+> with the schema's enum (`DRC_TYPE` in `tools/fusion_export.py`), so an
+> unmapped value such as `4` passes through as the raw integer.
 
 1. **`NetClass.clearance` is not exposed** (only `name`, `number`, `width`,
    `drill`). The ULP exports `clearance_mm` per net class. Losing it means the

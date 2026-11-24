@@ -89,6 +89,16 @@ vias — always behind explicit user confirmation. This is the most valuable
 long-term destination and should shape the v2 interfaces even if remediation
 ships later.
 
+> **Update 2026-10-30:** writes now exist. Verified on Fusion Insider
+> 2707.0.73: setters on most `adsk.electron` objects (net, part value, element
+> position/angle/lock, layer, grid, text, pour, library package/symbol/pin, …;
+> each checked by write + readback), and `EcadDrawing.executeCommands`
+> (Board / Schematic / Library), which runs EAGLE commands as a batch with a
+> per-command status and supports `stopOnError` / `rollbackOnError`. The API
+> docs mark these classes as a preview feature. ThomsonLint does not use the
+> write path yet; remediation remains future work. Not re-checked on
+> production (non-Insider) builds.
+
 ### 3.4 Durable core, swappable adapter
 What does **not** change across v1 → v2 is the real intellectual property:
 `ontology/ontology.json`, the knowledge base, the findings schema, and the rule
