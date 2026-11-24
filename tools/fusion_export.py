@@ -48,7 +48,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fusion_bridge import DEFAULT_SHARE_WSL, BridgeError, FusionBridge, wsl_to_windows
+from fusion_bridge import DEFAULT_SHARE, BridgeError, FusionBridge, to_fusion_path
 
 VERSION = "1.0"
 
@@ -810,11 +810,12 @@ class Exporter:
 
     # -- images ------------------------------------------------------------
 
-    def images_schematic(self, prefix_wsl: str, dpi: int) -> list[str]:
-        """Per-sheet PNGs. ``prefix_wsl`` must live under /mnt/<drive>."""
+    def images_schematic(self, prefix_local: str, dpi: int) -> list[str]:
+        """Per-sheet PNGs. ``prefix_local`` is this process's path to the
+        share; under WSL it must live under /mnt/<drive>."""
         self.ensure_schematic()
         sheets = self._read("electronics.Sheet")
-        prefix_win = wsl_to_windows(prefix_wsl).replace("\\", "/")
+        prefix_fusion = to_fusion_path(prefix_local).replace("\\", "/")
         # A no-op EDIT (opening the sheet that is already open) arms the
         # dialog latch; a real switch does not (isolated live 2026-08-28:
         # EDIT .S1 from the board -> clean; EDIT .S1 again -> latched).
@@ -825,18 +826,18 @@ class Exporter:
         order = [1] if n == 1 else list(range(2, n + 1)) + [1]
         targets, cmds = [], []
         for i in order:
-            wsl = f"{prefix_wsl}-img-sch-p{i}.png"
-            targets.append(wsl)
-            if os.path.exists(wsl):
-                os.remove(wsl)  # steinmetz pattern: no overwrite prompt possible
+            local = f"{prefix_local}-img-sch-p{i}.png"
+            targets.append(local)
+            if os.path.exists(local):
+                os.remove(local)  # steinmetz pattern: no overwrite prompt possible
             edit = "" if n == 1 else f"EDIT .S{i}; "
             cmds.append(f"{edit}WINDOW FIT; "
-                        f"EXPORT IMAGE '{prefix_win}-img-sch-p{i}.png' {dpi};")
+                        f"EXPORT IMAGE '{prefix_fusion}-img-sch-p{i}.png' {dpi};")
         self.wait_channel()
         self._dispatch(" ".join(cmds))
         return self._collect(targets)
 
-    def images_board(self, prefix_wsl: str, dpi: int) -> list[str]:
+    def images_board(self, prefix_local: str, dpi: int) -> list[str]:
         """Silk top/bottom + one PNG per in-use copper layer."""
         self.ensure_board()
         layers = self._read("electronics.Layer")
@@ -853,7 +854,7 @@ class Exporter:
         for s in smds:
             has_obj.add(s.get("layer", 0))
 
-        prefix_win = wsl_to_windows(prefix_wsl).replace("\\", "/")
+        prefix_fusion = to_fusion_path(prefix_local).replace("\\", "/")
         plan = [("-img-silk-top.png", "DISPLAY NONE 20 21 25 51;"),
                 ("-img-silk-bot.png", "DISPLAY NONE 20 22 26 52;")]
         for l in layers:
@@ -866,12 +867,12 @@ class Exporter:
 
         targets, cmds = [], ["RATSNEST;"]
         for suffix, display in plan:
-            wsl = prefix_wsl + suffix
-            targets.append(wsl)
-            if os.path.exists(wsl):
-                os.remove(wsl)
+            local = prefix_local + suffix
+            targets.append(local)
+            if os.path.exists(local):
+                os.remove(local)
             cmds.append(f"{display} WINDOW FIT; "
-                        f"EXPORT IMAGE '{prefix_win}{suffix}' {dpi};")
+                        f"EXPORT IMAGE '{prefix_fusion}{suffix}' {dpi};")
         cmds.append("DISPLAY ALL;")
         self.wait_channel()
         self._dispatch(" ".join(cmds))
@@ -931,7 +932,7 @@ def cmd_brd(exp: Exporter, args) -> None:
 
 
 def _image_prefix(exp: Exporter, args, board_side: bool) -> str:
-    share = Path(args.share) / "exports"
+    share = Path(args.share).expanduser() / "exports"
     share.mkdir(parents=True, exist_ok=True)
     return str(share / _design_name(exp, board_side))
 
@@ -977,8 +978,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", default=str(repo / "exports"),
                    help="directory for JSON files and copied images")
     p.add_argument("--share", default=os.environ.get("THOMSONLINT_FUSION_SHARE",
-                                                     DEFAULT_SHARE_WSL),
-                   help="WSL path under /mnt/<drive> where Fusion writes PNGs")
+                                                     DEFAULT_SHARE),
+                   help="directory Fusion writes PNGs into (under WSL: a path "
+                        f"under /mnt/<drive>; default: {DEFAULT_SHARE})")
     p.add_argument("--sch-dpi", type=int, default=300)
     p.add_argument("--brd-dpi", type=int, default=1200)
     p.add_argument("--skip-images", action="store_true",

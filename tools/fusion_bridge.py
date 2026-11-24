@@ -18,16 +18,19 @@ How it talks to Fusion (vendored from the ``~/hendley`` project's verified
   Preferences > General > API > "Fusion MCP Server" is enabled. That Autodesk
   toggle is the only thing here named "MCP" — this is plain JSON-RPC over HTTP,
   no MCP client library involved.
-- The right host depends on the WSL networking mode (``wslinfo
+- Run natively (Windows or macOS, same machine as Fusion): the endpoint is
+  ``127.0.0.1:27182`` and nothing else is needed.
+- Under WSL2 (legacy), the right host depends on the networking mode (``wslinfo
   --networking-mode``). **Mirrored**: WSL shares the Windows loopback, so
   ``127.0.0.1:27182`` works directly and no portproxy may exist (a stale
   ``0.0.0.0`` rule steals Fusion's bind). **NAT**: the Windows loopback is
   unreachable; connect to the WSL default-gateway IP through a Windows
   ``netsh interface portproxy`` rule forwarding ``<gateway-ip>:27182`` →
   ``127.0.0.1:27182`` (bind the gateway IP, not ``0.0.0.0``).
-  :func:`_default_host` probes loopback first and falls back to the gateway,
-  so both modes work unconfigured. See README "Reading from Fusion
-  Electronics"; troubleshoot with ``~/claude-code-fusion-mcp-check/check.sh``.
+  :func:`_default_host` probes loopback first and, on Linux/WSL only, falls
+  back to the gateway, so both modes work unconfigured. See README "Reading
+  from Fusion Electronics"; troubleshoot with
+  ``~/claude-code-fusion-mcp-check/check.sh``.
 - ...but send ``Host: 127.0.0.1:27182`` on every request — the server validates
   the ``Host`` header and 403s ("Invalid Host header") on the gateway IP.
 - Capture the ``MCP-Session-Id`` response header from ``initialize`` and resend it;
@@ -48,7 +51,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import ntpath
 import os
+import platform
+import posixpath
 import re
 import shutil
 import socket
@@ -60,49 +66,145 @@ from pathlib import Path
 
 DEFAULT_PORT = 27182
 
-SETUP_HINT = (
-    "Could not reach Fusion's MCP server. Check that:\n"
-    "  1. Fusion is running with an Electronics design open (no modal dialog).\n"
-    "  2. Preferences > General > API > 'Fusion MCP Server' is enabled.\n"
-    "  3. NAT-mode WSL only: a netsh portproxy forwards <gateway-ip>:27182 ->\n"
-    "     127.0.0.1:27182 (bind the gateway IP, not 0.0.0.0; turn Tailscale off).\n"
-    "     Mirrored-mode WSL shares the Windows loopback and needs no portproxy.\n"
-    "  Diagnose layer-by-layer: ~/claude-code-fusion-mcp-check/check.sh\n"
-    "  Override the host with --fusion-host or $THOMSONLINT_FUSION_HOST."
-)
 
-# WSL <-> Windows shared staging directory. The ULPs must live on a path Fusion
-# (Windows) can RUN, and their JSON/PNG output lands in a sibling exports/ that
-# WSL reads back. Same directory, two names — the pattern Hendley proved.
+def host_platform() -> str:
+    """``"windows"``, ``"macos"``, ``"wsl"`` or ``"linux"`` (where this Python runs).
+
+    Natively (Windows / macOS) this process and Fusion share one filesystem
+    and one loopback. Under WSL they do not, so paths and the host need
+    translating. Plain Linux cannot run Fusion; it gets the WSL behaviour.
+    """
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    if os.environ.get("WSL_DISTRO_NAME") or "microsoft" in platform.release().lower():
+        return "wsl"
+    return "linux"
+
+
+def _setup_hint(plat: str | None = None) -> str:
+    plat = plat or host_platform()
+    lines = [
+        "Could not reach Fusion's MCP server. Check that:",
+        "  1. Fusion is running with an Electronics design open (no modal dialog).",
+        "  2. Preferences > General > API > 'Fusion MCP Server' is enabled.",
+    ]
+    if plat in ("wsl", "linux"):
+        lines += [
+            "  3. NAT-mode WSL only: a netsh portproxy forwards <gateway-ip>:27182 ->",
+            "     127.0.0.1:27182 (bind the gateway IP, not 0.0.0.0; turn Tailscale off).",
+            "     Mirrored-mode WSL shares the Windows loopback and needs no portproxy.",
+            "  Diagnose layer-by-layer: ~/claude-code-fusion-mcp-check/check.sh",
+        ]
+    else:
+        lines += [
+            "  3. This runs on the same machine as Fusion: the server listens on",
+            f"     127.0.0.1:{DEFAULT_PORT} only. No port forwarding is needed.",
+        ]
+    lines.append(
+        "  Override the host with --fusion-host or the THOMSONLINT_FUSION_HOST "
+        "environment variable."
+    )
+    return "\n".join(lines)
+
+
+SETUP_HINT = _setup_hint()
+
+# Shared staging directory. The ULPs must live on a path Fusion can RUN, and
+# Fusion's JSON/PNG output lands in a sibling exports/ that this process reads
+# back. Natively that is one path seen identically by both sides; under WSL it
+# is the same Windows directory under two names — the pattern Hendley proved.
 DEFAULT_SHARE_WSL = "/mnt/c/Users/Public/thomsonlint"
+
+
+def default_share_dir(plat: str | None = None) -> str:
+    """A per-platform directory that Fusion itself can write to.
+
+    Windows: ``%PUBLIC%\\thomsonlint`` (normally ``C:\\Users\\Public\\thomsonlint``,
+    the same physical directory the WSL default names). macOS: ``~/.thomsonlint``
+    (outside the TCC-protected Desktop/Documents/Downloads folders). WSL / Linux:
+    the existing ``/mnt/c`` path.
+    """
+    plat = plat or host_platform()
+    if plat == "windows":
+        public = os.environ.get("PUBLIC") or r"C:\Users\Public"
+        return ntpath.join(public, "thomsonlint")
+    if plat == "macos":
+        return posixpath.join(posixpath.expanduser("~"), ".thomsonlint")
+    return DEFAULT_SHARE_WSL
+
+
+DEFAULT_SHARE = default_share_dir()
 
 
 class BridgeError(RuntimeError):
     """Raised when the Fusion bridge returns an error or an unusable response."""
 
 
-def _default_gateway() -> str:
-    """The Windows host IP as seen from WSL2 = the default route's gateway."""
-    out = subprocess.check_output(["ip", "route"], text=True)
+def _default_gateway() -> str | None:
+    """The Windows host IP as seen from WSL2 = the default route's gateway.
+
+    Returns None when it cannot be determined (no ``ip`` binary, no default
+    route); the caller then falls back to loopback, whose connection failure
+    carries the setup hint.
+    """
+    try:
+        out = subprocess.check_output(["ip", "route"], text=True, encoding="utf-8")
+    except (OSError, subprocess.CalledProcessError):
+        return None
     for line in out.splitlines():
         if line.startswith("default"):
             return line.split()[2]
-    raise BridgeError("no default gateway found; pass the Fusion host explicitly")
+    return None
 
 
-def _default_host(port: int = DEFAULT_PORT) -> str:
-    """Pick the host that actually reaches Fusion, whatever the WSL mode.
+def _default_host(port: int = DEFAULT_PORT, plat: str | None = None) -> str:
+    """Pick the host that actually reaches Fusion.
 
-    Mirrored-mode WSL shares the Windows loopback (and its default gateway is
-    just the LAN router, which can never work); NAT-mode WSL reaches Fusion
-    only through the gateway portproxy. A quick connect probe on loopback
-    distinguishes the two without asking which mode this is.
+    Natively (Windows / macOS) Fusion is always on loopback. Under WSL,
+    mirrored mode shares the Windows loopback (and its default gateway is
+    just the LAN router, which can never work); NAT mode reaches Fusion only
+    through the gateway portproxy. A quick connect probe on loopback
+    distinguishes the two without asking which mode this is. The gateway is
+    only tried on Linux/WSL; everywhere else (or when no gateway is found)
+    loopback is returned and the first request fails with the setup hint.
     """
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=0.25):
             return "127.0.0.1"
     except OSError:
-        return _default_gateway()
+        pass
+    if (plat or host_platform()) in ("wsl", "linux"):
+        gateway = _default_gateway()
+        if gateway:
+            return gateway
+    return "127.0.0.1"
+
+
+def to_fusion_path(path: str, plat: str | None = None) -> str:
+    """The local ``path`` as Fusion sees it, for use inside EAGLE commands.
+
+    Natively that is the same path, made absolute (Windows keeps its
+    backslashes; callers that want ``C:/...`` replace them). Under WSL it is
+    translated with :func:`wsl_to_windows`. EAGLE commands quote paths with
+    single quotes and may not contain double quotes, so a path containing
+    either is rejected here rather than producing a broken command.
+    """
+    plat = plat or host_platform()
+    if plat in ("wsl", "linux"):
+        fusion_path = wsl_to_windows(path)
+    elif plat == "windows":
+        fusion_path = ntpath.abspath(path)
+    else:
+        fusion_path = posixpath.abspath(posixpath.expanduser(path))
+    if "'" in fusion_path or '"' in fusion_path:
+        raise BridgeError(
+            f"{fusion_path!r} contains a quote character, which cannot be passed "
+            "inside an EAGLE command. Use a share directory without quotes "
+            "(--share / --dir or THOMSONLINT_FUSION_SHARE)."
+        )
+    return fusion_path
 
 
 def wsl_to_windows(path: str) -> str:
@@ -121,8 +223,9 @@ class FusionBridge:
     """One HTTP session to Fusion's local endpoint.
 
     Host resolution order: explicit ``host`` arg → ``THOMSONLINT_FUSION_HOST`` →
-    ``HENDLEY_FUSION_HOST`` → loopback if it answers (mirrored WSL), else the
-    WSL default-gateway IP (NAT WSL). The session id is held
+    ``HENDLEY_FUSION_HOST`` → loopback if it answers (native, mirrored WSL),
+    else on Linux/WSL the default-gateway IP (NAT WSL), else loopback. The
+    session id is held
     in-process and created lazily on the first call.
     """
 
@@ -149,13 +252,13 @@ class FusionBridge:
         if self._sid:
             headers["MCP-Session-Id"] = self._sid
         req = urllib.request.Request(
-            self.url, data=json.dumps(payload).encode(), headers=headers, method="POST"
+            self.url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
         )
         try:
             resp = urllib.request.urlopen(req, timeout=self.timeout)
         except (urllib.error.URLError, OSError) as exc:
             raise BridgeError(f"cannot reach Fusion at {self.url}: {exc}\n\n{SETUP_HINT}") from exc
-        body = resp.read().decode()
+        body = resp.read().decode("utf-8")
         return (resp.headers, body) if want_headers else body
 
     def _ensure_session(self) -> None:
@@ -360,12 +463,13 @@ def _coerce(val: str):
 
 
 def cmd_stage_ulps(args) -> int:
-    """Copy the export ULPs into a Windows-visible dir and print its C:\\ path.
+    """Copy the export ULPs into a Fusion-visible dir and print Fusion's path to it.
 
     The ULPs derive their output directory from their own location
     (``<ulpDir>/../exports``), so we also create the sibling exports/ dir here.
-    The printed Windows tools path is what goes into ``RUN '<path>/...ulp'``;
-    the WSL exports path (where output lands) is reported on stderr.
+    The printed tools path (as Fusion sees it — a ``C:\\`` path under WSL) is
+    what goes into ``RUN '<path>/...ulp'``; the local exports path (where
+    output lands) is reported on stderr.
     """
     repo_tools = Path(__file__).resolve().parent
     ulps = sorted(repo_tools.glob("fusion-electronics-*.ulp"))
@@ -374,28 +478,35 @@ def cmd_stage_ulps(args) -> int:
         return 2
 
     share = Path(args.dir).expanduser()
-    win_tools = share / "tools"
-    wsl_exports = share / "exports"
+    share_tools = share / "tools"
+    share_exports = share / "exports"
     try:
-        win_tools.mkdir(parents=True, exist_ok=True)
-        wsl_exports.mkdir(parents=True, exist_ok=True)
+        share_tools.mkdir(parents=True, exist_ok=True)
+        share_exports.mkdir(parents=True, exist_ok=True)
         for ulp in ulps:
-            shutil.copy2(ulp, win_tools / ulp.name)
-        win_tools_path = wsl_to_windows(str(win_tools))
+            shutil.copy2(ulp, share_tools / ulp.name)
+        fusion_tools_path = to_fusion_path(str(share_tools))
     except (OSError, BridgeError) as exc:
         print(f"could not stage ULPs into {share}: {exc}", file=sys.stderr)
         return 2
 
     print(
-        f"staged {len(ulps)} ULP(s) -> {win_tools}\n"
-        f"output will land in (WSL): {wsl_exports}\n"
-        f"copy results back with:   cp {wsl_exports}/*-thomson-export-*.json "
-        f"{wsl_exports}/*-img-*.png exports/",
+        f"staged {len(ulps)} ULP(s) -> {share_tools}\n"
+        f"output will land in:      {share_exports}\n"
+        f"copy results back with:   {_copy_back_hint(share_exports)}",
         file=sys.stderr,
     )
-    # stdout = just the Windows tools dir, so `STAGE=$(... stage-ulps)` is clean.
-    print(win_tools_path)
+    # stdout = just Fusion's tools path, so `STAGE=$(... stage-ulps)` is clean.
+    print(fusion_tools_path)
     return 0
+
+
+def _copy_back_hint(exports: Path, plat: str | None = None) -> str:
+    """A copy command for the platform's usual shell (PowerShell on Windows)."""
+    if (plat or host_platform()) == "windows":
+        return (f"Copy-Item '{exports}\\*-thomson-export-*.json', "
+                f"'{exports}\\*-img-*.png' exports\\")
+    return f"cp {exports}/*-thomson-export-*.json {exports}/*-img-*.png exports/"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -405,7 +516,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--fusion-host",
         default=None,
-        help="Fusion host IP (default: $THOMSONLINT_FUSION_HOST, $HENDLEY_FUSION_HOST, or WSL gateway).",
+        help="Fusion host IP (default: THOMSONLINT_FUSION_HOST, HENDLEY_FUSION_HOST, else "
+        "127.0.0.1; under WSL falls back to the default gateway).",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -430,12 +542,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser(
         "stage-ulps",
-        help="Copy the export ULPs to a Windows-visible dir; prints the C:\\ tools path.",
+        help="Copy the export ULPs to a dir Fusion can read; prints Fusion's path to it.",
     )
     sp.add_argument(
         "--dir",
-        default=os.environ.get("THOMSONLINT_FUSION_SHARE", DEFAULT_SHARE_WSL),
-        help=f"WSL path under /mnt/<drive> to stage into (default: {DEFAULT_SHARE_WSL}).",
+        default=os.environ.get("THOMSONLINT_FUSION_SHARE", DEFAULT_SHARE),
+        help="Directory to stage into; under WSL it must be under /mnt/<drive> "
+        f"(default: THOMSONLINT_FUSION_SHARE or {DEFAULT_SHARE}).",
     )
     sp.set_defaults(func=cmd_stage_ulps)
     return p
