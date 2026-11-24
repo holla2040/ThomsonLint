@@ -38,7 +38,8 @@ PARAGRAPH_SECONDS = 30  # group caption lines into ~30 s paragraphs
 
 
 def run(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True,
+                            encoding='utf-8', errors='replace')
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         sys.exit(f"command failed: {' '.join(cmd)}")

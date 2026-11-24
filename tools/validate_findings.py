@@ -48,7 +48,7 @@ DESIGN_INPUT_SUFFIXES = (
 
 
 def load_json(path: Path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -203,6 +203,10 @@ def main(argv=None):
     p.add_argument("--show-uncited-rules", action="store_true",
                    help="Print the full list of ontology rules not cited (default: summary count only).")
     args = p.parse_args(argv)
+    # Messages echo findings content; don't crash on a Windows code-page pipe.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
 
     findings_path = Path(args.findings_path).resolve()
     if not findings_path.is_file():

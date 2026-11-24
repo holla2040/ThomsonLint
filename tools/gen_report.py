@@ -472,9 +472,13 @@ def main():
     parser.add_argument("findings_json", help="Path to the findings JSON file.")
     parser.add_argument("--output", default="exports/", help="Output directory (default: exports/).")
     args = parser.parse_args()
+    # Messages echo findings content; don't crash on a Windows code-page pipe.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
 
     try:
-        with open(args.findings_json) as f:
+        with open(args.findings_json, encoding="utf-8") as f:
             findings = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error reading {args.findings_json}: {e}", file=sys.stderr)
@@ -491,7 +495,7 @@ def main():
         import jsonschema
         schema_path = os.path.join(os.path.dirname(__file__), "..", "tests", "findings_schema.json")
         if os.path.exists(schema_path):
-            with open(schema_path) as f:
+            with open(schema_path, encoding="utf-8") as f:
                 schema = json.load(f)
             jsonschema.validate(instance=findings, schema=schema)
             print("Findings JSON validated against schema.")
@@ -511,7 +515,7 @@ def main():
         safe_name = safe_name.replace(ch, "_")
     out_name = safe_name + "-review.html"
     out_path = os.path.join(args.output, out_name)
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
 
     print(f"Report generated: {out_path}")

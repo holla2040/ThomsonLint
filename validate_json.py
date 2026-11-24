@@ -1,14 +1,15 @@
 import json
 import jsonschema
 import os
+import sys
 
 def validate_json(json_file_path, schema_file_path):
     try:
-        with open(json_file_path, 'r') as f:
+        with open(json_file_path, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
-        with open(schema_file_path, 'r') as f:
+        with open(schema_file_path, 'r', encoding='utf-8') as f:
             schema_data = json.load(f)
-        
+
         jsonschema.validate(instance=json_data, schema=schema_data)
         print(f"Validation successful for {json_file_path} against {schema_file_path}")
         return True
@@ -19,7 +20,7 @@ def validate_json(json_file_path, schema_file_path):
     except FileNotFoundError:
         print(f"Error: One of the files not found. Check paths: {json_file_path}, {schema_file_path}")
         return False
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         print(f"Error decoding JSON file {json_file_path}: {e}")
         return False
 
@@ -36,7 +37,10 @@ def find_findings_files():
 
 
 if __name__ == "__main__":
-    import sys
+    # Error messages echo JSON content (e.g. Greek letters in the ontology);
+    # don't crash on a Windows code-page stdout when piped.
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(errors='backslashreplace')
 
     ontology_json = 'ontology/ontology.json'
     ontology_schema = 'tests/ontology_schema.json'
@@ -77,3 +81,5 @@ if __name__ == "__main__":
         print("All JSON files validated successfully.")
     else:
         print("Some JSON files failed validation.")
+    # Non-zero on any failure: run_review and other pipelines rely on it.
+    sys.exit(0 if all_valid else 1)
