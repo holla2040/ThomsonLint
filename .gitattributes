@@ -1,0 +1,4 @@
+# Keep LF everywhere, regardless of core.autocrlf. Windows checkouts with
+# autocrlf=true otherwise get CRLF, which breaks the byte-identical
+# review_instructions.txt check (tests/test_native_platform.py).
+* text=auto eol=lf
