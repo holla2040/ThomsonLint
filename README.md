@@ -9,31 +9,31 @@ cd ThomsonLint
 
 **Fusion Electronics:**
 
-> **Live capture:** with the design open in Fusion, Claude Code can pull the export data itself (all sheets, board, stackup, images) — no manual ULP run. Enable it once via §7 "Reading from Fusion Electronics", then just `/design-review`. The manual steps below remain available as the fallback.
+> **Live capture:** with the design open in Fusion, Claude Code can pull the export data itself (all sheets, board, stackup, images) — no manual ULP run. Enable it once via [Reading from Fusion Electronics](#reading-from-fusion-electronics), then just `/design-review`. The manual steps below remain available as the fallback.
 
 1. Open your circuit design in Fusion Electronics.
 2. From **both** the schematic editor and the board editor, run:
    ```
    RUN fusion-electronics-all.ulp
    ```
-   One command per editor produces the JSON connectivity export, layer stackup JSON (board only), and high-resolution image renders. To customise output paths or DPI, run the three underlying ULPs (`fusion-electronics-export.ulp`, `fusion-electronics-stackup.ulp`, `fusion-electronics-images.ulp`) directly — see §7.
+   One command per editor produces the JSON connectivity export, layer stackup JSON (board only), and high-resolution image renders. To customise output paths or DPI, run the three underlying ULPs ([fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp), [fusion-electronics-stackup.ulp](./tools/fusion-electronics-stackup.ulp), and [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp)) directly — see [Reading from Fusion Electronics](#reading-from-fusion-electronics).
 
 **KiCad 9 / 10:**
 1. Run `python tools/kicad-export.py path/to/MyProject.kicad_pro`
 
-**Then** run Claude Code from the repo root and type `/design-review` at the prompt:
+**Then** [run Claude Code](#step-3-start-a-claude-code-review-session) from the repo root and type `/design-review` at the prompt:
 
 **`/design-review`**
 
-(Fallback if the skill is unavailable: `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`)
+(Fallback if the skill is unavailable: Read [REVIEWER_INSTRUCTIONS.md](./docs/REVIEWER_INSTRUCTIONS.md) and follow it to review my design in exports/. Please begin the review.`)
 
-(A pre-generated `review_instructions.txt` bundle is also produced for single-file upload to web AIs like Gemini, but that workflow has not been tested — see §5 "Running a Review".)
+(A pre-generated [review_instructions.txt](./review_instructions.txt) bundle is also produced for single-file upload to web AIs like Gemini, but that workflow has not been tested — see [Running a Review](#5-running-a-review).)
 
 ---
 
 ## Prerequisites
 
-The tools run natively wherever Fusion runs — **Windows** (PowerShell) and **macOS** — with the same commands on both. No WSL is needed (see "Running under WSL2 (legacy)" in §7 if you still use it).
+The tools run natively wherever Fusion runs — **Windows** (PowerShell) and **macOS** — with the same commands on both. No WSL is needed (see "Running under WSL2 (legacy)" in [Running under WSL2](#running-under-wsl2-legacy) if you still use it).
 
 - **Python 3.10+**
 - **jsonschema** (validation and report generation) — install into a virtual environment from the repo root:
@@ -53,7 +53,7 @@ The tools run natively wherever Fusion runs — **Windows** (PowerShell) and **m
 
 ### Automated run script
 
-`tools/run_review.py` runs the whole review non-interactively, auto-detecting the project name from the `exports/` directory:
+[run_review.py](./tools/run_review.py) runs the whole review non-interactively, auto-detecting the project name from the `exports/` directory:
    ```bash
    python tools/run_review.py
    ```
@@ -63,7 +63,7 @@ If there are more than one project outputs in the directory, then specify it exp
    python tools/run_review.py MySpecialProject
    ```
 
-It needs the `claude` command (Claude Code CLI) on your PATH; `jq` is not needed. The model and spend cap come from `THOMSONLINT_MODEL` / `THOMSONLINT_BUDGET`. The original `run_review.sh` (bash, needs `jq`) still works on Linux/macOS.
+It needs the `claude` command (Claude Code CLI) on your PATH; `jq` is not needed. The model and spend cap come from `THOMSONLINT_MODEL` / `THOMSONLINT_BUDGET`. The original [run_review.sh](./run_review.sh) (bash, needs `jq`) still works on Linux/macOS.
 
 ## 1. Project Overview
 
@@ -71,9 +71,9 @@ This repository hosts a knowledge and rule framework designed to empower AI mode
 
 The framework is built upon three core components:
 
-1.  **Ontology (`ontology/ontology.json`):** A machine-readable JSON file that defines a rich set of rules, domains, severity levels, and failure modes for hardware design. This forms the core of the AI's knowledge base.
-2.  **Knowledge Base (`docs/AI_Hardware_Design_Review_KnowledgeBase.md`):** A human-readable Markdown file that provides detailed explanations, appendices, and context for the rules defined in the ontology.
-3.  **Examples (`examples/examples.json`):** A collection of practical examples, both good and bad, that map to the rules in the ontology. These can be used for training, testing, and validating the AI's understanding of the rules.
+1.  **[Ontology](./ontology/ontology.json):** A machine-readable JSON file that defines a rich set of rules, domains, severity levels, and failure modes for hardware design. This forms the core of the AI's knowledge base.
+2.  **[Knowledge Base](./docs/AI_Hardware_Design_Review_KnowledgeBase.md):** A human-readable Markdown file that provides detailed explanations, appendices, and context for the rules defined in the ontology.
+3.  **[Examples](./examples/examples.json):** A collection of practical examples, both good and bad, that map to the rules in the ontology. These can be used for training, testing, and validating the AI's understanding of the rules.
 
 ## 2. Why "ThomsonLint"?
 
@@ -83,40 +83,40 @@ Just as Thomson revealed the fundamental building blocks of electrical circuits,
 
 ## 3. Project Status
 
-The initial development phase of this project is complete. All tasks outlined in the `TODO.md` file have been implemented, resulting in a comprehensive and well-structured framework for AI-assisted hardware design review.
+The initial development phase of this project is complete. All tasks outlined in the [TODO.md](./TODO.md) file have been implemented, resulting in a comprehensive and well-structured framework for AI-assisted hardware design review.
 
 ## 4. Repository Contents
 
 The repository is organized as follows:
 
--   `README.md`: This file, providing an overview of the project.
--   `LICENSE`: The project's license.
--   `CONTRIBUTING.md`: Guidelines for contributing to the project.
--   `TODO.md`: The completed task list for the initial development phase.
--   `ontology/ontology.json`: The core machine-readable ontology of hardware design rules.
--   `examples/examples.json`: A set of example hardware design scenarios for training and testing.
--   `docs/REVIEWER_INSTRUCTIONS.md`: The single source of truth for how a review is conducted; consumed by both Claude Code and the bundled web-AI workflow.
--   `docs/AI_Hardware_Design_Review_KnowledgeBase.md`: A detailed, human-readable knowledge base.
--   `docs/KiCad_Review_Guide.md`: Usage guide for the KiCad 9 / 10 export workflow.
--   `docs/Multi_Agent_Reasoning_Spec.md`: A specification for a conceptual multi-agent reasoning architecture.
--   `tests/ontology_schema.json`: A JSON schema for validating `ontology/ontology.json`.
--   `tests/examples_schema.json`: A JSON schema for validating `examples/examples.json`.
--   `tests/findings_schema.json`: A JSON schema for validating findings JSON files produced by a review.
--   `tests/sample_findings.json`: A worked example demonstrating issues, verified_checks, cross_checks, and image / stackup evidence rows.
--   `tools/fusion-electronics-all.ulp`: Wrapper ULP — recommended entry point. Chains the three exporters below in the right order based on the current editor, so the user runs only one command per editor.
--   `tools/fusion-electronics-export.ulp`: ULP that exports schematic and board connectivity/placement to JSON. Run from each editor.
--   `tools/fusion-electronics-stackup.ulp`: ULP that exports the layer stack (copper ordering, used-vs-unused layers) to JSON. Run from the board editor.
--   `tools/fusion-electronics-images.ulp`: ULP that renders the schematic sheets and per-layer board images as high-resolution PNGs (300 DPI schematic / 1200 DPI board defaults). Run from each editor.
--   `tools/kicad-export.py`: Standalone Python script to export KiCad 9 / 10 designs for review.
--   `tools/yt-transcript.py`: Pulls a YouTube video transcript (via yt-dlp) with creator metadata in the header, as raw material for knowledge-base additions. See CLAUDE.md "Ingesting YouTube Content" — KB additions derived from a video must credit the creator (their homepage info feeds the `**Source:**` line).
--   `tools/validate_findings.py`: Coverage validator — schema-checks the findings JSON, lists every input in `exports/` not cited in any `evidence[].source`, and flags missing required fields. Mandatory gate before generating the HTML report.
--   `tools/gen_report.py`: Generates the self-contained HTML review report from findings JSON; embeds image evidence as inline thumbnails.
--   `tools/fusion_bridge.py` / `tools/fusion_export.py`: Live capture from a running Fusion session (see §7 "Reading from Fusion Electronics").
--   `tools/run_review.py`: Non-interactive review pipeline (`run_review.sh` is the original bash version).
--   `validate_json.py`: A Python script for validating the JSON files against their schemas; exits non-zero if any file fails.
--   `tools/gen_context.py`: Generates the review instructions file (`gen_context.sh` is the original bash version; both produce identical output).
--   `requirements.txt`: Python dependencies (`jsonschema`).
--   `review_instructions.txt`: Pre-generated file containing the complete knowledge base and AI instructions. Ready to use immediately.
+-   [README.md](./README.md): This file, providing an overview of the project.
+-   [LICENSE](./LICENSE): The project's license.
+-   [CONTRIBUTING.md](./CONTRIBUTING.md): Guidelines for contributing to the project.
+-   [TODO.md](./TODO.md): The completed task list for the initial development phase.
+-   [ontology/ontology.json](./ontology/ontology.json): The core machine-readable ontology of hardware design rules.
+-   [examples/examples.json](./examples/examples.json): A set of example hardware design scenarios for training and testing.
+-   [docs/REVIEWER_INSTRUCTIONS.md](./docs/REVIEWER_INSTRUCTIONS.md): The single source of truth for how a review is conducted; consumed by both Claude Code and the bundled web-AI workflow.
+-   [docs/AI_Hardware_Design_Review_KnowledgeBase.md](./docs/AI_Hardware_Design_Review_KnowledgeBase.md): A detailed, human-readable knowledge base.
+-   [docs/KiCad_Review_Guide.md](./docs/KiCad_Review_Guide.md): Usage guide for the KiCad 9 / 10 export workflow.
+-   [docs/Multi_Agent_Reasoning_Spec.md](./docs/Multi_Agent_Reasoning_Spec.md): A specification for a conceptual multi-agent reasoning architecture.
+-   [tests/ontology_schema.json](./tests/ontology_schema.json): A JSON schema for validating [ontology.json](./ontology/ontology.json).
+-   [tests/examples_schema.json](./tests/examples_schema.json): A JSON schema for validating [examples.json](./examples/examples.json).
+-   [tests/findings_schema.json](./tests/findings_schema.json): A JSON schema for validating findings JSON files produced by a review.
+-   [tests/sample_findings.json](./tests/sample_findings.json): A worked example demonstrating issues, verified_checks, cross_checks, and image / stackup evidence rows.
+-   [tools/fusion-electronics-all.ulp](./tools/fusion-electronics-all.ulp): Wrapper ULP — recommended entry point. Chains the three exporters below in the right order based on the current editor, so the user runs only one command per editor.
+-   [tools/fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp): ULP that exports schematic and board connectivity/placement to JSON. Run from each editor.
+-   [tools/fusion-electronics-stackup.ulp](./tools/fusion-electronics-stackup.ulp): ULP that exports the layer stack (copper ordering, used-vs-unused layers) to JSON. Run from the board editor.
+-   [tools/fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp): ULP that renders the schematic sheets and per-layer board images as high-resolution PNGs (300 DPI schematic / 1200 DPI board defaults). Run from each editor.
+-   [tools/kicad-export.py](./tools/kicad-export.py): Standalone Python script to export KiCad 9 / 10 designs for review.
+-   [tools/yt-transcript.py](./tools/yt-transcript.py): Pulls a YouTube video transcript (via yt-dlp) with creator metadata in the header, as raw material for knowledge-base additions. See [CLAUDE.md](./CLAUDE.md) "Ingesting YouTube Content" — KB additions derived from a video must credit the creator (their homepage info feeds the `**Source:**` line).
+-   [tools/validate_findings.py](./tools/validate_findings.py): Coverage validator — schema-checks the findings JSON, lists every input in `exports/` not cited in any `evidence[].source`, and flags missing required fields. Mandatory gate before generating the HTML report.
+-   [tools/gen_report.py](./tools/gen_report.py): Generates the self-contained HTML review report from findings JSON; embeds image evidence as inline thumbnails.
+-   [tools/fusion_bridge.py](./tools/fusion_bridge.py) / [tools/fusion_export.py](./tools/fusion_export.py): Live capture from a running Fusion session (see [Reading from Fusion Electronics](#reading-from-fusion-electronics)).
+-   [tools/run_review.py](./tools/run_review.py): Non-interactive review pipeline ([run_review.sh](./run_review.sh) is the original bash version).
+-   [validate_json.py](./validate_json.py): A Python script for validating the JSON files against their schemas; exits non-zero if any file fails.
+-   [tools/gen_context.py](./tools/gen_context.py): Generates the review instructions file ([gen_context.sh](./gen_context.sh) is the original bash version; both produce identical output).
+-   [requirements.txt](./requirements.txt): Python dependencies (`jsonschema`).
+-   [review_instructions.txt](./review_instructions.txt): Pre-generated file containing the complete knowledge base and AI instructions. Ready to use immediately.
 
 ## 5. Running a Review
 
@@ -126,13 +126,13 @@ This section is for the person reviewing a board. It lists the exact inputs the 
 
 Reviewer procedure (read by the AI):
 
--   `docs/REVIEWER_INSTRUCTIONS.md` — the single source of truth for how a review is conducted. Step 1 of this file directs the AI to read the framework knowledge base.
+-   [docs/REVIEWER_INSTRUCTIONS.md](./docs/REVIEWER_INSTRUCTIONS.md) — the single source of truth for how a review is conducted. Step 1 of this file directs the AI to read the framework knowledge base.
 
-Framework knowledge (loaded by the AI per Step 1 of `REVIEWER_INSTRUCTIONS.md`):
+Framework knowledge (loaded by the AI per Step 1 of [REVIEWER_INSTRUCTIONS.md](./docs/REVIEWER_INSTRUCTIONS.md)):
 
--   `ontology/ontology.json` — rule definitions
--   `examples/examples.json` — worked examples mapped to rules
--   `docs/AI_Hardware_Design_Review_KnowledgeBase.md` — explanations and appendices
+-   [ontology/ontology.json](./ontology/ontology.json) — rule definitions
+-   [examples/examples.json](./examples/examples.json) — worked examples mapped to rules
+-   [docs/AI_Hardware_Design_Review_KnowledgeBase.md](./docs/AI_Hardware_Design_Review_KnowledgeBase.md) — explanations and appendices
 
 Design data (drop into `exports/`):
 
@@ -144,7 +144,7 @@ Design data (drop into `exports/`):
 -   `<project>-img-cu-L<num>-<name>.png` — per-copper-layer renders at 1200 DPI (traces + filled pours + airwires + restrict zones)
 -   `*.pdf` / `*.PDF` — datasheets for critical ICs (power converters, MCUs, transceivers), plus any stackup or pinout PDFs
 
-Every input above is hard-gated by `tools/validate_findings.py`: any file present but not cited in some `evidence[].source` causes review failure. The case-insensitive match also catches uppercase `.PDF` / `.PNG`.
+Every input above is hard-gated by [validate_findings.py](./tools/validate_findings.py): any file present but not cited in some `evidence[].source` causes review failure. The case-insensitive match also catches uppercase `.PDF` / `.PNG`.
 
 ### Driver path (tested)
 
@@ -154,11 +154,11 @@ Every input above is hard-gated by `tools/validate_findings.py`: any file presen
 
 (Fallback: `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`)
 
-See §7 "Using with Claude Code" for the full step-by-step.
+See [Using with Claude Code](#7-using-with-claude-code) for the full step-by-step.
 
 ### Driver path (untested)
 
-**Single-file upload to a web AI (e.g., Gemini, Claude.ai, ChatGPT)** — the repo also produces `review_instructions.txt`, a single concatenation of ontology + examples + KB. Uploading this file along with the design exports to a web AI is *possible* but has not been tested by the maintainers; treat as experimental. See §6.1 for the quick-start. Do **not** point Claude Code at this bundle — it exceeds the per-file `Read` limit, and Claude Code should read the source files directly anyway.
+**Single-file upload to a web AI (e.g., Gemini, Claude.ai, ChatGPT)** — the repo also produces [review_instructions.txt](./review_instructions.txt), a single concatenation of ontology + examples + KB. Uploading this file along with the design exports to a web AI is *possible* but has not been tested by the maintainers; treat as experimental. See [Quick start for web-based AI reviewers](#61-for-web-based-ai-reviewers--untested) for the quick-start. Do **not** point Claude Code at this bundle — it exceeds the per-file `Read` limit, and Claude Code should read the source files directly anyway.
 
 ### Outputs
 
@@ -166,7 +166,6 @@ A complete review writes to `exports/`:
 
 -   `<project>-findings.json` — structured findings, schema in `tests/findings_schema.json`
 -   `<project>-review.html` — interactive Open / Accept / Ignore checklist generated by:
-
     ```bash
     python tools/gen_report.py exports/<project>-findings.json --output exports/
     ```
@@ -187,14 +186,14 @@ This framework serves two types of users:
 
 ### 6.1. For Web-Based AI Reviewers — Untested
 
-> **Status: experimental.** This path has not been validated by the maintainers. The tested workflow is Claude Code (§7). The instructions below are provided as a starting point if you want to try a web AI.
+> **Status: experimental.** This path has not been validated by the maintainers. The tested workflow is [Claude Code](#7-using-with-claude-code). The instructions below are provided as a starting point if you want to try a web AI.
 
 If you want to try reviewing a hardware design with a web AI that takes a single file upload, you don't need to clone or run anything:
 
-1.  **Download `review_instructions.txt`** from this repository (it's pre-generated and always up-to-date).
+1.  **Download [review_instructions.txt](./review_instructions.txt)** from this repository (it's pre-generated and always up-to-date).
 2.  **Open an AI assistant with file upload support.**
 3.  **Upload two things:**
-    -   The `review_instructions.txt` file
+    -   The [review_instructions.txt](./review_instructions.txt) file
     -   Your design files (schematic images, PCB layout screenshots, etc.)
 4.  **Type:** `Please begin the review.`
 
@@ -213,16 +212,17 @@ cd ThomsonLint
 ```
 
 #### Validate JSON Files
+If not installed (see [Prerequisites](#Prerequisites))
 ```bash
-python -m pip install -r requirements.txt  # if not installed (see Prerequisites)
+python -m pip install -r requirements.txt  
 python validate_json.py
 ```
 
 #### Extend the Framework
 
-1.  **Modify the JSON files:** Add new entries to `ontology/ontology.json` or `examples/examples.json` following the existing structure.
-2.  **Update the knowledge base:** If necessary, add new sections to `docs/AI_Hardware_Design_Review_KnowledgeBase.md`.
-3.  **Credit your sources:** If the content is derived from external material (a video, article, checklist, or another person's work), add a `**Source:** <author>, <publication or channel>, <URL>` line near the top of the new KB section. Content providers supply valuable knowledge to this project and their efforts are acknowledged in the knowledge base itself — see Appendix J and Appendix I.4 for the expected style, and CONTRIBUTING.md for details.
+1.  **Modify the JSON files:** Add new entries to [ontology.json](./ontology/ontology.json) or [examples.json](./examples/examples.json) following the existing structure.
+2.  **Update the knowledge base:** If necessary, add new sections to [AI_Hardware_Design_Review_KnowledgeBase.md](./docs/AI_Hardware_Design_Review_KnowledgeBase.md).
+3.  **Credit your sources:** If the content is derived from external material (a video, article, checklist, or another person's work), add a `**Source:** <author>, <publication or channel>, <URL>` line near the top of the new KB section. Content providers supply valuable knowledge to this project and their efforts are acknowledged in the knowledge base itself — see Appendix J and Appendix I.4 for the expected style, and [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 4.  **Validate your changes:** Run `python validate_json.py`.
 5.  **Regenerate the review file:**
     ```bash
@@ -234,19 +234,20 @@ python validate_json.py
 
 ## 7. Using with Claude Code
 
-Claude Code is the tested driver for this framework. It reads the exported design data and the framework's source files (`ontology/ontology.json`, `examples/examples.json`, `docs/AI_Hardware_Design_Review_KnowledgeBase.md`) directly from the repository — no file uploads, no `review_instructions.txt` (the bundle exists for the experimental web-AI path in §6.1, and exceeds Claude Code's per-file `Read` limit).
+Claude Code is the tested driver for this framework. It reads the exported design data and the framework's source files ([ontology.json](./ontology/ontology.json), [examples.json](./examples/examples.json), [AI_Hardware_Design_Review_KnowledgeBase.md](./docs/AI_Hardware_Design_Review_KnowledgeBase.md)) directly from the repository — no file uploads, no [review_instructions.txt](./review_instructions.txt) (the bundle exists for the experimental web-AI path in [For Web-Based AI Reviewers](#61-for-web-based-ai-reviewers--untested), and exceeds Claude Code's per-file `Read` limit).
 
 ### Prerequisites
 
-- Claude Code CLI installed and authenticated
+- Claude Code CLI installed and authenticated - check by running `claude auth status`.
 - ThomsonLint repository cloned locally
-- Design exported from Fusion Electronics or KiCad 9 / 10 — or, for live capture, the design simply **open in Fusion** with the bridge configured (see "Reading from Fusion Electronics" below)
+- Design exported from Fusion Electronics or KiCad 9 / 10 — or, for live capture, the design simply **open in Fusion** with the bridge configured (see [Reading from Fusion Electronics](#reading-from-fusion-electronics) below)
 
 ### Reading from Fusion Electronics
 
 Live capture (Step 1 below) talks to a **running** Fusion instance over a local HTTP endpoint Fusion itself publishes — no file uploads, no manual ULP runs. One-time setup:
 
-1.  **Enable Fusion's API server.** In Fusion: **Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on `127.0.0.1` port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks command dispatch; reads still work).
+1.  **Enable Fusion's API server.** In Fusion: **<Your user, upper right corner> ▸ Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on `127.0.0.1` port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks command dispatch; reads still work).  
+    NOTE: When enabled, Fusion360 needs to be restarted for this to take effect.
 2.  **Verify.** From the repo root, on the same machine as Fusion (Windows PowerShell or macOS Terminal — no port forwarding):
     ```bash
     python tools/fusion_bridge.py ping
@@ -274,7 +275,7 @@ The tools were originally developed under WSL2; that still works as a fallback. 
 
 You can get the design data into `exports/` two ways:
 
-**Live capture (preferred).** If the design is open in Fusion Electronics, Claude Code pulls everything itself — every schematic sheet, the board, stackup, and image renders — by driving the running Fusion session over HTTP and running the export ULPs for you. You run no ULP by hand: start the review with the design open and the bridge configured (see "Reading from Fusion Electronics" above), and the reviewer follows "Step 0 — Live Fusion Capture" in `docs/REVIEWER_INSTRUCTIONS.md` using `tools/fusion_bridge.py`. It produces the same files as the manual path below, and expects one Escape keypress from you between the schematic and board passes (see the note above). The manual ULP export remains available as the fallback.
+**Live capture (preferred).** If the design is open in Fusion Electronics, Claude Code pulls everything itself — every schematic sheet, the board, stackup, and image renders — by driving the running Fusion session over HTTP and running the export ULPs for you. You run no ULP by hand: start the review with the design open and the bridge configured (see [Reading from Fusion Electronics](#reading-from-fusion-electronics) above), and the reviewer follows [Step 0 — Live Fusion Capture](./docs/REVIEWER_INSTRUCTIONS.md#step-0--live-fusion-capture-when-the-design-is-open-in-fusion-electronics) using [fusion_bridge.py](./tools/fusion_bridge.py). It produces the same files as the manual path below, and expects one Escape keypress from you between the schematic and board passes (see the note above). The manual ULP export remains available as the fallback.
 
 **Manual ULP export (fallback).** The simplest by-hand path is the wrapper ULP — one command per editor, no flags:
 
@@ -283,14 +284,14 @@ You can get the design data into `exports/` two ways:
     ```
     RUN fusion-electronics-all.ulp
     ```
-    This chains: `fusion-electronics-export.ulp` → `fusion-electronics-images.ulp`. Produces `<design>-thomson-export-sch.json` and one `<design>-img-sch-p<N>.png` per sheet (300 DPI).
+    This chains: [fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp) → [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp). Produces `exports/<design>-thomson-export-sch.json` and one `exports/<design>-img-sch-p<N>.png` per sheet (300 DPI).
 3.  **Switch to the Board Editor** (PCB) and run the same command:
     ```
     RUN fusion-electronics-all.ulp
     ```
-    This chains: `fusion-electronics-export.ulp` → `fusion-electronics-stackup.ulp` → `fusion-electronics-images.ulp`. Produces `<design>-thomson-export-brd.json`, `<design>-thomson-export-stack.json`, `<design>-img-silk-top.png`, `<design>-img-silk-bot.png`, and one `<design>-img-cu-L<num>-<name>.png` per used copper layer (1200 DPI).
+    This chains: [fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp] → [fusion-electronics-stackup.ulp](./tools/fusion-electronics-stackup.ulp) → [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp). Produces `exports/<design>-thomson-export-brd.json`, `exports/<design>-thomson-export-stack.json`, `exports/<design>-img-silk-top.png`, `exports/<design>-img-silk-bot.png`, and one `exports/<design>-img-cu-L<num>-<name>.png` per used copper layer (1200 DPI).
 
-The wrapper detects which editor it's in and runs the right chain. All four ULPs (wrapper plus three children) live under `tools/` and write to `<repo>/exports/` automatically (path derived from `argv[0]`). The wrapper uses each child ULP's default output path and DPI; for granular control, run the children directly — see "Individual ULPs" below.
+The wrapper detects which editor it's in and runs the right chain. All four ULPs (wrapper plus three children) live under `tools/` and write to `<repo>/exports/` automatically (path derived from `argv[0]`). The wrapper uses each child ULP's default output path and DPI; for granular control, run the children directly — see [Individual ULPs](#individual-ulps-advanced) below.
 
 The schematic JSON export contains components, nets, pin connectivity, and signal analysis. The board JSON contains placement coordinates, trace routing, board geometry, and layout analysis. The stackup JSON contains the physical copper-layer ordering plus the full layer table. The image PNGs are visual evidence — qualitative inputs only; never derive distances or trace widths from them (the reviewer instructions enforce this rule).
 
@@ -334,11 +335,11 @@ If your design is in KiCad 9 or KiCad 10, use the standalone Python exporter ins
 python tools/kicad-export.py path/to/MyProject.kicad_pro
 ```
 
-This generates both `-thomson-export-sch.json` and `-thomson-export-brd.json` files in the `exports/` directory. Use `--output <dir>` to specify a different output directory.
+This generates both `exports/<design>-thomson-export-sch.json` and `exports/<design>-thomson-export-brd.json` files. Use `--output <dir>` to specify a different output directory.
 
 The script parses KiCad S-expression files directly — no KiCad installation required, Python 3.6+ standard library only. It auto-detects the board net format (KiCad 9's top-level net table vs. KiCad 10's name-only inline references), handles hierarchical multi-sheet schematics, reads net classes from the project file, and classifies signals (power, ground, clock, differential pairs with interface detection for USB, CAN, Ethernet, HDMI, LVDS, PCIe, SATA, MIPI).
 
-See [`docs/KiCad_Review_Guide.md`](docs/KiCad_Review_Guide.md) for full details on the KiCad export format.
+See [KiCad_Review_Guide.md](docs/KiCad_Review_Guide.md) for full details on the KiCad export format.
 
 ### Step 2: Add Datasheets and Supporting Files
 
@@ -375,22 +376,32 @@ Then start the review using the project skill:
 
 **`/design-review`**
 
-(Fallback if the skill is unavailable: `Read docs/REVIEWER_INSTRUCTIONS.md and follow it to review my design in exports/. Please begin the review.`)
+(Fallback if the skill is unavailable: Read [REVIEWER_INSTRUCTIONS.md](./docs/REVIEWER_INSTRUCTIONS.md) and follow it to review my design in exports/. Please begin the review.`)
 
 Claude Code will:
-1. Read `docs/REVIEWER_INSTRUCTIONS.md` (the reviewer procedure) and, per its Step 1, the framework knowledge base — `ontology/ontology.json`, `examples/examples.json`, and `docs/AI_Hardware_Design_Review_KnowledgeBase.md`
+1. Read [REVIEWER_INSTRUCTIONS.md](./docs/REVIEWER_INSTRUCTIONS.md) (the reviewer procedure) and, per its Step 1, the framework knowledge base — [ontology.json](./ontology/ontology.json), [examples.json](./examples/examples.json), and [AI_Hardware_Design_Review_KnowledgeBase.md](./docs/AI_Hardware_Design_Review_KnowledgeBase.md).
 2. Read the `-sch.json`, `-brd.json`, and `-stack.json` exports, the layer/silk/schematic PNGs, plus any datasheet PDFs from `exports/`
 3. Perform a pre-review assessment and ask for any missing information (datasheets, stackup details, etc.)
 4. Run through all applicable rules and report issues with specific `rule_id` citations, recording datasheet verifications in `verified_checks[]` and design-wide analyses in `cross_checks[]`
-5. Write findings to `exports/<project>-findings.json`, run `tools/validate_findings.py` (mandatory coverage gate), and produce `exports/<project>-review.html` via `tools/gen_report.py` (see §5 "Outputs")
+5. Write findings to `exports/<project>-findings.json`, run [validate_findings.py](./tools/validate_findings.py) (mandatory coverage gate), and produce `exports/<project>-review.html` via [gen_report.py](./tools/gen_report.py) (see [Outputs](#outputs))
 
 It is also possible to run this whole process automatically (Windows, macOS, or Linux)
-with the `tools/run_review.py` script (`run_review.sh` is the bash original):
+with the [run_review.py](./tools/run_review.py) script ([run_review.sh](./run_review.sh) is the bash original):
 
 ```bash
 cd ThomsonLint
 python tools/run_review.py
 ```
+
+#### In case of design run errors
+
+If you see this message in the Claude CLI history:
+```
+⏺ Background command "Wait for the Fusion latch to clear" failed with exit code 1
+```
+
+then double check that there's no dialog open in Fusion, then reply `done` in the
+Claude CLI.
 
 ### Step 4: Provide Additional Context (if asked)
 
@@ -423,7 +434,7 @@ Answer these in the chat and Claude will proceed with the full review.
 
 ## 8. Development Setup
 
-Clone the repository on the machine that runs Fusion (Windows or macOS) and set up the venv as in "Prerequisites"; Claude Code and the tools run there natively.
+Clone the repository on the machine that runs Fusion (Windows or macOS) and set up the venv as in [Prerequisites](#prerequisites); Claude Code and the tools run there natively.
 
 **Legacy (WSL / remote Linux host):** development originally ran on an **Ubuntu 24.04** host. The repository can be mounted into **Windows 11 WSL** via SSHFS so that Fusion Electronics (running on Windows) can execute the ULP exporter directly:
 
