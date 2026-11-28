@@ -393,6 +393,16 @@ cd ThomsonLint
 python tools/run_review.py
 ```
 
+#### In case of design run errors
+
+If you see this message in the Claude CLI history:
+```
+⏺ Background command "Wait for the Fusion latch to clear" failed with exit code 1
+```
+
+then double check that there's no dialog open in Fusion, then reply `done` in the
+Claude CLI.
+
 ### Step 4: Provide Additional Context (if asked)
 
 Claude may ask for:
