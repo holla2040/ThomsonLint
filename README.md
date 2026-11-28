@@ -246,7 +246,8 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 Live capture (Step 1 below) talks to a **running** Fusion instance over a local HTTP endpoint Fusion itself publishes — no file uploads, no manual ULP runs. One-time setup:
 
-1.  **Enable Fusion's API server.** In Fusion: **Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on `127.0.0.1` port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks command dispatch; reads still work).
+1.  **Enable Fusion's API server.** In Fusion: **<Your user, upper right corner> ▸ Preferences ▸ General ▸ API ▸ enable "Fusion MCP Server"**. This publishes a local endpoint on `127.0.0.1` port **27182**. Keep an Electronics design open and **no modal dialog** open (an open dialog blocks command dispatch; reads still work).  
+    NOTE: When enabled, Fusion360 needs to be restarted for this to take effect.
 2.  **Verify.** From the repo root, on the same machine as Fusion (Windows PowerShell or macOS Terminal — no port forwarding):
     ```bash
     python tools/fusion_bridge.py ping
