@@ -284,12 +284,12 @@ You can get the design data into `exports/` two ways:
     ```
     RUN fusion-electronics-all.ulp
     ```
-    This chains: [fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp) → [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp). Produces `<design>-thomson-export-sch.json` and one `<design>-img-sch-p<N>.png` per sheet (300 DPI).
+    This chains: [fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp) → [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp). Produces `exports/<design>-thomson-export-sch.json` and one `exports/<design>-img-sch-p<N>.png` per sheet (300 DPI).
 3.  **Switch to the Board Editor** (PCB) and run the same command:
     ```
     RUN fusion-electronics-all.ulp
     ```
-    This chains: [fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp] → [fusion-electronics-stackup.ulp](./tools/fusion-electronics-stackup.ulp) → [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp). Produces `<design>-thomson-export-brd.json`, `<design>-thomson-export-stack.json`, `<design>-img-silk-top.png`, `<design>-img-silk-bot.png`, and one `<design>-img-cu-L<num>-<name>.png` per used copper layer (1200 DPI).
+    This chains: [fusion-electronics-export.ulp](./tools/fusion-electronics-export.ulp] → [fusion-electronics-stackup.ulp](./tools/fusion-electronics-stackup.ulp) → [fusion-electronics-images.ulp](./tools/fusion-electronics-images.ulp). Produces `exports/<design>-thomson-export-brd.json`, `exports/<design>-thomson-export-stack.json`, `exports/<design>-img-silk-top.png`, `exports/<design>-img-silk-bot.png`, and one `exports/<design>-img-cu-L<num>-<name>.png` per used copper layer (1200 DPI).
 
 The wrapper detects which editor it's in and runs the right chain. All four ULPs (wrapper plus three children) live under `tools/` and write to `<repo>/exports/` automatically (path derived from `argv[0]`). The wrapper uses each child ULP's default output path and DPI; for granular control, run the children directly — see [Individual ULPs](#individual-ulps-advanced) below.
 
@@ -335,7 +335,7 @@ If your design is in KiCad 9 or KiCad 10, use the standalone Python exporter ins
 python tools/kicad-export.py path/to/MyProject.kicad_pro
 ```
 
-This generates both `-thomson-export-sch.json` and `-thomson-export-brd.json` files in the `exports/` directory. Use `--output <dir>` to specify a different output directory.
+This generates both `exports/<design>-thomson-export-sch.json` and `exports/<design>-thomson-export-brd.json` files. Use `--output <dir>` to specify a different output directory.
 
 The script parses KiCad S-expression files directly — no KiCad installation required, Python 3.6+ standard library only. It auto-detects the board net format (KiCad 9's top-level net table vs. KiCad 10's name-only inline references), handles hierarchical multi-sheet schematics, reads net classes from the project file, and classifies signals (power, ground, clock, differential pairs with interface detection for USB, CAN, Ethernet, HDMI, LVDS, PCIe, SATA, MIPI).
 
