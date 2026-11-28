@@ -238,7 +238,7 @@ Claude Code is the tested driver for this framework. It reads the exported desig
 
 ### Prerequisites
 
-- Claude Code CLI installed and authenticated
+- Claude Code CLI installed and authenticated - check by running `claude auth status`.
 - ThomsonLint repository cloned locally
 - Design exported from Fusion Electronics or KiCad 9 / 10 — or, for live capture, the design simply **open in Fusion** with the bridge configured (see [Reading from Fusion Electronics](#reading-from-fusion-electronics) below)
 
